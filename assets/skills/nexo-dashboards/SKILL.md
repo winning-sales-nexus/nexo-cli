@@ -7,12 +7,12 @@ description: Como montar e mudar painéis (dashboards) do Nexo pela API — cat�
 
 Um painel tem abas, seções e relatórios (gráficos). **Nenhum número sai de você**: você escreve a especificação, o servidor confere contra o catálogo da empresa e roda a consulta. A leitura pede `context:read`; mudar pede `dashboards:write`. Tudo fica em `/v1/crm/dashboards`.
 
-## O fluxo
+## O fluxo, pela CLI
 
-1. **Catálogo primeiro.** `nexo api crm/dashboards/catalog -X GET -f text=<termo> --json`. Use só fontes, campos e medidas que o catálogo devolve; o campo de uma fonte ligada é `ligacao.campo` (`owner.name`, `deal.pipelineId`). Se a medida pedida não existe, diga "não há a medida X" e não invente.
-2. **Painel atual.** `nexo api crm/dashboards --json` e `nexo api crm/dashboards/<id> --json`.
-3. **Prévia.** `nexo api crm/dashboards/preview --input mudanca.json` com `dashboardId` (sem ele, cria um painel), `summary` e `operations`: `set_panel`, `add_tab`, `rename_tab`, `set_tab_variables`, `remove_tab`, `add_section`, `change_section`, `remove_section`, `add_report`, `change_report`, `remove_report`, `set_tab_audience`, `set_report_audience`. O que você não cita fica como estava. Se vier `dashboards.spec_invalid`, corrija pelo `problems` e mande de novo.
-4. **Mostre a prévia e espere o sim.** Depois: `nexo api crm/dashboards/proposals/<proposalId>/save -X POST`. Repetir o sim não grava outra versão. Proposta vale 2 horas; `dashboards.proposal_conflict` (409) quer dizer que o painel mudou no que você editou: leia de novo e refaça.
+1. **Catálogo primeiro.** `nexo dashboards catalog --text <termo>` (e `--source <fonte>`). Use só fontes, campos e medidas que o catálogo devolve; o campo de uma fonte ligada é `ligacao.campo` (`owner.name`, `deal.pipelineId`). Se a medida pedida não existe, diga "não há a medida X" e não invente.
+2. **O painel numa pasta.** `nexo dashboards pull <id> <pasta>` (veja os ids com `nexo dashboards list`) ou `nexo dashboards init <pasta>` para um novo. O `dashboard.json` tem o painel (`name`, `description`, `variables`, `settings`) e as abas, cada uma com `sections` e `reports`; cada relatório tem `key`, `section`, `queries`, `presentation`, `layout` (`x`, `y`, `w`, `h` numa grade de 24 colunas) e `audience`. Num item novo, invente uma `key` curta (`receita_mes`); os que vieram do Nexo usam o id, que você não muda.
+3. **Prévia.** `nexo dashboards push <pasta> -m "o que mudou"` compara a pasta com o painel do Nexo, manda só as operações que mudam, e o servidor confere tudo contra o catálogo e roda cada relatório novo ou mudado. Se vier `dashboards.spec_invalid`, corrija pelo `problems` e mande de novo.
+4. **Mostre a prévia e espere o sim.** Fora de um terminal, a CLI mostra a prévia e o comando `nexo dashboards save <prévia> <pasta>`; rode-o só depois do sim da pessoa. A prévia vale 2 horas. Depois de salvar, a pasta é reescrita com os ids do Nexo. `dashboards.proposal_conflict` (409) quer dizer que alguém mudou o mesmo painel: `pull` numa pasta nova e refaça.
 5. Errou? `nexo api crm/dashboards/<id>/versions/<seq>/restore -X POST` cria uma versão nova igual à antiga (o painel guarda 30).
 
 ## A especificação de um relatório
@@ -25,7 +25,7 @@ Um painel tem abas, seções e relatórios (gráficos). **Nenhum número sai de 
 
 ## Outras operações
 
-- Números de um relatório salvo: `nexo api crm/dashboards/<id>/reports/<reportId>/run -X POST`.
+- Números de um relatório salvo: `nexo dashboards run <relatório> <pasta>`.
 - Valores possíveis de um filtro: `nexo api crm/dashboards/variables/options --input valores.json`.
 - Alertas (`.../<id>/alerts`) e links públicos (`.../<id>/public-links`, só administrador) mudam o que outras pessoas recebem: confirme com a pessoa antes.
 - Apagar um painel não tem volta pela API: confirme antes de `nexo api crm/dashboards/<id> -X DELETE`.
