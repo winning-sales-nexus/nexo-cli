@@ -7,7 +7,7 @@ A documentação completa fica em [docs.nexo.winningsales.com.br](https://docs.n
 ## Instalar
 
 ```sh
-npm install -g @winning-sales-nexus/nexo
+npm install -g @winning-sales/nexo
 nexo --version
 ```
 
