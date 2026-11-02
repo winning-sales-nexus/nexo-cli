@@ -103,6 +103,10 @@ npm run openapi:sync       # regenera os tipos do /v1 a partir da API de produç
 npm run docs:sync          # atualiza a documentação e os arquivos do Connect embutidos
 ```
 
+### Publicar uma versão
+
+Suba a versão num PR (`npm version minor --no-git-tag-version`, ou `patch` para correção). Quando o PR entra na `main`, o workflow `release` vê que a versão ainda não está no npm, roda as checagens, publica com proveniência pelo Trusted Publisher do npm (sem token), e cria a tag `v<versão>` e o release no GitHub. Sem mudança de versão, ele não faz nada.
+
 ## Licença
 
 MIT. Veja [LICENSE](LICENSE).
