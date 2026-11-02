@@ -81,6 +81,17 @@ O conector vive numa pasta do seu repositório: `connector.ts`, `manifest.json`,
 
 Publicar, ligar e pausar mostram a prévia e pedem o sim. Fora de um terminal (numa IA ou num script), a CLI mostra a prévia e o comando para aplicar com `--confirm <token>`, que vale uma vez. O valor de um segredo só é digitado por uma pessoa num terminal (ou por `--stdin`, num script) e nunca volta pela API.
 
+## Painéis como código
+
+```sh
+nexo dashboards catalog --text receita
+nexo dashboards pull <id> comercial
+nexo dashboards push comercial -m "gráfico de receita por vendedor"
+nexo dashboards run <relatório> comercial
+```
+
+O painel vive em `dashboard.json`: o painel, as abas, as seções e os relatórios (consultas, apresentação, posição na grade e quem vê). `push` compara a pasta com o painel no Nexo, manda só o que mudou e mostra a prévia, com cada relatório já conferido e rodado pelo servidor. Salva depois do sim; fora de um terminal, mostra o `nexo dashboards save <prévia>` para rodar depois do sim. Depois de salvar, a pasta passa a usar os ids do Nexo. Também atende por `nexo paineis`.
+
 ## Códigos de saída
 
 | Código | Quando                                             |
