@@ -10,6 +10,19 @@ import { run } from '../src/run.js';
 
 const API: string = 'https://mcp-nexo.winningsales.com.br';
 const FLOW: string = '019fe1a2-0000-7000-8000-000000000001';
+const LIVE: Record<string, unknown> = {
+    schema: 1,
+    name: 'Boas-vindas',
+    nodes: [
+        { key: 'inicio', type: 'trigger', kind: 'deal.created', config: {} },
+        { key: 'aviso', type: 'action', kind: 'notify.owner', config: {}, onFailure: 'stop' },
+        { key: 'fim', type: 'end', config: { outcome: 'done' } }
+    ],
+    edges: [
+        { from: 'inicio', to: 'aviso' },
+        { from: 'aviso', to: 'fim' }
+    ]
+};
 const DOCUMENT: Record<string, unknown> = {
     schema: 1,
     name: 'Boas-vindas',
@@ -131,25 +144,31 @@ describe('nexo automations publish', () => {
     });
 
     it('without a terminal, shows what goes live and does not publish', async () => {
-        const h: Harness = harness({ [`GET /v1/automations/${FLOW}`]: () => detail() });
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => detail(),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
+        });
 
         expect(await run(h.context, ['automations', '--automation', FLOW, 'publish'])).toBe(0);
 
         expect(h.out()).toContain('Substitui a versão 2');
-        expect(h.out()).toContain('Ação tarefa (task.create)');
+        expect(h.out()).toContain('- Ação aviso (notify.owner)');
+        expect(h.out()).toContain('+ Ação tarefa (task.create)');
+        expect(h.out()).toContain('As ligações entre os passos mudaram');
         expect(h.err()).toContain('--yes');
-        expect(h.calls.map((call) => call.method)).toEqual(['GET']);
+        expect(h.calls.map((call) => call.method)).toEqual(['GET', 'GET']);
     });
 
     it('publishes exactly the draft it showed, after the yes', async () => {
         const h: Harness = harness({
             [`GET /v1/automations/${FLOW}`]: () => detail(),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE }),
             [`POST /v1/automations/${FLOW}/publish`]: () => ({ flow: FLOW_ROW })
         });
 
         expect(await run(h.context, ['automations', '--automation', FLOW, 'publish', '--yes', '--cancel-live-runs'])).toBe(0);
 
-        expect(h.calls[1]?.body).toEqual({ versionId: 'ver-1', cancelLiveRuns: true });
+        expect(h.calls[2]?.body).toEqual({ versionId: 'ver-1', cancelLiveRuns: true });
     });
 
     it('refuses a draft with problems before calling publish', async () => {
@@ -164,7 +183,10 @@ describe('nexo automations publish', () => {
     });
 
     it('warns when the folder differs from the draft in the Nexo', async () => {
-        const h: Harness = harness({ [`GET /v1/automations/${FLOW}`]: () => detail() });
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => detail(),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
+        });
         writeFileSync(join(h.root, 'automation.json'), JSON.stringify({ name: 'Boas-vindas', document: { ...DOCUMENT, name: 'Outro' } }));
         writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
 

@@ -9,7 +9,7 @@ import type { ApiResponse } from '../http/nexo-client.js';
 import { ensureEmpty, projectDirectory } from '../connect/project.js';
 import { readAutomation, readAutomationState, templateAutomation, writeAutomation, writeAutomationState } from '../automations/project.js';
 import type { AutomationSettings, AutomationState } from '../automations/project.js';
-import { describeDocument, describeProblems, sameDocument } from '../automations/summary.js';
+import { describeDiff, describeDocument, describeProblems, sameDocument } from '../automations/summary.js';
 import type { FlowProblem } from '../automations/summary.js';
 
 export interface AutomationOptions extends GlobalOptions {
@@ -185,15 +185,51 @@ async function confirmed(context: CliContext, options: AutomationOptions): Promi
     }
 }
 
-function showPublishPreview(context: CliContext, detail: FlowDetail, local: AutomationSettings | null): void {
-    const live: string =
+function showDiff(context: CliContext, live: Record<string, unknown>, draft: Record<string, unknown>): void {
+    const lines: readonly string[] = describeDiff(live, draft);
+    printLine(
+        context,
+        lines.length === 0 ? 'O rascunho é igual à versão no ar.' : 'O que muda em relação à versão no ar (+ entra, - sai, ~ muda):'
+    );
+    lines.forEach((line: string) => {
+        printLine(context, line);
+    });
+}
+
+async function liveDocument(
+    context: CliContext,
+    session: Session,
+    flowId: string,
+    seq: number | null
+): Promise<Record<string, unknown> | null> {
+    if (seq === null) {
+        return null;
+    }
+    return ((await call(context, session, 'GET', `/${flowId}/versions/${String(seq)}`)) as { document: Record<string, unknown> }).document;
+}
+
+function showContent(context: CliContext, live: Record<string, unknown> | null, draft: Record<string, unknown>): void {
+    if (live !== null) {
+        showDiff(context, live, draft);
+        return;
+    }
+    describeDocument(draft).forEach((line: string) => {
+        printLine(context, line);
+    });
+}
+
+function showPublishPreview(
+    context: CliContext,
+    detail: FlowDetail,
+    local: AutomationSettings | null,
+    live: Record<string, unknown> | null
+): void {
+    const headline: string =
         detail.flow.publishedSeq === null
             ? 'Primeira publicação: a automação liga.'
             : `Substitui a versão ${String(detail.flow.publishedSeq)}, que está no ar.`;
-    printLine(context, `Publicar "${detail.flow.name}". ${live}`);
-    describeDocument(detail.working?.document ?? {}).forEach((line: string) => {
-        printLine(context, line);
-    });
+    printLine(context, `Publicar "${detail.flow.name}". ${headline}`);
+    showContent(context, live, detail.working?.document ?? {});
     if (local !== null && !sameDocument(local.document, detail.working?.document)) {
         printNotice(
             context,
@@ -217,7 +253,7 @@ export async function automationsPublish(context: CliContext, dir: string | unde
         );
     }
     const local: AutomationSettings | null = options.automation === undefined ? readAutomation(projectDirectory(dir)) : null;
-    showPublishPreview(context, detail, local);
+    showPublishPreview(context, detail, local, await liveDocument(context, session, flowId, detail.flow.publishedSeq));
     if (!(await confirmed(context, options))) {
         return;
     }
