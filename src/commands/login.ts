@@ -1,16 +1,21 @@
 import { DEFAULT_ENVIRONMENT, ENVIRONMENTS, TOKENS_PAGE, environmentNamed, normalizedApiUrl } from '../config/environments.js';
 import type { NexoEnvironment } from '../config/environments.js';
+import type { StoredProfile } from '../config/credentials-store.js';
 import { profileName } from '../config/session.js';
 import type { Session } from '../config/session.js';
 import { printJson, printLine, printNotice } from '../context.js';
 import type { CliContext, GlobalOptions } from '../context.js';
 import { usageError } from '../errors.js';
 import { readAll, readSecret } from '../input/read-input.js';
+import { LOGIN_TIMEOUT_MS, browserLogin } from './login-browser.js';
 import { describeMe, fetchMe } from './whoami.js';
 import type { Me } from './whoami.js';
 
 export interface LoginOptions extends GlobalOptions {
     readonly withToken?: boolean;
+    readonly token?: boolean;
+    readonly browser?: boolean;
+    readonly scopes?: string;
     readonly env?: string;
     readonly apiUrl?: string;
 }
@@ -29,7 +34,7 @@ function targetApiUrl(options: LoginOptions): string {
     return environmentNamed(options.env ?? 'prod').apiUrl;
 }
 
-async function tokenFrom(context: CliContext, options: LoginOptions, apiUrl: string): Promise<string> {
+async function pastedToken(context: CliContext, options: LoginOptions, apiUrl: string): Promise<string> {
     if (options.withToken === true) {
         return (await readAll(context.stdin)).trim();
     }
@@ -40,21 +45,48 @@ async function tokenFrom(context: CliContext, options: LoginOptions, apiUrl: str
     return (await readSecret(context.stdin, context.stderr, 'Token: ')).trim();
 }
 
-export async function login(context: CliContext, options: LoginOptions): Promise<void> {
-    const apiUrl: string = targetApiUrl(options);
-    const token: string = await tokenFrom(context, options, apiUrl);
+async function tokenProfile(context: CliContext, options: LoginOptions, apiUrl: string): Promise<StoredProfile> {
+    const token: string = await pastedToken(context, options, apiUrl);
     if (!PERSONAL_TOKEN.test(token)) {
         throw usageError(
             'Isso não parece um token pessoal do Nexo.',
             'O token começa com nexo_pat_ e aparece uma vez só, quando é criado.'
         );
     }
+    return { kind: 'pat', apiUrl, token, savedAt: new Date().toISOString() };
+}
+
+function scopeOf(raw: string | undefined): string | null {
+    const scopes: readonly string[] = (raw ?? '').split(/[\s,]+/).filter((scope: string) => scope !== '');
+    return scopes.length === 0 ? null : scopes.join(' ');
+}
+
+async function obtainProfile(context: CliContext, options: LoginOptions, apiUrl: string): Promise<StoredProfile> {
+    if (options.withToken === true || options.token === true) {
+        return tokenProfile(context, options, apiUrl);
+    }
+    return browserLogin(context, {
+        apiUrl,
+        scope: scopeOf(options.scopes),
+        openBrowser: options.browser !== false,
+        timeoutMs: LOGIN_TIMEOUT_MS
+    });
+}
+
+function sessionFor(profile: string, stored: StoredProfile): Session {
+    const token: string = stored.kind === 'pat' ? stored.token : stored.accessToken;
+    return { apiUrl: stored.apiUrl, source: 'profile', profile, stored: null, token };
+}
+
+export async function login(context: CliContext, options: LoginOptions): Promise<void> {
+    const apiUrl: string = targetApiUrl(options);
+    const stored: StoredProfile = await obtainProfile(context, options, apiUrl);
     const profile: string = profileName(options.profile, context.env);
-    const session: Session = { apiUrl, token, source: 'profile', profile };
+    const session: Session = sessionFor(profile, stored);
     const me: Me = await fetchMe(context, session);
-    context.store.save(profile, { apiUrl, token, kind: 'pat', savedAt: new Date().toISOString() });
+    context.store.save(profile, stored);
     if (options.json === true) {
-        printJson(context, { profile, apiUrl, user: me.user, company: me.company });
+        printJson(context, { profile, apiUrl, kind: stored.kind, user: me.user, company: me.company });
         return;
     }
     printLine(context, `Pronto. Perfil ${profile} salvo em ${context.store.path}.`);

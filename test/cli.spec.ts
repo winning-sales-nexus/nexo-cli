@@ -54,7 +54,8 @@ function harness(answer: (call: Call) => Response, options: { stdin?: string; en
         stdin: Readable.from([options.stdin ?? '']),
         stdout,
         stderr,
-        fetchFn
+        fetchFn,
+        openUrl: () => Promise.resolve(false)
     };
     return { context, calls, out: () => out, err: () => err, directory };
 }
