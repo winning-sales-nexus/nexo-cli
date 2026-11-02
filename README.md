@@ -65,6 +65,22 @@ nexo mcp setup --claude
 - `nexo skills install` grava as regras do Nexo (API, Connect, painéis) no projeto, para o Claude Code (`.claude/skills`), o Cursor (`.cursor/rules`) e o Codex e outros (`AGENTS.md` com `.nexo/skills`). Sem opção, detecta o que o projeto usa; `--all` grava nos três. Rode de novo depois de atualizar a CLI.
 - `nexo mcp setup --claude|--cursor|--codex` configura o MCP do Nexo e o do Nexo Connect no projeto, com o token lido de `NEXO_TOKEN`, fora do arquivo.
 
+## Nexo Connect como código
+
+```sh
+nexo connect systems --category erp
+nexo connect init clientes-erp --system omie
+nexo connect push clientes-erp -m "primeira versão"
+nexo connect secrets set OMIE_APP_KEY clientes-erp
+nexo connect rehearse clientes-erp
+nexo connect publish clientes-erp
+nexo connect enable clientes-erp
+```
+
+O conector vive numa pasta do seu repositório: `connector.ts`, `manifest.json`, os tipos do SDK (`connect-sdk.d.ts`) para checar com `tsc`, e `nexo-connector.json` com o id e a versão de onde a pasta partiu. `pull` baixa um conector que já existe; `status`, `runs` e `run <id>` mostram o estado e as execuções.
+
+Publicar, ligar e pausar mostram a prévia e pedem o sim. Fora de um terminal (numa IA ou num script), a CLI mostra a prévia e o comando para aplicar com `--confirm <token>`, que vale uma vez. O valor de um segredo só é digitado por uma pessoa num terminal (ou por `--stdin`, num script) e nunca volta pela API.
+
 ## Códigos de saída
 
 | Código | Quando                                             |
