@@ -1,6 +1,6 @@
 # Nexo CLI
 
-A CLI do [Nexo](https://nexo.winningsales.com.br) para quem desenvolve sobre a plataforma: a API pública no terminal hoje e, nas próximas versões, o Nexo Connect, os dashboards e os fluxos como arquivos no seu repositório, com a documentação e as skills do produto para a sua IA (Claude Code, Cursor, Codex).
+A CLI do [Nexo](https://nexo.winningsales.com.br) para quem desenvolve sobre a plataforma: a API pública no terminal, o Nexo Connect e os painéis como arquivos no seu repositório, e a documentação e as skills do produto para a sua IA (Claude Code, Cursor, Codex).
 
 A documentação completa fica em [docs.nexo.winningsales.com.br](https://docs.nexo.winningsales.com.br).
 
