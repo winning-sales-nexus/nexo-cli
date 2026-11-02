@@ -19,8 +19,11 @@ function globalsOf(command: Command): GlobalOptions {
 function addAuthCommands(program: Command, context: CliContext): void {
     program
         .command('login')
-        .description('Entra no Nexo nesta máquina com um token pessoal')
-        .option('--with-token', 'lê o token do stdin, sem perguntar')
+        .description('Entra no Nexo nesta máquina: pelo navegador, ou com um token pessoal')
+        .option('--token', 'cola um token pessoal, no lugar do navegador')
+        .option('--with-token', 'lê o token pessoal do stdin, sem perguntar')
+        .option('--scopes <escopos>', 'escopos pedidos no navegador, separados por vírgula (padrão: os do Nexo)')
+        .option('--no-browser', 'só mostra o endereço, sem abrir o navegador')
         .addOption(new Option('--env <ambiente>', 'ambiente do Nexo').choices(['prod', 'dev']).default('prod'))
         .option('--api-url <url>', 'endereço da API, no lugar do ambiente')
         .action(async (_options: LoginOptions, command: Command) => {
@@ -28,9 +31,9 @@ function addAuthCommands(program: Command, context: CliContext): void {
         });
     program
         .command('logout')
-        .description('Remove o perfil salvo nesta máquina')
-        .action((_options: GlobalOptions, command: Command) => {
-            logout(context, globalsOf(command));
+        .description('Sai do Nexo nesta máquina; o login pelo navegador é revogado no servidor')
+        .action(async (_options: GlobalOptions, command: Command) => {
+            await logout(context, globalsOf(command));
         });
     program
         .command('whoami')

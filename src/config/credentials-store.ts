@@ -4,12 +4,24 @@ import { join } from 'node:path';
 import { CliError } from '../errors.js';
 import { EXIT_CODES } from '../exit-codes.types.js';
 
-export interface StoredProfile {
+export interface PersonalTokenProfile {
+    readonly kind: 'pat';
     readonly apiUrl: string;
     readonly token: string;
-    readonly kind: 'pat';
     readonly savedAt: string;
 }
+
+export interface OAuthProfile {
+    readonly kind: 'oauth';
+    readonly apiUrl: string;
+    readonly accessToken: string;
+    readonly refreshToken: string;
+    readonly expiresAt: string;
+    readonly scope: string;
+    readonly savedAt: string;
+}
+
+export type StoredProfile = PersonalTokenProfile | OAuthProfile;
 
 interface CredentialsFile {
     readonly version: 1;
@@ -27,8 +39,19 @@ function isStoredProfile(value: unknown): value is StoredProfile {
     if (typeof value !== 'object' || value === null) {
         return false;
     }
-    const entry: Partial<Record<keyof StoredProfile, unknown>> = value;
-    return typeof entry.apiUrl === 'string' && typeof entry.token === 'string' && entry.kind === 'pat';
+    const entry: Partial<Record<keyof PersonalTokenProfile | keyof OAuthProfile, unknown>> = value;
+    if (typeof entry.apiUrl !== 'string') {
+        return false;
+    }
+    if (entry.kind === 'pat') {
+        return typeof entry.token === 'string';
+    }
+    return (
+        entry.kind === 'oauth' &&
+        typeof entry.accessToken === 'string' &&
+        typeof entry.refreshToken === 'string' &&
+        typeof entry.expiresAt === 'string'
+    );
 }
 
 function profilesOf(value: unknown): Record<string, StoredProfile> {

@@ -15,22 +15,24 @@ Precisa do Node 20.11 ou mais novo.
 
 ## Entrar
 
-Crie um token pessoal no Nexo, em **Configurações › Integrações › Tokens de API e MCP**, e:
-
 ```sh
 nexo login
 ```
 
-A CLI pergunta o token sem mostrá-lo na tela, confere com a API e salva em `~/.config/nexo/credentials.json`, que só o seu usuário lê. Para não digitar:
+A CLI abre o Nexo no navegador. Você entra com a sua conta, escolhe o que a CLI pode fazer e autoriza; o navegador devolve o acesso para a CLI, que fica guardado em `~/.config/nexo/credentials.json` (só o seu usuário lê) e se renova sozinho. A conexão aparece como **Nexo CLI** em Configurações › Integrações, e `nexo logout` a revoga.
+
+Um login novo encerra o anterior da mesma pessoa. Para usar a CLI em mais de uma máquina ao mesmo tempo, num servidor sem navegador ou no CI, use um token pessoal, criado em **Configurações › Integrações › Tokens de API e MCP**:
 
 ```sh
-nexo login --with-token < token.txt
+nexo login --token                  # cola o token, sem mostrá-lo na tela
+nexo login --with-token < token.txt # lê do stdin
+NEXO_TOKEN=nexo_pat_... nexo whoami # sem login, pelo ambiente
 ```
-
-Em CI e automações, não precisa de login: defina `NEXO_TOKEN` (e, se não for produção, `NEXO_API_URL`).
 
 | Opção                  | O que faz                                                   |
 | ---------------------- | ----------------------------------------------------------- |
+| `--scopes a,b`         | pede só esses escopos no navegador (padrão: os do Nexo)     |
+| `--no-browser`         | só mostra o endereço para você abrir                        |
 | `--env dev`            | entra no ambiente de desenvolvimento do Nexo                |
 | `--api-url <url>`      | entra numa API em outro endereço (só https fora da máquina) |
 | `-p, --profile <nome>` | guarda e usa mais de um login, um por perfil                |
