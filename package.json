@@ -2,13 +2,15 @@
   "name": "@winning-sales-nexus/nexo",
   "version": "0.1.0",
   "description": "CLI do Nexo: a API, o Connect, os dashboards e os fluxos no terminal, com a documentação e as skills do produto para a sua IA",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "nexo": "dist/main.js"
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20.11"

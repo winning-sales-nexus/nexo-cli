@@ -70,3 +70,7 @@ npm run dev -- whoami      # roda direto do código
 npm run check              # formato, lint, tipos e testes
 npm run openapi:sync       # regenera os tipos do /v1 a partir da API de produção
 ```
+
+## Licença
+
+MIT. Veja [LICENSE](LICENSE).
