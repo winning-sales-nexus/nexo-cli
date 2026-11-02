@@ -1,0 +1,48 @@
+{
+  "name": "@winning-sales-nexus/nexo",
+  "version": "0.1.0",
+  "description": "CLI do Nexo: a API, o Connect, os dashboards e os fluxos no terminal, com a documentação e as skills do produto para a sua IA",
+  "type": "module",
+  "bin": {
+    "nexo": "dist/main.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winning-sales-nexus/nexo-cli.git"
+  },
+  "homepage": "https://docs.nexo.winningsales.com.br",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "openapi:sync": "openapi-typescript https://mcp-nexo.winningsales.com.br/v1/openapi.json -o src/generated/openapi.ts && prettier --write src/generated/openapi.ts",
+    "prepublishOnly": "npm run build",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.27.0",
+    "@types/node": "^22.15.0",
+    "eslint": "^9.27.0",
+    "eslint-config-prettier": "^10.1.0",
+    "openapi-typescript": "^7.8.0",
+    "prettier": "^3.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.33.0",
+    "vitest": "^3.2.0"
+  }
+}
