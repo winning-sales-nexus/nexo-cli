@@ -52,3 +52,13 @@ jobs:
           git tag "v$VERSION"
           git push origin "v$VERSION"
           gh release create "v$VERSION" --generate-notes --verify-tag
+      - if: steps.version.outputs.publish == 'true'
+        name: Avisa o site de docs
+        env:
+          GH_TOKEN: ${{ secrets.NEXU_DOCS_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::Sem NEXU_DOCS_DISPATCH_TOKEN: o site de docs pega a versão nova na sincronização diária."
+            exit 0
+          fi
+          gh workflow run sync-reference.yml -R winning-sales-nexus/nexu-docs

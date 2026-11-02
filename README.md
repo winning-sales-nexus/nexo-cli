@@ -118,6 +118,8 @@ npm run docs:sync          # atualiza a documentação e os arquivos do Connect 
 
 Suba a versão num PR (`npm version minor --no-git-tag-version`, ou `patch` para correção). Quando o PR entra na `main`, o workflow `release` vê que a versão ainda não está no npm, roda as checagens, publica com proveniência pelo Trusted Publisher do npm (sem token), e cria a tag `v<versão>` e o release no GitHub. Sem mudança de versão, ele não faz nada.
 
+O pacote publicado leva `reference.json`, a árvore de comandos que o `prepublishOnly` gera. O site de docs lê a referência e o README da versão `latest` do npm. Depois de publicar, o `release` dispara a sincronização do site, se o secret `NEXU_DOCS_DISPATCH_TOKEN` existir; sem ele, o site pega a versão nova na sincronização diária.
+
 ## Licença
 
 MIT. Veja [LICENSE](LICENSE).
