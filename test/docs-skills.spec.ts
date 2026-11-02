@@ -52,7 +52,8 @@ function harness(): Harness {
         stdin: Readable.from(['']),
         stdout,
         stderr: new PassThrough(),
-        fetchFn: () => Promise.reject(new Error('offline'))
+        fetchFn: () => Promise.reject(new Error('offline')),
+        openUrl: () => Promise.resolve(false)
     };
     return { context, out: () => out, directory };
 }
