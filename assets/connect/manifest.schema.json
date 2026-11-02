@@ -1,0 +1,399 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mcp-nexo.winningsales.com.br/docs/connect/manifest.schema.json",
+  "title": "Nexo Connect connector manifest",
+  "description": "What a connector may do, checked before a version is stored: its triggers, the hosts it calls, the names of its secrets, the Nexo objects it reads and writes, and whether it writes to the other system. Names repeated in a list are refused.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "Format of the manifest: always 1",
+      "type": "number",
+      "minimum": 1,
+      "maximum": 1
+    },
+    "triggers": {
+      "description": "What starts a run: up to five, any mix of cron, webhook and Nexo event",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "description": "Runs on a schedule, every everyMinutes minutes",
+                "type": "string",
+                "enum": [
+                  "cron"
+                ]
+              },
+              "everyMinutes": {
+                "description": "Interval between runs, in minutes",
+                "type": "integer",
+                "minimum": 5,
+                "maximum": 1440
+              }
+            },
+            "required": [
+              "type",
+              "everyMinutes"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "description": "Runs when the other system calls the connector's signed webhook",
+                "type": "string",
+                "enum": [
+                  "webhook"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "description": "Runs when a Nexo event happens",
+                "type": "string",
+                "enum": [
+                  "event"
+                ]
+              },
+              "event": {
+                "description": "Nexo event that starts a run; the run input carries the event and the record id",
+                "type": "string",
+                "enum": [
+                  "company.created",
+                  "company.updated",
+                  "contact.created",
+                  "contact.updated",
+                  "deal.created",
+                  "deal.updated",
+                  "deal.won",
+                  "lead.created",
+                  "lead.updated",
+                  "ticket.created",
+                  "ticket.updated"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "event"
+            ]
+          }
+        ]
+      }
+    },
+    "hosts": {
+      "description": "Domains the code calls with ctx.http and ctx.soap, over https; a new one waits for a yes before a rehearsal",
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "description": "Domain the connector may call over https, without scheme, port or path",
+        "type": "string"
+      }
+    },
+    "sftp": {
+      "description": "SFTP servers the connector reads files from, through the gateway",
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "description": "Domain of the SFTP server, without scheme, port or path",
+            "type": "string"
+          },
+          "port": {
+            "description": "Port of the SFTP server (22 is the usual one)",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "hostKey": {
+            "description": "Fingerprint of the server key (SHA256:..., as ssh-keyscan | ssh-keygen -lf - prints it); any other key is refused",
+            "type": "string",
+            "pattern": "^SHA256:[A-Za-z0-9+/]{43}$"
+          }
+        },
+        "required": [
+          "host",
+          "port"
+        ]
+      }
+    },
+    "email": {
+      "description": "Spreadsheets arriving by e-mail at the connector's own address, read with ctx.email; only from these senders",
+      "type": "object",
+      "properties": {
+        "senders": {
+          "description": "Who may send the files: an address (relatorios@erp.com.br) or a whole domain (@erp.com.br); mail from anyone else is dropped",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "pattern": "^(?:[a-z0-9._%+-]{1,64})?@(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$"
+          }
+        }
+      },
+      "required": [
+        "senders"
+      ]
+    },
+    "drive": {
+      "description": "Spreadsheets in Google Drive folders of the company's Google Workspace, read with ctx.drive through the Nexo's delegation",
+      "type": "object",
+      "properties": {
+        "account": {
+          "description": "E-mail of the company's person whose Google Workspace account reads the folders (a Nexo user of the company): the Nexo's delegation reads Drive as this account",
+          "type": "string",
+          "maxLength": 254,
+          "format": "email"
+        },
+        "folders": {
+          "description": "Google Drive folders the connector reads: the folder link (drive.google.com/drive/folders/...) or its id",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "account",
+        "folders"
+      ]
+    },
+    "secrets": {
+      "description": "Secrets the code reads with ctx.secret(name): a person fills the value in, it never sits in the code",
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Name the code uses to reference the secret",
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+          },
+          "label": {
+            "description": "What the person fills in, in Portuguese",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "help": {
+            "description": "Where the person finds the value in the other system",
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "name",
+          "label"
+        ]
+      }
+    },
+    "reads": {
+      "description": "Nexo objects the connector searches",
+      "type": "array",
+      "maxItems": 7,
+      "items": {
+        "type": "string",
+        "enum": [
+          "company",
+          "contact",
+          "deal",
+          "lead",
+          "ticket",
+          "product",
+          "externalEvent"
+        ]
+      }
+    },
+    "writes": {
+      "description": "Nexo objects and fields the connector writes",
+      "type": "array",
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "properties": {
+          "object": {
+            "description": "Nexo object the connector writes",
+            "type": "string",
+            "enum": [
+              "company",
+              "contact",
+              "deal",
+              "lead",
+              "ticket",
+              "product",
+              "externalEvent"
+            ]
+          },
+          "fields": {
+            "description": "Fields the connector may write",
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 200,
+            "items": {
+              "description": "Native field (camelCase) or custom property as property:<key>",
+              "type": "string",
+              "pattern": "^(?:[a-z][a-zA-Z0-9]{0,63}|property:\\w{1,100})$"
+            }
+          },
+          "controlledFields": {
+            "description": "Fields the other system owns: the Nexo shows where they come from and warns before a manual edit",
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "description": "Native field (camelCase) or custom property as property:<key>",
+              "type": "string",
+              "pattern": "^(?:[a-z][a-zA-Z0-9]{0,63}|property:\\w{1,100})$"
+            },
+            "default": []
+          }
+        },
+        "required": [
+          "object",
+          "fields"
+        ]
+      }
+    },
+    "externalWrites": {
+      "description": "Whether the connector writes into the other system",
+      "type": "boolean"
+    },
+    "agents": {
+      "description": "Local agents inside the customer's network and what the connector reaches through each: internal APIs and databases",
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "description": "Id of the local agent (Integrações › Agente local); the gateway sends these calls down its tunnel",
+            "type": "string",
+            "format": "uuid"
+          },
+          "http": {
+            "description": "APIs inside the customer's network, called with ctx.http",
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "properties": {
+                "host": {
+                  "description": "Host inside the customer's network, as the agent's machine resolves it: a name, a domain or an IPv4",
+                  "type": "string"
+                },
+                "port": {
+                  "description": "Port of the API (8080, 443...)",
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                "tls": {
+                  "description": "true when the API is https, false when it is plain http inside the network",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "host",
+                "port",
+                "tls"
+              ]
+            },
+            "default": []
+          },
+          "databases": {
+            "description": "Databases read with ctx.db.query, read-only",
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "description": "How the code names this database in ctx.db.query({ database })",
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,31}$"
+                },
+                "engine": {
+                  "description": "sqlserver, oracle or firebird",
+                  "type": "string",
+                  "enum": [
+                    "sqlserver",
+                    "oracle",
+                    "firebird"
+                  ]
+                },
+                "host": {
+                  "description": "Host inside the customer's network, as the agent's machine resolves it: a name, a domain or an IPv4",
+                  "type": "string"
+                },
+                "port": {
+                  "description": "Port of the database (1433 SQL Server, 1521 Oracle, 3050 Firebird)",
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                "database": {
+                  "description": "The database as the server knows it: SQL Server database name, Oracle service name, Firebird path or alias",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "username": {
+                  "description": "Name of the secret with the read-only database user",
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                },
+                "password": {
+                  "description": "Name of the secret with its password",
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                }
+              },
+              "required": [
+                "name",
+                "engine",
+                "host",
+                "port",
+                "database",
+                "username",
+                "password"
+              ]
+            },
+            "default": []
+          }
+        },
+        "required": [
+          "agentId"
+        ]
+      }
+    },
+    "oauth": {
+      "description": "Whether the code calls the other system with the OAuth token the person authorized: ctx.secret(\"OAUTH_ACCESS_TOKEN\"), renewed by the gateway",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "version",
+    "triggers",
+    "hosts",
+    "secrets",
+    "reads",
+    "writes",
+    "externalWrites"
+  ],
+  "additionalProperties": false
+}

@@ -41,7 +41,7 @@ Em CI e automações, não precisa de login: defina `NEXO_TOKEN` (e, se não for
 nexo whoami                      # quem está conectado, empresa, escopos e validade
 nexo api deals                   # GET /v1/deals
 nexo api deals -X GET -f limit=5 # campos viram query string no GET
-nexo api context-notes -f text="Cliente pediu desconto" -F pinned=true   # POST com corpo JSON
+nexo api crm/dashboards/catalog -X GET -f text=receita -F limit=5           # -F manda o número como número
 nexo api connect/connectors --input conector.json                         # corpo de um arquivo (ou - para o stdin)
 nexo logout                      # remove o perfil desta máquina
 ```
@@ -49,6 +49,19 @@ nexo logout                      # remove o perfil desta máquina
 `-f` manda o valor como texto; `-F` entende número, `true`, `false`, `null` e JSON. Com campos e sem `-X`, o método é POST, como no `gh api`.
 
 `--json` deixa toda saída em JSON, e o erro sai no stderr como o `problem+json` da API.
+
+## A documentação e a sua IA
+
+```sh
+nexo docs search escopo connectors:hosts
+nexo docs show referencia-do-manifesto
+nexo skills install
+nexo mcp setup --claude
+```
+
+- `nexo docs` lê a documentação do [site](https://docs.nexo.winningsales.com.br), embutida na versão da CLI, sem internet. `--online` lê a versão do ar.
+- `nexo skills install` grava as regras do Nexo (API, Connect, painéis) no projeto, para o Claude Code (`.claude/skills`), o Cursor (`.cursor/rules`) e o Codex e outros (`AGENTS.md` com `.nexo/skills`). Sem opção, detecta o que o projeto usa; `--all` grava nos três. Rode de novo depois de atualizar a CLI.
+- `nexo mcp setup --claude|--cursor|--codex` configura o MCP do Nexo e o do Nexo Connect no projeto, com o token lido de `NEXO_TOKEN`, fora do arquivo.
 
 ## Códigos de saída
 
@@ -69,6 +82,7 @@ npm ci
 npm run dev -- whoami      # roda direto do código
 npm run check              # formato, lint, tipos e testes
 npm run openapi:sync       # regenera os tipos do /v1 a partir da API de produção
+npm run docs:sync          # atualiza a documentação e os arquivos do Connect embutidos
 ```
 
 ## Licença

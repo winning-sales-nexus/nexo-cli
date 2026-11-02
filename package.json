@@ -9,6 +9,7 @@
   },
   "files": [
     "dist",
+    "assets",
     "README.md",
     "LICENSE"
   ],
@@ -30,7 +31,8 @@
     "test": "vitest run",
     "openapi:sync": "openapi-typescript https://mcp-nexo.winningsales.com.br/v1/openapi.json -o src/generated/openapi.ts && prettier --write src/generated/openapi.ts",
     "prepublishOnly": "npm run build",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "docs:sync": "tsx scripts/sync-docs.ts"
   },
   "dependencies": {
     "commander": "^14.0.0"

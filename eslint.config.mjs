@@ -5,7 +5,15 @@ import local from './eslint-rules/index.mjs';
 
 export default tseslint.config(
     {
-        ignores: ['dist/**', 'node_modules/**', 'src/generated/**', 'eslint.config.mjs', 'eslint-rules/**', 'vitest.config.mts']
+        ignores: [
+            'dist/**',
+            'node_modules/**',
+            'src/generated/**',
+            'assets/**',
+            'eslint.config.mjs',
+            'eslint-rules/**',
+            'vitest.config.mts'
+        ]
     },
     eslint.configs.recommended,
     ...tseslint.configs.strictTypeChecked,

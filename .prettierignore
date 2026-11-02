@@ -1,3 +1,5 @@
 dist
 src/generated
 package-lock.json
+assets/docs
+assets/connect
