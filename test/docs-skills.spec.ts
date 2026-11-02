@@ -89,7 +89,7 @@ describe('docs pages', () => {
 
 describe('skills install', () => {
     it('ships the three product skills with name and description', () => {
-        expect(bundledSkills().map((skill) => skill.name)).toEqual(['nexo-api', 'nexo-connect', 'nexo-dashboards']);
+        expect(bundledSkills().map((skill) => skill.name)).toEqual(['nexo-api', 'nexo-automations', 'nexo-connect', 'nexo-dashboards']);
         expect(bundledSkills().every((skill) => skill.description.length > 40)).toBe(true);
     });
 
