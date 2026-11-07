@@ -41,8 +41,23 @@ export function describeProblems(problems: readonly FlowProblem[]): readonly str
     );
 }
 
+/** Serializa com as chaves em ordem alfabética: o servidor devolve o documento com outra ordem de chaves, e isso não é diferença de conteúdo. */
+function canonical(value: unknown): string {
+    if (Array.isArray(value)) {
+        return `[${value.map(canonical).join(',')}]`;
+    }
+    if (typeof value === 'object' && value !== null) {
+        const fields: readonly string[] = Object.entries(value)
+            .filter(([, field]: [string, unknown]) => field !== undefined)
+            .sort(([a]: [string, unknown], [b]: [string, unknown]) => (a < b ? -1 : a > b ? 1 : 0))
+            .map(([key, field]: [string, unknown]) => `${JSON.stringify(key)}:${canonical(field)}`);
+        return `{${fields.join(',')}}`;
+    }
+    return JSON.stringify(value);
+}
+
 export function sameDocument(left: unknown, right: unknown): boolean {
-    return JSON.stringify(left) === JSON.stringify(right);
+    return canonical(left) === canonical(right);
 }
 
 /** O servidor preenche estes campos com o padrão quando o documento não os traz; sem valor diferente do padrão, a pasta e o rascunho são o mesmo. */

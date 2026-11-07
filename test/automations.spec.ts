@@ -214,6 +214,29 @@ describe('nexo automations publish', () => {
 
         expect(h.err()).not.toContain('diferente do rascunho');
     });
+
+    it('does not warn when the server returns the same document with the keys in another order', async () => {
+        const reordered: Record<string, unknown> = {
+            reentryMode: 'every_event',
+            ...Object.fromEntries(Object.entries(DOCUMENT).reverse()),
+            reactsToAutomations: false,
+            reentryMinutes: null
+        };
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => ({
+                flow: { ...FLOW_ROW, publishedSeq: 2 },
+                versions: [],
+                working: { ...working(), document: reordered }
+            }),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
+        });
+        writeFileSync(join(h.root, 'automation.json'), JSON.stringify({ name: 'Boas-vindas', document: DOCUMENT }));
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        await run(h.context, ['automations', 'publish', h.root]);
+
+        expect(h.err()).not.toContain('diferente do rascunho');
+    });
 });
 
 const LEAD: Record<string, unknown> = {
