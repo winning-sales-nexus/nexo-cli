@@ -134,7 +134,9 @@ function cardLine(card: Overview['paymentMethod']): string {
         return 'Cartão: nenhum cadastrado';
     }
     const expiry: string =
-        card.expiryMonth === null || card.expiryYear === null ? '' : `, vale ${String(card.expiryMonth).padStart(2, '0')}/${String(card.expiryYear)}`;
+        card.expiryMonth === null || card.expiryYear === null
+            ? ''
+            : `, vale ${String(card.expiryMonth).padStart(2, '0')}/${String(card.expiryYear)}`;
     return `Cartão: ${card.brand ?? 'cartão'} final ${card.lastFourDigits ?? '—'}${expiry}`;
 }
 
@@ -186,7 +188,11 @@ async function invoiceList(context: CliContext, options: BillingOptions): Promis
             query.set(key, value);
         }
     }
-    const page: InvoicePage = (await get(context, options, `/v1/billing/invoices${query.size === 0 ? '' : `?${query.toString()}`}`)) as InvoicePage;
+    const page: InvoicePage = (await get(
+        context,
+        options,
+        `/v1/billing/invoices${query.size === 0 ? '' : `?${query.toString()}`}`
+    )) as InvoicePage;
     if (options.json === true) {
         printJson(context, page);
         return;
@@ -208,7 +214,10 @@ async function invoiceDetail(context: CliContext, options: BillingOptions, invoi
         return;
     }
     printLine(context, `Fatura ${invoice.invoiceId}: ${INVOICE_LABELS[invoice.status]}, ${brl(invoice.totalCents)}`);
-    printLine(context, `Ciclo ${day(invoice.cycleStart)} a ${day(invoice.cycleEnd)}; vence em ${day(invoice.dueDate)}; emitida em ${day(invoice.issuedAt)}`);
+    printLine(
+        context,
+        `Ciclo ${day(invoice.cycleStart)} a ${day(invoice.cycleEnd)}; vence em ${day(invoice.dueDate)}; emitida em ${day(invoice.issuedAt)}`
+    );
     if (invoice.paidAt !== null) {
         const method: string = invoice.paymentMethod === null ? '' : ` por ${METHOD_LABELS[invoice.paymentMethod.method]}`;
         printLine(context, `Paga em ${day(invoice.paidAt)}${method}`);

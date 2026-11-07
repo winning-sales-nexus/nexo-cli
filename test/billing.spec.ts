@@ -143,8 +143,22 @@ describe('nexo billing', () => {
                     ...ITEM,
                     mode: 'seats',
                     lines: [
-                        { group: 'Ciclo de dezembro, pago adiantado', kind: 'seats', label: 'Assentos', quantity: 10, unitInCents: 14000, totalInCents: 140000 },
-                        { group: 'Ciclo de dezembro, pago adiantado', kind: 'module', label: 'Copiloto', quantity: 1, unitInCents: 5000, totalInCents: 5000 }
+                        {
+                            group: 'Ciclo de dezembro, pago adiantado',
+                            kind: 'seats',
+                            label: 'Assentos',
+                            quantity: 10,
+                            unitInCents: 14000,
+                            totalInCents: 140000
+                        },
+                        {
+                            group: 'Ciclo de dezembro, pago adiantado',
+                            kind: 'module',
+                            label: 'Copiloto',
+                            quantity: 1,
+                            unitInCents: 5000,
+                            totalInCents: 5000
+                        }
                     ]
                 }
             }

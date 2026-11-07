@@ -134,7 +134,9 @@ function addBillingCommands(program: Command, context: CliContext): void {
     const billing: Command = program
         .command('billing')
         .alias('cobranca')
-        .description('Plano e cobrança da empresa, só leitura: assentos, próximo pagamento, situação e cartão (exige o escopo billing:read e um administrador)')
+        .description(
+            'Plano e cobrança da empresa, só leitura: assentos, próximo pagamento, situação e cartão (exige o escopo billing:read e um administrador)'
+        )
         .action(async (_options: BillingOptions, command: Command) => {
             await billingOverview(context, command.optsWithGlobals());
         });
