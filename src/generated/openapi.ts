@@ -5332,6 +5332,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/copilot/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CopilotTasksPublicController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/copilot/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da tarefa em segundo plano, o campo id de GET /v1/copilot/tasks */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["CopilotTasksPublicController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/copilot/tasks/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da tarefa em segundo plano, o campo id de GET /v1/copilot/tasks */
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CopilotTasksPublicController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -80642,6 +80696,264 @@ export interface operations {
                         meta?: {
                             [key: string]: unknown;
                         };
+                    };
+                };
+            };
+        };
+    };
+    CopilotTasksPublicController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description As tarefas da pessoa, da mais nova para a mais antiga */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id da tarefa em segundo plano, o taskId do bloco task_result da conversa
+                         */
+                        id: string;
+                        /**
+                         * @description O tipo de pedido: dashboard_build = montar um painel; contact_report = relatório de um contato
+                         * @enum {string}
+                         */
+                        kind: "dashboard_build" | "contact_report";
+                        /**
+                         * @description queued = esperando o worker; running = rodando; done = pronta, inteira ou em parte (veja parcial); failed = não terminou, o resumo diz por quê; cancelled = a pessoa cancelou
+                         * @enum {string}
+                         */
+                        status: "queued" | "running" | "done" | "failed" | "cancelled";
+                        /** @description true quando a tarefa parou no teto de IA do mês ou no teto de gasto dela e entregou só o que já estava pronto */
+                        parcial: boolean;
+                        /**
+                         * Format: uuid
+                         * @description A conversa em que a tarefa foi pedida e onde o resultado fica gravado
+                         */
+                        conversationId: string;
+                        /**
+                         * Format: date-time
+                         * @description Quando a tarefa foi aberta
+                         */
+                        createdAt: string;
+                        /**
+                         * Format: date-time
+                         * @description Quando a tarefa terminou, falhou ou foi cancelada; null enquanto está aberta
+                         */
+                        finishedAt: string | null;
+                        /** @description O que a tarefa já gastou de IA, em micros de real (1.000.000 = R$ 1,00), somado a cada rodada; 0 antes de começar */
+                        costMicros: number;
+                        /** @description true quando a tarefa está pronta e preparou uma mudança que ainda não foi aprovada: o botão "Revisar e aprovar" vale */
+                        canReview: boolean;
+                        /** @description O resumo curto: com done, o que a tarefa entregou; com failed, a frase do motivo; null enquanto está aberta ou se foi cancelada */
+                        resumo: string | null;
+                    }[];
+                };
+            };
+        };
+    };
+    CopilotTasksPublicController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da tarefa em segundo plano, o campo id de GET /v1/copilot/tasks */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description O estado da tarefa */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id da tarefa em segundo plano, o taskId do bloco task_result da conversa
+                         */
+                        id: string;
+                        /**
+                         * @description O tipo de pedido: dashboard_build = montar um painel; contact_report = relatório de um contato
+                         * @enum {string}
+                         */
+                        kind: "dashboard_build" | "contact_report";
+                        /**
+                         * @description queued = esperando o worker; running = rodando; done = pronta, inteira ou em parte (veja parcial); failed = não terminou, o resumo diz por quê; cancelled = a pessoa cancelou
+                         * @enum {string}
+                         */
+                        status: "queued" | "running" | "done" | "failed" | "cancelled";
+                        /** @description true quando a tarefa parou no teto de IA do mês ou no teto de gasto dela e entregou só o que já estava pronto */
+                        parcial: boolean;
+                        /**
+                         * Format: uuid
+                         * @description A conversa em que a tarefa foi pedida e onde o resultado fica gravado
+                         */
+                        conversationId: string;
+                        /**
+                         * Format: date-time
+                         * @description Quando a tarefa foi aberta
+                         */
+                        createdAt: string;
+                        /**
+                         * Format: date-time
+                         * @description Quando a tarefa terminou, falhou ou foi cancelada; null enquanto está aberta
+                         */
+                        finishedAt: string | null;
+                        /** @description O que a tarefa já gastou de IA, em micros de real (1.000.000 = R$ 1,00), somado a cada rodada; 0 antes de começar */
+                        costMicros: number;
+                        /** @description true quando a tarefa está pronta e preparou uma mudança que ainda não foi aprovada: o botão "Revisar e aprovar" vale */
+                        canReview: boolean;
+                        /** @description O resumo curto: com done, o que a tarefa entregou; com failed, a frase do motivo; null enquanto está aberta ou se foi cancelada */
+                        resumo: string | null;
+                    };
+                };
+            };
+            /** @description id que não é um id válido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type: string;
+                        title: string;
+                        status: number;
+                        detail?: string;
+                        requestId?: string;
+                    };
+                };
+            };
+            /** @description Tarefa inexistente, de outra pessoa ou já apagada (copilot.background_task_not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type: string;
+                        title: string;
+                        status: number;
+                        detail?: string;
+                        requestId?: string;
+                    };
+                };
+            };
+        };
+    };
+    CopilotTasksPublicController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da tarefa em segundo plano, o campo id de GET /v1/copilot/tasks */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A tarefa, cancelada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id da tarefa em segundo plano, o taskId do bloco task_result da conversa
+                         */
+                        id: string;
+                        /**
+                         * @description O tipo de pedido: dashboard_build = montar um painel; contact_report = relatório de um contato
+                         * @enum {string}
+                         */
+                        kind: "dashboard_build" | "contact_report";
+                        /**
+                         * @description queued = esperando o worker; running = rodando; done = pronta, inteira ou em parte (veja parcial); failed = não terminou, o resumo diz por quê; cancelled = a pessoa cancelou
+                         * @enum {string}
+                         */
+                        status: "queued" | "running" | "done" | "failed" | "cancelled";
+                        /** @description true quando a tarefa parou no teto de IA do mês ou no teto de gasto dela e entregou só o que já estava pronto */
+                        parcial: boolean;
+                        /**
+                         * Format: uuid
+                         * @description A conversa em que a tarefa foi pedida e onde o resultado fica gravado
+                         */
+                        conversationId: string;
+                        /**
+                         * Format: date-time
+                         * @description Quando a tarefa foi aberta
+                         */
+                        createdAt: string;
+                        /**
+                         * Format: date-time
+                         * @description Quando a tarefa terminou, falhou ou foi cancelada; null enquanto está aberta
+                         */
+                        finishedAt: string | null;
+                        /** @description O que a tarefa já gastou de IA, em micros de real (1.000.000 = R$ 1,00), somado a cada rodada; 0 antes de começar */
+                        costMicros: number;
+                        /** @description true quando a tarefa está pronta e preparou uma mudança que ainda não foi aprovada: o botão "Revisar e aprovar" vale */
+                        canReview: boolean;
+                        /** @description O resumo curto: com done, o que a tarefa entregou; com failed, a frase do motivo; null enquanto está aberta ou se foi cancelada */
+                        resumo: string | null;
+                    };
+                };
+            };
+            /** @description id que não é um id válido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type: string;
+                        title: string;
+                        status: number;
+                        detail?: string;
+                        requestId?: string;
+                    };
+                };
+            };
+            /** @description Tarefa inexistente, de outra pessoa ou já apagada (copilot.background_task_not_found) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type: string;
+                        title: string;
+                        status: number;
+                        detail?: string;
+                        requestId?: string;
+                    };
+                };
+            };
+            /** @description copilot.task_not_cancellable: a tarefa já terminou (done ou failed) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        type: string;
+                        title: string;
+                        status: number;
+                        detail?: string;
+                        requestId?: string;
                     };
                 };
             };

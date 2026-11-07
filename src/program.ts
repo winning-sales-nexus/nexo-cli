@@ -7,6 +7,7 @@ import type { DocsOptions } from './commands/docs.js';
 import { mcpSetup } from './commands/mcp.js';
 import { addConnectCommands } from './program-connect.js';
 import { addAutomationCommands } from './program-automations.js';
+import { addTaskCommands } from './program-tasks.js';
 
 import { addDashboardCommands } from './program-dashboards.js';
 import type { McpOptions } from './commands/mcp.js';
@@ -176,5 +177,6 @@ export function buildProgram(context: CliContext): Command {
 
     addDashboardCommands(program, context);
     addBillingCommands(program, context);
+    addTaskCommands(program, context);
     return program;
 }
