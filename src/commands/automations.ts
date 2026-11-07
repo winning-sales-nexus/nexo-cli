@@ -19,6 +19,10 @@ export interface AutomationOptions extends GlobalOptions {
     readonly yes?: boolean;
     readonly cancelLiveRuns?: boolean;
     readonly state?: string;
+    readonly domain?: string;
+    readonly subject?: string;
+    readonly limit?: string;
+    readonly cursor?: string;
 }
 
 interface WorkingVersion {
@@ -43,7 +47,51 @@ interface FlowDetail {
     readonly working: WorkingVersion | null;
 }
 
+interface EntityDef {
+    readonly entity: string;
+    readonly label: string;
+    readonly plural: string;
+    readonly sees: string;
+    readonly fields: readonly {
+        readonly key: string;
+        readonly label: string;
+        readonly type: string;
+        readonly options?: readonly unknown[];
+    }[];
+}
+
+interface EntityEvent {
+    readonly id: string;
+    readonly entity: string;
+    readonly subjectId: string;
+    readonly operation: string;
+    readonly changedFields: readonly string[];
+    readonly actorKind: string;
+    readonly origin: { readonly surface: string | null; readonly flowId: string | null };
+    readonly occurredAt: string;
+    readonly dispatched: boolean;
+    readonly failureCode: string | null;
+}
+
+interface EventPage {
+    readonly events: readonly EntityEvent[];
+    readonly hasMore: boolean;
+    readonly nextCursor: string | null;
+    readonly retentionDays: number;
+}
+
+interface VersionRow {
+    readonly seq: number | null;
+    readonly status: string;
+    readonly origin: string;
+    readonly restoredFromSeq: number | null;
+    readonly summary: string | null;
+    readonly publishedAt: string | null;
+    readonly createdAt: string;
+}
+
 const BASE: string = '/v1/automations';
+const UPDATE_WINDOW_HOURS: number = 24;
 
 async function call(context: CliContext, session: Session, method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<unknown> {
     const response: ApiResponse = await clientOf(context, session).request({
@@ -68,9 +116,11 @@ export async function automationsCatalog(context: CliContext, options: Automatio
         printJson(context, catalog);
         return;
     }
-    const { triggers, actions } = catalog as {
+    const { triggers, actions, entities, limits } = catalog as {
         triggers: { kind: string; label: string; configHint?: string }[];
         actions: { kind: string; label: string; risk: string; configHint?: string }[];
+        entities?: EntityDef[];
+        limits?: { updateWindowHours?: number };
     };
     printLine(context, 'Gatilhos:');
     triggers.forEach((trigger) => {
@@ -86,7 +136,19 @@ export async function automationsCatalog(context: CliContext, options: Automatio
             `  ${action.kind.padEnd(32)} ${action.label} [${action.risk}]${action.configHint === undefined ? '' : ` — ${action.configHint}`}`
         );
     });
-    printNotice(context, 'Os campos que uma condição compara e os limites estão em `nexo automations catalog --json`.');
+    if (entities !== undefined && entities.length > 0) {
+        printLine(context, 'Entidades que os gatilhos entidade.criada, entidade.alterada e entidade.apagada escutam:');
+        entities.forEach((entity: EntityDef) => {
+            printLine(context, `  ${entity.entity.padEnd(32)} ${entity.label} (${String(entity.fields.length)} campos)`);
+        });
+    }
+    if (limits?.updateWindowHours !== undefined) {
+        printLine(context, `Janela de alterações: ${String(limits.updateWindowHours)} h por registro (veja \`nexo automations runs\`).`);
+    }
+    printNotice(
+        context,
+        'Os campos que uma condição compara e os limites estão em `nexo automations catalog --json`; os campos de cada entidade, em `nexo automations entities`.'
+    );
 }
 
 export async function automationsList(context: CliContext, options: AutomationOptions): Promise<void> {
@@ -101,6 +163,142 @@ export async function automationsList(context: CliContext, options: AutomationOp
             `${flow.id}  ${flow.state.padEnd(15)} v${flow.publishedSeq === null ? '-' : String(flow.publishedSeq)}  ${flow.name}`
         );
     });
+}
+
+export async function automationsGet(
+    context: CliContext,
+    id: string | undefined,
+    dir: string | undefined,
+    options: AutomationOptions
+): Promise<void> {
+    const flowId: string = id ?? flowIdOf(options, dir);
+    const detail: FlowDetail = (await call(context, sessionOf(context, options), 'GET', `/${flowId}`)) as FlowDetail;
+    if (options.json === true) {
+        printJson(context, detail);
+        return;
+    }
+    const { flow, working } = detail;
+    printLine(
+        context,
+        `${flow.id}  ${flow.state}  ${flow.publishedSeq === null ? 'sem versão no ar' : `v${String(flow.publishedSeq)} no ar`}  ${flow.name}`
+    );
+    if (working === null) {
+        return;
+    }
+    describeDocument(working.document).forEach((line: string) => {
+        printLine(context, line);
+    });
+    if (working.problems.length > 0) {
+        printLine(context, `${String(working.problems.length)} problema(s) no rascunho:`);
+        describeProblems(working.problems).forEach((line: string) => {
+            printLine(context, line);
+        });
+    }
+}
+
+function entityQuery(options: AutomationOptions): string {
+    return options.domain === undefined ? '' : `?domain=${encodeURIComponent(options.domain)}`;
+}
+
+function printEntity(context: CliContext, entity: EntityDef): void {
+    printLine(context, `${entity.entity}  ${entity.label} (${entity.plural}) — vê: ${entity.sees}`);
+    entity.fields.forEach((field) => {
+        printLine(context, `  ${field.key.padEnd(28)} ${field.type.padEnd(12)} ${field.label}`);
+    });
+}
+
+export async function automationsEntities(context: CliContext, entity: string | undefined, options: AutomationOptions): Promise<void> {
+    const path: string =
+        entity === undefined ? `/entities${entityQuery(options)}` : `/entities/${encodeURIComponent(entity)}${entityQuery(options)}`;
+    const body: unknown = await call(context, sessionOf(context, options), 'GET', path);
+    if (options.json === true) {
+        printJson(context, body);
+        return;
+    }
+    const entities: readonly EntityDef[] = entity === undefined ? (body as { entities: EntityDef[] }).entities : [body as EntityDef];
+    entities.forEach((item: EntityDef) => {
+        printEntity(context, item);
+    });
+}
+
+export async function automationsEvents(context: CliContext, entity: string, subjectId: string, options: AutomationOptions): Promise<void> {
+    const params: URLSearchParams = new URLSearchParams({ entity, subjectId });
+    if (options.domain !== undefined) {
+        params.set('domain', options.domain);
+    }
+    if (options.limit !== undefined) {
+        params.set('limit', options.limit);
+    }
+    if (options.cursor !== undefined) {
+        params.set('cursor', options.cursor);
+    }
+    const page: EventPage = (await call(context, sessionOf(context, options), 'GET', `/events?${params.toString()}`)) as EventPage;
+    if (options.json === true) {
+        printJson(context, page);
+        return;
+    }
+    if (page.events.length === 0) {
+        printLine(context, `Nenhum evento deste registro nos últimos ${String(page.retentionDays)} dias.`);
+        return;
+    }
+    page.events.forEach((event: EntityEvent) => {
+        const fields: string = event.changedFields.length === 0 ? '' : `  campos: ${event.changedFields.join(', ')}`;
+        const origin: string = event.origin.flowId === null ? (event.origin.surface ?? '?') : `automação ${event.origin.flowId}`;
+        const dispatch: string =
+            event.failureCode === null ? (event.dispatched ? 'despachado' : 'pendente') : `desistiu (${event.failureCode})`;
+        printLine(context, `${event.occurredAt}  ${event.operation.padEnd(8)} por ${event.actorKind} via ${origin}  ${dispatch}${fields}`);
+    });
+    if (page.hasMore && page.nextCursor !== null) {
+        printNotice(context, `Há eventos mais antigos: --cursor ${page.nextCursor}`);
+    }
+}
+
+export async function automationsVersions(context: CliContext, dir: string | undefined, options: AutomationOptions): Promise<void> {
+    const body: { versions: VersionRow[] } = (await call(
+        context,
+        sessionOf(context, options),
+        'GET',
+        `/${flowIdOf(options, dir)}/versions`
+    )) as {
+        versions: VersionRow[];
+    };
+    if (options.json === true) {
+        printJson(context, body);
+        return;
+    }
+    body.versions.forEach((version: VersionRow) => {
+        const label: string = version.seq === null ? 'rascunho' : `v${String(version.seq)}`;
+        const restored: string = version.restoredFromSeq === null ? '' : ` (volta da v${String(version.restoredFromSeq)})`;
+        printLine(
+            context,
+            `${label.padEnd(9)} ${version.status.padEnd(10)} ${version.origin.padEnd(5)} ${version.createdAt}${restored}  ${version.summary ?? ''}`.trimEnd()
+        );
+    });
+}
+
+export async function automationsRestore(
+    context: CliContext,
+    seq: string,
+    dir: string | undefined,
+    options: AutomationOptions
+): Promise<void> {
+    if (!/^\d+$/.test(seq)) {
+        throw usageError('A versão é o número, como em `nexo automations versions`.');
+    }
+    const flowId: string = flowIdOf(options, dir);
+    const session: Session = sessionOf(context, options);
+    printLine(context, `Voltar à versão ${seq}: cria uma versão nova com o documento antigo e ela passa a rodar na empresa.`);
+    if (!(await confirmed(context, options))) {
+        return;
+    }
+    const restored: unknown = await call(context, session, 'POST', `/${flowId}/versions/${seq}/restore`, {
+        ...(options.cancelLiveRuns === true ? { cancelLiveRuns: true } : {})
+    });
+    if (options.json === true) {
+        printJson(context, restored);
+        return;
+    }
+    printLine(context, `Versão ${seq} restaurada como versão nova.`);
 }
 
 export function automationsInit(context: CliContext, dir: string, options: AutomationOptions): void {
@@ -177,7 +375,7 @@ async function confirmed(context: CliContext, options: AutomationOptions): Promi
     const reader: Interface = createInterface({ input: context.stdin, output: context.stderr, terminal: true });
     try {
         const answer: string = await new Promise<string>((resolve: (text: string) => void) => {
-            reader.question('Publicar? (s/N) ', resolve);
+            reader.question('Continuar? (s/N) ', resolve);
         });
         return /^(s|sim|y|yes)$/i.test(answer.trim());
     } finally {
@@ -218,6 +416,11 @@ function showContent(context: CliContext, live: Record<string, unknown> | null, 
     });
 }
 
+function listensToUpdates(document: Record<string, unknown>): boolean {
+    const nodes: unknown = document.nodes;
+    return Array.isArray(nodes) && nodes.some((node: unknown) => (node as { kind?: unknown }).kind === 'entidade.alterada');
+}
+
 function showPublishPreview(
     context: CliContext,
     detail: FlowDetail,
@@ -230,6 +433,12 @@ function showPublishPreview(
             : `Substitui a versão ${String(detail.flow.publishedSeq)}, que está no ar.`;
     printLine(context, `Publicar "${detail.flow.name}". ${headline}`);
     showContent(context, live, detail.working?.document ?? {});
+    if (listensToUpdates(detail.working?.document ?? {})) {
+        printLine(
+            context,
+            `Janela de ${String(UPDATE_WINDOW_HOURS)} h: depois de uma alteração, as seguintes do mesmo registro, dentro de ${String(UPDATE_WINDOW_HOURS)} h, não disparam a regra de novo.`
+        );
+    }
     if (local !== null && !sameDocument(local.document, detail.working?.document)) {
         printNotice(
             context,
@@ -289,6 +498,8 @@ interface RunRow {
     readonly errorCode: string | null;
     readonly subject: { readonly type: string; readonly name: string | null };
     readonly createdAt: string;
+    readonly suppressedUpdates?: number;
+    readonly updateWindowEndsAt?: string | null;
 }
 
 export async function automationsRuns(context: CliContext, dir: string | undefined, options: AutomationOptions): Promise<void> {
@@ -304,7 +515,11 @@ export async function automationsRuns(context: CliContext, dir: string | undefin
         return;
     }
     body.runs.forEach((run: RunRow) => {
-        const why: string = run.errorCode ?? run.stateReason ?? '';
+        const window: string =
+            run.updateWindowEndsAt === undefined || run.updateWindowEndsAt === null
+                ? ''
+                : `janela até ${run.updateWindowEndsAt} (${String(run.suppressedUpdates ?? 0)} repetidas descartadas)`;
+        const why: string = [run.errorCode ?? run.stateReason ?? '', window].filter((part: string) => part !== '').join('  ');
         printLine(
             context,
             `${run.id}  ${run.state.padEnd(9)} ${run.createdAt}  ${run.subject.type} ${run.subject.name ?? '(apagado)'}  ${why}`.trimEnd()

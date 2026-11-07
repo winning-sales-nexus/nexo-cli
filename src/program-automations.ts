@@ -1,14 +1,19 @@
 import type { Command } from 'commander';
 import {
     automationsCatalog,
+    automationsEntities,
+    automationsEvents,
+    automationsGet,
     automationsInit,
     automationsList,
     automationsPublish,
     automationsPull,
     automationsPush,
     automationsRun,
+    automationsRestore,
     automationsRuns,
-    automationsToggle
+    automationsToggle,
+    automationsVersions
 } from './commands/automations.js';
 import type { AutomationOptions } from './commands/automations.js';
 import type { CliContext } from './context.js';
@@ -50,6 +55,16 @@ function addLiveCommands(automations: Command, context: CliContext): void {
         .action(async (dir: string, _options: AutomationOptions, command: Command) => {
             await automationsPublish(context, dir, command.optsWithGlobals());
         });
+    automations
+        .command('restore')
+        .description('Volta a uma versão antiga: cria uma versão nova com o documento dela e pede o sim')
+        .argument('<versão>', 'o número da versão (veja `nexo automations versions`)')
+        .argument('[pasta]', 'pasta da automação', '.')
+        .option('-y, --yes', 'restaura depois de mostrar, sem perguntar (só depois do sim da pessoa)')
+        .option('--cancel-live-runs', 'cancela as execuções em andamento')
+        .action(async (seq: string, dir: string, _options: AutomationOptions, command: Command) => {
+            await automationsRestore(context, seq, dir, command.optsWithGlobals());
+        });
     for (const action of ['pause', 'resume'] as const) {
         automations
             .command(action)
@@ -59,6 +74,42 @@ function addLiveCommands(automations: Command, context: CliContext): void {
                 await automationsToggle(context, action, dir, command.optsWithGlobals());
             });
     }
+}
+
+function addReadCommands(automations: Command, context: CliContext): void {
+    automations
+        .command('get')
+        .description('Uma automação: o estado, o rascunho e os problemas')
+        .argument('[automação]', 'id da automação (padrão: a da pasta atual)')
+        .action(async (id: string | undefined, _options: AutomationOptions, command: Command) => {
+            await automationsGet(context, id, undefined, command.optsWithGlobals());
+        });
+    automations
+        .command('entities')
+        .description('As entidades que os gatilhos genéricos escutam, com os campos')
+        .argument('[entidade]', 'a chave da entidade (por exemplo deal ou lead)')
+        .option('--domain <domínio>', 'a família da regra (padrão: crm)')
+        .action(async (entity: string | undefined, _options: AutomationOptions, command: Command) => {
+            await automationsEntities(context, entity, command.optsWithGlobals());
+        });
+    automations
+        .command('events')
+        .description('O que aconteceu com um registro (os eventos que as automações escutam, dos últimos 14 dias)')
+        .argument('<entidade>', 'a chave da entidade (por exemplo deal ou lead)')
+        .argument('<registro>', 'o id do registro')
+        .option('--domain <domínio>', 'a família da regra (padrão: crm)')
+        .option('--limit <n>', 'quantos eventos por página')
+        .option('--cursor <id>', 'o cursor da página anterior')
+        .action(async (entity: string, subjectId: string, _options: AutomationOptions, command: Command) => {
+            await automationsEvents(context, entity, subjectId, command.optsWithGlobals());
+        });
+    automations
+        .command('versions')
+        .description('As versões salvas da automação')
+        .argument('[pasta]', 'pasta da automação', '.')
+        .action(async (dir: string, _options: AutomationOptions, command: Command) => {
+            await automationsVersions(context, dir, command.optsWithGlobals());
+        });
 }
 
 function addHistoryCommands(automations: Command, context: CliContext): void {
@@ -97,6 +148,7 @@ export function addAutomationCommands(program: Command, context: CliContext): vo
         .action(async (_options: AutomationOptions, command: Command) => {
             await automationsList(context, command.optsWithGlobals());
         });
+    addReadCommands(automations, context);
     addFileCommands(automations, context);
     addLiveCommands(automations, context);
     addHistoryCommands(automations, context);
