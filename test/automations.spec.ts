@@ -136,6 +136,48 @@ describe('nexo automations push', () => {
     });
 });
 
+describe('nexo automations push on an existing automation', () => {
+    it('warns when reactsToAutomations or the reentry in automation.json differ from the server, which only reads them on creation', async () => {
+        const h: Harness = harness({ [`PUT /v1/automations/${FLOW}/draft`]: () => ({ flow: FLOW_ROW, version: working() }) });
+        writeFileSync(
+            join(h.root, 'automation.json'),
+            JSON.stringify({
+                name: 'Boas-vindas',
+                reactsToAutomations: true,
+                reentryMode: 'once_per_subject',
+                reentryMinutes: null,
+                document: DOCUMENT
+            })
+        );
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        expect(await run(h.context, ['automations', 'push', h.root])).toBe(0);
+
+        expect(h.err()).toContain('reactsToAutomations (no servidor: false, no arquivo: true)');
+        expect(h.err()).toContain('reentryMode (no servidor: "every_event", no arquivo: "once_per_subject")');
+        expect(h.err()).not.toContain('reentryMinutes');
+    });
+
+    it('stays quiet when the settings already match the server', async () => {
+        const h: Harness = harness({ [`PUT /v1/automations/${FLOW}/draft`]: () => ({ flow: FLOW_ROW, version: working() }) });
+        writeFileSync(
+            join(h.root, 'automation.json'),
+            JSON.stringify({
+                name: 'Boas-vindas',
+                reactsToAutomations: false,
+                reentryMode: 'every_event',
+                reentryMinutes: null,
+                document: DOCUMENT
+            })
+        );
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        await run(h.context, ['automations', 'push', h.root]);
+
+        expect(h.err()).not.toContain('Atenção');
+    });
+});
+
 describe('nexo automations publish', () => {
     const detail = (problems: unknown[] = [], publishedSeq: number | null = 2): unknown => ({
         flow: { ...FLOW_ROW, publishedSeq },
