@@ -1,11 +1,10 @@
-import { createInterface } from 'node:readline';
-import type { Interface } from 'node:readline';
 import { clientOf, printJson, printLine, printNotice, sessionOf } from '../context.js';
 import type { CliContext, GlobalOptions } from '../context.js';
 import type { Session } from '../config/session.js';
 import { CliError, usageError } from '../errors.js';
 import { EXIT_CODES } from '../exit-codes.types.js';
 import type { ApiResponse } from '../http/nexo-client.js';
+import { confirmed } from '../input/confirm.js';
 import { ensureEmpty, projectDirectory } from '../connect/project.js';
 import { readAutomation, readAutomationState, templateAutomation, writeAutomation, writeAutomationState } from '../automations/project.js';
 import type { AutomationSettings, AutomationState } from '../automations/project.js';
@@ -304,7 +303,7 @@ export async function automationsRestore(
     const flowId: string = flowIdOf(options, dir);
     const session: Session = sessionOf(context, options);
     printLine(context, `Voltar à versão ${seq}: cria uma versão nova com o documento antigo e ela passa a rodar na empresa.`);
-    if (!(await confirmed(context, options))) {
+    if (!(await confirmed(context, options.yes))) {
         return;
     }
     const restored: unknown = await call(context, session, 'POST', `/${flowId}/versions/${seq}/restore`, {
@@ -402,25 +401,6 @@ export async function automationsPull(
     printLine(context, `"${name}" em ${directory}.`);
 }
 
-async function confirmed(context: CliContext, options: AutomationOptions): Promise<boolean> {
-    if (options.yes === true) {
-        return true;
-    }
-    if (context.stdin.isTTY !== true) {
-        printNotice(context, 'Mostre isto à pessoa. Depois do sim dela, rode de novo com --yes.');
-        return false;
-    }
-    const reader: Interface = createInterface({ input: context.stdin, output: context.stderr, terminal: true });
-    try {
-        const answer: string = await new Promise<string>((resolve: (text: string) => void) => {
-            reader.question('Continuar? (s/N) ', resolve);
-        });
-        return /^(s|sim|y|yes)$/i.test(answer.trim());
-    } finally {
-        reader.close();
-    }
-}
-
 function showDiff(context: CliContext, live: Record<string, unknown>, draft: Record<string, unknown>): void {
     const lines: readonly string[] = describeDiff(live, draft);
     printLine(
@@ -501,7 +481,7 @@ export async function automationsPublish(context: CliContext, dir: string | unde
     }
     const local: AutomationSettings | null = options.automation === undefined ? readAutomation(projectDirectory(dir)) : null;
     showPublishPreview(context, detail, local, await liveDocument(context, session, flowId, detail.flow.publishedSeq));
-    if (!(await confirmed(context, options))) {
+    if (!(await confirmed(context, options.yes))) {
         return;
     }
     const published: unknown = await call(context, session, 'POST', `/${flowId}/publish`, {

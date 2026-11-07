@@ -120,6 +120,16 @@ nexo billing invoices <id>         # uma fatura com as linhas
 
 Só leitura, em reais, e só para administrador da empresa: o token precisa do escopo `billing:read`. Mudar a quantidade de assentos continua sendo da plataforma. Também atende por `nexo cobranca`. `--json` imprime a resposta da API como veio.
 
+## Tarefas em segundo plano
+
+```sh
+nexo tasks list                    # suas tarefas abertas e as dos últimos 7 dias
+nexo tasks get <id>                # o estado de uma tarefa e o resumo do que ela entregou
+nexo tasks cancel <id>             # mostra o que será cancelado e pede o sim
+```
+
+Tarefas em segundo plano se começam no Copiloto, dentro do app; a CLI só mostra e cancela, não inicia. Ver pede o escopo `conversations:read` e cancelar pede `conversations:write`; cada pessoa vê só as tarefas que ela mesma pediu. O resultado fica na conversa, no app. `cancel` pede o sim da pessoa, ou `--yes` para script; cancelar de novo uma tarefa já cancelada responde igual, e uma tarefa que já terminou sai com código 1 e `copilot.task_not_cancellable`. Também atende por `nexo tarefas`. `--json` imprime a resposta da API como veio.
+
 ## Códigos de saída
 
 | Código | Quando                                             |
