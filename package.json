@@ -1,6 +1,6 @@
 {
   "name": "@winning-sales/nexo",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "CLI do Nexo: a API, o Connect, os dashboards e os fluxos no terminal, com a documentação e as skills do produto para a sua IA",
   "license": "MIT",
   "type": "module",
@@ -11,7 +11,8 @@
     "dist",
     "assets",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "reference.json"
   ],
   "engines": {
     "node": ">=20.11"
@@ -30,9 +31,10 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "openapi:sync": "openapi-typescript https://mcp-nexo.winningsales.com.br/v1/openapi.json -o src/generated/openapi.ts && prettier --write src/generated/openapi.ts",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run build && npm run reference -- --out reference.json",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
-    "docs:sync": "tsx scripts/sync-docs.ts"
+    "docs:sync": "tsx scripts/sync-docs.ts",
+    "reference": "tsx scripts/reference.ts"
   },
   "dependencies": {
     "commander": "^14.0.0"

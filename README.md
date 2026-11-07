@@ -1,6 +1,6 @@
 # Nexo CLI
 
-A CLI do [Nexo](https://nexo.winningsales.com.br) para quem desenvolve sobre a plataforma: a API pública no terminal hoje e, nas próximas versões, o Nexo Connect, os dashboards e os fluxos como arquivos no seu repositório, com a documentação e as skills do produto para a sua IA (Claude Code, Cursor, Codex).
+A CLI do [Nexo](https://nexo.winningsales.com.br) para quem desenvolve sobre a plataforma: a API pública no terminal, o Nexo Connect e os painéis como arquivos no seu repositório, e a documentação e as skills do produto para a sua IA (Claude Code, Cursor, Codex).
 
 A documentação completa fica em [docs.nexo.winningsales.com.br](https://docs.nexo.winningsales.com.br).
 
@@ -93,6 +93,17 @@ nexo automations runs boas-vindas --state failed
 
 A regra vive em `automation.json` (nome, reentrada e o documento com os passos e as ligações). `push` cria a automação ou salva o rascunho, sem mudar o que está no ar, e mostra todos os problemas que impedem publicar. `publish` mostra o que vai ao ar e pede o sim; fora de um terminal, só publica com `--yes`. Também atende por `nexo flows`. Por enquanto, os escopos de automação só existem no token pessoal (`nexo login --token`).
 
+## Painéis como código
+
+```sh
+nexo dashboards catalog --text receita
+nexo dashboards pull <id> comercial
+nexo dashboards push comercial -m "gráfico de receita por vendedor"
+nexo dashboards run <relatório> comercial
+```
+
+O painel vive em `dashboard.json`: o painel, as abas, as seções e os relatórios (consultas, apresentação, posição na grade e quem vê). `push` compara a pasta com o painel no Nexo, manda só o que mudou e mostra a prévia, com cada relatório já conferido e rodado pelo servidor. Salva depois do sim; fora de um terminal, mostra o `nexo dashboards save <prévia>` para rodar depois do sim. Depois de salvar, a pasta passa a usar os ids do Nexo. Também atende por `nexo paineis`.
+
 ## Códigos de saída
 
 | Código | Quando                                             |
@@ -118,6 +129,8 @@ npm run docs:sync          # atualiza a documentação e os arquivos do Connect 
 ### Publicar uma versão
 
 Suba a versão num PR (`npm version minor --no-git-tag-version`, ou `patch` para correção). Quando o PR entra na `main`, o workflow `release` vê que a versão ainda não está no npm, roda as checagens, publica com proveniência pelo Trusted Publisher do npm (sem token), e cria a tag `v<versão>` e o release no GitHub. Sem mudança de versão, ele não faz nada.
+
+O pacote publicado leva `reference.json`, a árvore de comandos que o `prepublishOnly` gera. O site de docs lê a referência e o README da versão `latest` do npm. Depois de publicar, o `release` dispara a sincronização do site, se o secret `NEXU_DOCS_DISPATCH_TOKEN` existir; sem ele, o site pega a versão nova na sincronização diária.
 
 ## Licença
 
