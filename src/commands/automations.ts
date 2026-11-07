@@ -360,6 +360,28 @@ export async function automationsPush(context: CliContext, dir: string | undefin
         return;
     }
     reportWorking(context, saved.version);
+    if (state.flowId !== null) {
+        warnIgnoredSettings(context, settings, saved.flow, state.flowId);
+    }
+}
+
+type CreationOnlySetting = 'reactsToAutomations' | 'reentryMode' | 'reentryMinutes';
+
+const CREATION_ONLY_SETTINGS: readonly CreationOnlySetting[] = ['reactsToAutomations', 'reentryMode', 'reentryMinutes'];
+
+/** `PUT /draft` só grava o documento: a reação a automações e a reentrada valem só na criação, e o servidor devolve o valor que ficou. O arquivo é JSON livre, então o campo pode faltar. */
+function warnIgnoredSettings(context: CliContext, written: AutomationSettings, flow: FlowRow, flowId: string): void {
+    const settings: Partial<AutomationSettings> = written;
+    const ignored: readonly string[] = CREATION_ONLY_SETTINGS.filter(
+        (key: CreationOnlySetting) => settings[key] !== undefined && settings[key] !== flow[key]
+    ).map((key: CreationOnlySetting) => `${key} (no servidor: ${JSON.stringify(flow[key])}, no arquivo: ${JSON.stringify(settings[key])})`);
+    if (ignored.length === 0) {
+        return;
+    }
+    printNotice(
+        context,
+        `Atenção: o servidor não mudou ${ignored.join('; ')}. Esses campos do automation.json só valem na criação da automação (${flowId}) e o push de uma automação existente não os altera. Para ter outro valor, crie uma automação nova com \`nexo automations init\` e \`push\`.`
+    );
 }
 
 export async function automationsPull(

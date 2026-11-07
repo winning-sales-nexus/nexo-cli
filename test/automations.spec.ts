@@ -136,6 +136,48 @@ describe('nexo automations push', () => {
     });
 });
 
+describe('nexo automations push on an existing automation', () => {
+    it('warns when reactsToAutomations or the reentry in automation.json differ from the server, which only reads them on creation', async () => {
+        const h: Harness = harness({ [`PUT /v1/automations/${FLOW}/draft`]: () => ({ flow: FLOW_ROW, version: working() }) });
+        writeFileSync(
+            join(h.root, 'automation.json'),
+            JSON.stringify({
+                name: 'Boas-vindas',
+                reactsToAutomations: true,
+                reentryMode: 'once_per_subject',
+                reentryMinutes: null,
+                document: DOCUMENT
+            })
+        );
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        expect(await run(h.context, ['automations', 'push', h.root])).toBe(0);
+
+        expect(h.err()).toContain('reactsToAutomations (no servidor: false, no arquivo: true)');
+        expect(h.err()).toContain('reentryMode (no servidor: "every_event", no arquivo: "once_per_subject")');
+        expect(h.err()).not.toContain('reentryMinutes');
+    });
+
+    it('stays quiet when the settings already match the server', async () => {
+        const h: Harness = harness({ [`PUT /v1/automations/${FLOW}/draft`]: () => ({ flow: FLOW_ROW, version: working() }) });
+        writeFileSync(
+            join(h.root, 'automation.json'),
+            JSON.stringify({
+                name: 'Boas-vindas',
+                reactsToAutomations: false,
+                reentryMode: 'every_event',
+                reentryMinutes: null,
+                document: DOCUMENT
+            })
+        );
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        await run(h.context, ['automations', 'push', h.root]);
+
+        expect(h.err()).not.toContain('Atenção');
+    });
+});
+
 describe('nexo automations publish', () => {
     const detail = (problems: unknown[] = [], publishedSeq: number | null = 2): unknown => ({
         flow: { ...FLOW_ROW, publishedSeq },
@@ -204,6 +246,29 @@ describe('nexo automations publish', () => {
                     ...working(),
                     document: { ...DOCUMENT, reactsToAutomations: false, reentryMinutes: null, reentryMode: 'every_event' }
                 }
+            }),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
+        });
+        writeFileSync(join(h.root, 'automation.json'), JSON.stringify({ name: 'Boas-vindas', document: DOCUMENT }));
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        await run(h.context, ['automations', 'publish', h.root]);
+
+        expect(h.err()).not.toContain('diferente do rascunho');
+    });
+
+    it('does not warn when the server returns the same document with the keys in another order', async () => {
+        const reordered: Record<string, unknown> = {
+            reentryMode: 'every_event',
+            ...Object.fromEntries(Object.entries(DOCUMENT).reverse()),
+            reactsToAutomations: false,
+            reentryMinutes: null
+        };
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => ({
+                flow: { ...FLOW_ROW, publishedSeq: 2 },
+                versions: [],
+                working: { ...working(), document: reordered }
             }),
             [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
         });
