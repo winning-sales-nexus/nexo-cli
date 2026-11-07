@@ -157,10 +157,10 @@ export function describeOverview(overview: Overview): readonly string[] {
     );
     if (overview.next === null) {
         lines.push('Próximo pagamento: sem assinatura ativa');
-    } else {
-        lines.push(`Próximo pagamento: ${brl(overview.next.estimatedTotalInCents)} estimados, ciclo fecha em ${day(overview.next.date)}`);
-        overview.next.lines.forEach((line) => lines.push(`  ${line.label}  ${brl(line.totalInCents)}`));
+        return lines;
     }
+    lines.push(`Próximo pagamento: ${brl(overview.next.estimatedTotalInCents)} estimados, ciclo fecha em ${day(overview.next.date)}`);
+    overview.next.lines.forEach((line) => lines.push(`  ${line.label}  ${brl(line.totalInCents)}`));
     return lines;
 }
 
@@ -170,7 +170,9 @@ export async function billingOverview(context: CliContext, options: BillingOptio
         printJson(context, overview);
         return;
     }
-    describeOverview(overview).forEach((line) => printLine(context, line));
+    describeOverview(overview).forEach((line) => {
+        printLine(context, line);
+    });
 }
 
 function invoiceRow(invoice: InvoiceItem): string {
@@ -201,7 +203,9 @@ async function invoiceList(context: CliContext, options: BillingOptions): Promis
         printLine(context, 'Nenhuma fatura.');
         return;
     }
-    page.data.forEach((invoice) => printLine(context, invoiceRow(invoice)));
+    page.data.forEach((invoice) => {
+        printLine(context, invoiceRow(invoice));
+    });
     if (page.pagination.page < page.pagination.totalPages) {
         printNotice(context, `Página ${String(page.pagination.page)} de ${String(page.pagination.totalPages)}: veja a próxima com --page.`);
     }
