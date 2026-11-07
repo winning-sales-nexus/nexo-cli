@@ -194,6 +194,26 @@ describe('nexo automations publish', () => {
 
         expect(h.err()).toContain('diferente do rascunho');
     });
+
+    it('does not warn when the draft only adds the defaults the server fills in', async () => {
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => ({
+                flow: { ...FLOW_ROW, publishedSeq: 2 },
+                versions: [],
+                working: {
+                    ...working(),
+                    document: { ...DOCUMENT, reactsToAutomations: false, reentryMinutes: null, reentryMode: 'every_event' }
+                }
+            }),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
+        });
+        writeFileSync(join(h.root, 'automation.json'), JSON.stringify({ name: 'Boas-vindas', document: DOCUMENT }));
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        await run(h.context, ['automations', 'publish', h.root]);
+
+        expect(h.err()).not.toContain('diferente do rascunho');
+    });
 });
 
 const LEAD: Record<string, unknown> = {

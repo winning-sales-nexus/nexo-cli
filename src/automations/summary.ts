@@ -45,6 +45,22 @@ export function sameDocument(left: unknown, right: unknown): boolean {
     return JSON.stringify(left) === JSON.stringify(right);
 }
 
+/** O servidor preenche estes campos com o padrão quando o documento não os traz; sem valor diferente do padrão, a pasta e o rascunho são o mesmo. */
+const SERVER_DEFAULTS: Readonly<Record<string, unknown>> = { reactsToAutomations: false, reentryMinutes: null, reentryMode: 'every_event' };
+
+function withoutServerDefaults(document: unknown): unknown {
+    if (typeof document !== 'object' || document === null || Array.isArray(document)) {
+        return document;
+    }
+    return Object.fromEntries(
+        Object.entries(document).filter(([key, value]: [string, unknown]) => !(key in SERVER_DEFAULTS && SERVER_DEFAULTS[key] === value))
+    );
+}
+
+export function sameDraft(local: unknown, draft: unknown): boolean {
+    return sameDocument(withoutServerDefaults(local), withoutServerDefaults(draft));
+}
+
 function nodeMap(document: Record<string, unknown>): Map<string, FlowNode> {
     return new Map(nodesOf(document).map((node: FlowNode) => [node.key, node]));
 }

@@ -9,7 +9,7 @@ import type { ApiResponse } from '../http/nexo-client.js';
 import { ensureEmpty, projectDirectory } from '../connect/project.js';
 import { readAutomation, readAutomationState, templateAutomation, writeAutomation, writeAutomationState } from '../automations/project.js';
 import type { AutomationSettings, AutomationState } from '../automations/project.js';
-import { describeDiff, describeDocument, describeProblems, sameDocument } from '../automations/summary.js';
+import { describeDiff, describeDocument, describeProblems, sameDraft } from '../automations/summary.js';
 import type { FlowProblem } from '../automations/summary.js';
 
 export interface AutomationOptions extends GlobalOptions {
@@ -455,7 +455,7 @@ function showPublishPreview(
             `Janela de ${String(UPDATE_WINDOW_HOURS)} h: depois de uma alteração, as seguintes do mesmo registro, dentro de ${String(UPDATE_WINDOW_HOURS)} h, não disparam a regra de novo.`
         );
     }
-    if (local !== null && !sameDocument(local.document, detail.working?.document)) {
+    if (local !== null && !sameDraft(local.document, detail.working?.document)) {
         printNotice(
             context,
             'Atenção: o automation.json desta pasta é diferente do rascunho no Nexo. Rode `nexo automations push` antes, se quer publicar o da pasta.'
