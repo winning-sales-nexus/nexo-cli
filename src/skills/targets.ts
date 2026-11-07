@@ -22,7 +22,7 @@ function agentsBlock(skills: readonly Skill[]): string {
         BLOCK_START,
         '## Nexo',
         '',
-        'Antes de mexer com o Nexo (API, Connect, painéis), leia a skill do assunto e use a CLI `nexo` (`nexo --help`, `nexo docs search`):',
+        'Antes de mexer com o Nexo (API, Connect, painéis, automações), leia a skill do assunto e use a CLI `nexo` (`nexo --help`, `nexo docs search`):',
         '',
         ...lines,
         BLOCK_END

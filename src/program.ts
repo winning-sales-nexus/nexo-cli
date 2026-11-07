@@ -6,6 +6,8 @@ import { docsList, docsSearch, docsShow } from './commands/docs.js';
 import type { DocsOptions } from './commands/docs.js';
 import { mcpSetup } from './commands/mcp.js';
 import { addConnectCommands } from './program-connect.js';
+import { addAutomationCommands } from './program-automations.js';
+
 import { addDashboardCommands } from './program-dashboards.js';
 import type { McpOptions } from './commands/mcp.js';
 import { skillsInstall, skillsList } from './commands/skills.js';
@@ -170,6 +172,8 @@ export function buildProgram(context: CliContext): Command {
     addSkillsCommands(program, context);
     addMcpCommand(program, context);
     addConnectCommands(program, context);
+    addAutomationCommands(program, context);
+
     addDashboardCommands(program, context);
     addBillingCommands(program, context);
     return program;
