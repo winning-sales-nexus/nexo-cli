@@ -110,6 +110,16 @@ nexo dashboards run <relatório> comercial
 
 O painel vive em `dashboard.json`: o painel, as abas, as seções e os relatórios (consultas, apresentação, posição na grade e quem vê). `push` compara a pasta com o painel no Nexo, manda só o que mudou e mostra a prévia, com cada relatório já conferido e rodado pelo servidor. Salva depois do sim; fora de um terminal, mostra o `nexo dashboards save <prévia>` para rodar depois do sim. Depois de salvar, a pasta passa a usar os ids do Nexo. Também atende por `nexo paineis`.
 
+## Plano e cobrança
+
+```sh
+nexo billing                       # plano, assentos, próximo pagamento, situação e cartão
+nexo billing invoices              # as faturas, da mais nova para a mais antiga
+nexo billing invoices <id>         # uma fatura com as linhas
+```
+
+Só leitura, em reais, e só para administrador da empresa: o token precisa do escopo `billing:read`. Mudar a quantidade de assentos continua sendo da plataforma. Também atende por `nexo cobranca`. `--json` imprime a resposta da API como veio.
+
 ## Códigos de saída
 
 | Código | Quando                                             |
