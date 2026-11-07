@@ -81,6 +81,18 @@ O conector vive numa pasta do seu repositório: `connector.ts`, `manifest.json`,
 
 Publicar, ligar e pausar mostram a prévia e pedem o sim. Fora de um terminal (numa IA ou num script), a CLI mostra a prévia e o comando para aplicar com `--confirm <token>`, que vale uma vez. O valor de um segredo só é digitado por uma pessoa num terminal (ou por `--stdin`, num script) e nunca volta pela API.
 
+## Automações como código
+
+```sh
+nexo automations catalog
+nexo automations init boas-vindas --name "Boas-vindas ao negócio novo"
+nexo automations push boas-vindas -m "primeira versão"
+nexo automations publish boas-vindas
+nexo automations runs boas-vindas --state failed
+```
+
+A regra vive em `automation.json` (nome, reentrada e o documento com os passos e as ligações). `push` cria a automação ou salva o rascunho, sem mudar o que está no ar, e mostra todos os problemas que impedem publicar. `publish` mostra o que vai ao ar e pede o sim; fora de um terminal, só publica com `--yes`. Também atende por `nexo flows`. Por enquanto, os escopos de automação só existem no token pessoal (`nexo login --token`).
+
 ## Painéis como código
 
 ```sh
