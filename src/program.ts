@@ -1,5 +1,7 @@
 import { Command, Option } from 'commander';
 import { api } from './commands/api.js';
+import { billingInvoices, billingOverview } from './commands/billing.js';
+import type { BillingOptions } from './commands/billing.js';
 import { docsList, docsSearch, docsShow } from './commands/docs.js';
 import type { DocsOptions } from './commands/docs.js';
 import { mcpSetup } from './commands/mcp.js';
@@ -128,6 +130,25 @@ function addMcpCommand(program: Command, context: CliContext): void {
         });
 }
 
+function addBillingCommands(program: Command, context: CliContext): void {
+    const billing: Command = program
+        .command('billing')
+        .alias('cobranca')
+        .description('Plano e cobrança da empresa, só leitura: assentos, próximo pagamento, situação e cartão (exige o escopo billing:read e um administrador)')
+        .action(async (_options: BillingOptions, command: Command) => {
+            await billingOverview(context, command.optsWithGlobals());
+        });
+    billing
+        .command('invoices')
+        .description('Lista as faturas, da mais nova para a mais antiga; com o id, mostra a fatura com as linhas')
+        .argument('[id]', 'id da fatura (UUID), para ver as linhas')
+        .option('--page <n>', 'página da lista')
+        .option('--page-size <n>', 'faturas por página')
+        .action(async (id: string | undefined, _options: BillingOptions, command: Command) => {
+            await billingInvoices(context, id, command.optsWithGlobals());
+        });
+}
+
 export function buildProgram(context: CliContext): Command {
     const program: Command = new Command('nexo')
         .description('CLI do Nexo: a API, o Connect, os dashboards e os fluxos no terminal')
@@ -148,5 +169,6 @@ export function buildProgram(context: CliContext): Command {
     addMcpCommand(program, context);
     addConnectCommands(program, context);
     addDashboardCommands(program, context);
+    addBillingCommands(program, context);
     return program;
 }
