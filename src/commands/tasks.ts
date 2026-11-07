@@ -29,7 +29,7 @@ const KIND_LABELS: Readonly<Record<string, string>> = {
     dashboard_build: 'montar um painel',
     contact_report: 'relatório de um contato'
 };
-const STATUS_LABELS: Readonly<Record<TaskStatus, string>> = {
+const STATUS_LABELS: Readonly<Record<string, string>> = {
     queued: 'na fila',
     running: 'rodando',
     done: 'pronta',
