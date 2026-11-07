@@ -81,17 +81,23 @@ O conector vive numa pasta do seu repositório: `connector.ts`, `manifest.json`,
 
 Publicar, ligar e pausar mostram a prévia e pedem o sim. Fora de um terminal (numa IA ou num script), a CLI mostra a prévia e o comando para aplicar com `--confirm <token>`, que vale uma vez. O valor de um segredo só é digitado por uma pessoa num terminal (ou por `--stdin`, num script) e nunca volta pela API.
 
-## Automações como código
+## As automações
 
 ```sh
 nexo automations catalog
+nexo automations entities lead
 nexo automations init boas-vindas --name "Boas-vindas ao negócio novo"
 nexo automations push boas-vindas -m "primeira versão"
 nexo automations publish boas-vindas
 nexo automations runs boas-vindas --state failed
+nexo automations events lead <registro>
 ```
 
-A regra vive em `automation.json` (nome, reentrada e o documento com os passos e as ligações). `push` cria a automação ou salva o rascunho, sem mudar o que está no ar, e mostra todos os problemas que impedem publicar. `publish` mostra o que vai ao ar e pede o sim; fora de um terminal, só publica com `--yes`. Também atende por `nexo flows`. Por enquanto, os escopos de automação só existem no token pessoal (`nexo login --token`).
+A regra vive em `automation.json` (nome, reentrada e o documento com os passos e as ligações). `push` cria a automação ou salva o rascunho, sem mudar o que está no ar, e mostra todos os problemas que impedem publicar. `publish` mostra o que vai ao ar e pede o sim; fora de um terminal, só publica com `--yes`. Também atende por `nexo flows`.
+
+Os gatilhos genéricos (`entidade.criada`, `entidade.alterada`, `entidade.apagada`) escutam qualquer entidade: `nexo automations entities` mostra as entidades e os campos, e `nexo automations events lead <registro>` mostra o que o Nexo guardou do registro (operação, nomes dos campos que mudaram, origem e despacho) para depurar uma regra que não disparou. Uma alteração segura uma janela de 24 h: as seguintes do mesmo registro não disparam de novo, e a prévia do `publish` e o `runs` mostram isso. `get`, `versions` e `restore` completam o ciclo.
+
+Por enquanto, os escopos de automação só existem no token pessoal (`nexo login --token`).
 
 ## Painéis como código
 

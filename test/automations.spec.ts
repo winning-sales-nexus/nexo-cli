@@ -136,6 +136,48 @@ describe('nexo automations push', () => {
     });
 });
 
+describe('nexo automations push on an existing automation', () => {
+    it('warns when reactsToAutomations or the reentry in automation.json differ from the server, which only reads them on creation', async () => {
+        const h: Harness = harness({ [`PUT /v1/automations/${FLOW}/draft`]: () => ({ flow: FLOW_ROW, version: working() }) });
+        writeFileSync(
+            join(h.root, 'automation.json'),
+            JSON.stringify({
+                name: 'Boas-vindas',
+                reactsToAutomations: true,
+                reentryMode: 'once_per_subject',
+                reentryMinutes: null,
+                document: DOCUMENT
+            })
+        );
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        expect(await run(h.context, ['automations', 'push', h.root])).toBe(0);
+
+        expect(h.err()).toContain('reactsToAutomations (no servidor: false, no arquivo: true)');
+        expect(h.err()).toContain('reentryMode (no servidor: "every_event", no arquivo: "once_per_subject")');
+        expect(h.err()).not.toContain('reentryMinutes');
+    });
+
+    it('stays quiet when the settings already match the server', async () => {
+        const h: Harness = harness({ [`PUT /v1/automations/${FLOW}/draft`]: () => ({ flow: FLOW_ROW, version: working() }) });
+        writeFileSync(
+            join(h.root, 'automation.json'),
+            JSON.stringify({
+                name: 'Boas-vindas',
+                reactsToAutomations: false,
+                reentryMode: 'every_event',
+                reentryMinutes: null,
+                document: DOCUMENT
+            })
+        );
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        await run(h.context, ['automations', 'push', h.root]);
+
+        expect(h.err()).not.toContain('Atenção');
+    });
+});
+
 describe('nexo automations publish', () => {
     const detail = (problems: unknown[] = [], publishedSeq: number | null = 2): unknown => ({
         flow: { ...FLOW_ROW, publishedSeq },
@@ -193,5 +235,218 @@ describe('nexo automations publish', () => {
         await run(h.context, ['automations', 'publish', h.root]);
 
         expect(h.err()).toContain('diferente do rascunho');
+    });
+
+    it('does not warn when the draft only adds the defaults the server fills in', async () => {
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => ({
+                flow: { ...FLOW_ROW, publishedSeq: 2 },
+                versions: [],
+                working: {
+                    ...working(),
+                    document: { ...DOCUMENT, reactsToAutomations: false, reentryMinutes: null, reentryMode: 'every_event' }
+                }
+            }),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
+        });
+        writeFileSync(join(h.root, 'automation.json'), JSON.stringify({ name: 'Boas-vindas', document: DOCUMENT }));
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        await run(h.context, ['automations', 'publish', h.root]);
+
+        expect(h.err()).not.toContain('diferente do rascunho');
+    });
+
+    it('does not warn when the server returns the same document with the keys in another order', async () => {
+        const reordered: Record<string, unknown> = {
+            reentryMode: 'every_event',
+            ...Object.fromEntries(Object.entries(DOCUMENT).reverse()),
+            reactsToAutomations: false,
+            reentryMinutes: null
+        };
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => ({
+                flow: { ...FLOW_ROW, publishedSeq: 2 },
+                versions: [],
+                working: { ...working(), document: reordered }
+            }),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
+        });
+        writeFileSync(join(h.root, 'automation.json'), JSON.stringify({ name: 'Boas-vindas', document: DOCUMENT }));
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        await run(h.context, ['automations', 'publish', h.root]);
+
+        expect(h.err()).not.toContain('diferente do rascunho');
+    });
+});
+
+const LEAD: Record<string, unknown> = {
+    entity: 'lead',
+    label: 'Lead',
+    plural: 'Leads',
+    sees: 'Quem alcança o registro',
+    fields: [{ key: 'stage', label: 'Etapa', type: 'option' }]
+};
+const SUBJECT: string = '019fe1a2-0000-7000-8000-0000000000aa';
+
+describe('nexo automations entities, events and catalog (generic triggers)', () => {
+    it('lists the entities and shows one with its fields', async () => {
+        const h: Harness = harness({
+            'GET /v1/automations/entities': () => ({ entities: [LEAD] }),
+            'GET /v1/automations/entities/lead?domain=crm': () => LEAD
+        });
+
+        expect(await run(h.context, ['automations', 'entities'])).toBe(0);
+        expect(h.out()).toContain('lead  Lead (Leads)');
+        expect(await run(h.context, ['automations', 'entities', 'lead', '--domain', 'crm'])).toBe(0);
+
+        expect(h.calls.map((call) => call.path)).toEqual(['/v1/automations/entities', '/v1/automations/entities/lead?domain=crm']);
+        expect(h.out()).toContain('stage');
+    });
+
+    it('prints the entities json untouched', async () => {
+        const h: Harness = harness({ 'GET /v1/automations/entities': () => ({ entities: [LEAD] }) });
+
+        await run(h.context, ['automations', 'entities', '--json']);
+
+        expect(JSON.parse(h.out())).toEqual({ entities: [LEAD] });
+    });
+
+    it('reads the events of a record with the entity, the record and the page', async () => {
+        const page: unknown = {
+            events: [
+                {
+                    id: 'e1',
+                    entity: 'lead',
+                    subjectId: SUBJECT,
+                    operation: 'updated',
+                    changedFields: ['stage'],
+                    actorKind: 'automation',
+                    actorUserId: null,
+                    origin: { surface: 'api', flowId: FLOW, causedByStepRunId: null },
+                    occurredAt: '2026-11-07T10:00:00.000Z',
+                    dispatched: true,
+                    dispatchedAt: '2026-11-07T10:00:01.000Z',
+                    failureCode: null
+                }
+            ],
+            hasMore: true,
+            nextCursor: 'e1',
+            retentionDays: 14
+        };
+        const h: Harness = harness({ [`GET /v1/automations/events?entity=lead&subjectId=${SUBJECT}&limit=5`]: () => page });
+
+        expect(await run(h.context, ['automations', 'events', 'lead', SUBJECT, '--limit', '5'])).toBe(0);
+
+        expect(h.out()).toContain('updated');
+        expect(h.out()).toContain(`automação ${FLOW}`);
+        expect(h.out()).toContain('campos: stage');
+        expect(h.err()).toContain('--cursor e1');
+    });
+
+    it('shows the entities and the 24 h window in the catalog', async () => {
+        const catalog: unknown = {
+            triggers: [{ kind: 'entidade.alterada', label: 'Entidade alterada' }],
+            actions: [],
+            entities: [LEAD],
+            limits: { updateWindowHours: 24 }
+        };
+        const h: Harness = harness({ 'GET /v1/automations/catalog': () => catalog });
+
+        await run(h.context, ['automations', 'catalog']);
+
+        expect(h.out()).toContain('lead');
+        expect(h.out()).toContain('Janela de alterações: 24 h');
+    });
+
+    it('prints a problem+json error on stderr with a failing exit code', async () => {
+        const h: Harness = harness({});
+
+        expect(await run(h.context, ['automations', 'entities', 'fatura'])).not.toBe(0);
+
+        expect(h.err()).toContain('Não encontrado');
+    });
+});
+
+describe('nexo automations get, versions, restore and the window', () => {
+    it('gets an automation and lists its versions', async () => {
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => ({ flow: FLOW_ROW, working: working(), versions: [] }),
+            [`GET /v1/automations/${FLOW}/versions`]: () => ({
+                versions: [
+                    {
+                        id: 'v',
+                        seq: 2,
+                        status: 'published',
+                        origin: 'api',
+                        restoredFromSeq: null,
+                        summary: 'ajuste',
+                        publishedAt: null,
+                        createdAt: '2026-11-07'
+                    }
+                ]
+            })
+        });
+
+        expect(await run(h.context, ['automations', 'get', FLOW])).toBe(0);
+        expect(h.out()).toContain('Boas-vindas');
+        expect(await run(h.context, ['automations', '--automation', FLOW, 'versions'])).toBe(0);
+
+        expect(h.out()).toContain('v2');
+    });
+
+    it('restore without --yes only shows what it would do', async () => {
+        const h: Harness = harness({});
+
+        expect(await run(h.context, ['automations', '--automation', FLOW, 'restore', '2'])).toBe(0);
+
+        expect(h.calls).toHaveLength(0);
+        expect(h.err()).toContain('--yes');
+    });
+
+    it('restore with --yes posts to the version restore route', async () => {
+        const h: Harness = harness({ [`POST /v1/automations/${FLOW}/versions/2/restore`]: () => ({ flow: FLOW_ROW }) });
+
+        expect(await run(h.context, ['automations', '--automation', FLOW, 'restore', '2', '--yes', '--cancel-live-runs'])).toBe(0);
+
+        expect(h.calls[0]?.body).toEqual({ cancelLiveRuns: true });
+    });
+
+    it('publish preview names the 24 h window for an entidade.alterada trigger', async () => {
+        const document: Record<string, unknown> = {
+            ...DOCUMENT,
+            nodes: [{ key: 'inicio', type: 'trigger', kind: 'entidade.alterada', config: { entity: 'lead' } }]
+        };
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => ({
+                flow: FLOW_ROW,
+                working: { id: 'ver-1', seq: null, document, problems: [], warnings: [] },
+                versions: []
+            })
+        });
+
+        await run(h.context, ['automations', '--automation', FLOW, 'publish']);
+
+        expect(h.out()).toContain('Janela de 24 h');
+        expect(h.calls.map((call) => call.method)).toEqual(['GET']);
+    });
+
+    it('runs shows the window of each run', async () => {
+        const runRow: unknown = {
+            id: 'r1',
+            state: 'completed',
+            stateReason: null,
+            errorCode: null,
+            subject: { type: 'lead', name: 'Ana' },
+            createdAt: '2026-11-07T10:00:00Z',
+            suppressedUpdates: 3,
+            updateWindowEndsAt: '2026-11-08T10:00:00Z'
+        };
+        const h: Harness = harness({ [`GET /v1/automations/${FLOW}/runs`]: () => ({ runs: [runRow] }) });
+
+        await run(h.context, ['automations', '--automation', FLOW, 'runs']);
+
+        expect(h.out()).toContain('janela até 2026-11-08T10:00:00Z (3 repetidas descartadas)');
     });
 });
