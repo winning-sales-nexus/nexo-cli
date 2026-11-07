@@ -122,6 +122,15 @@ export async function automationsCatalog(context: CliContext, options: Automatio
         entities?: EntityDef[];
         limits?: { updateWindowHours?: number };
     };
+    printCatalogKinds(context, triggers, actions);
+    printCatalogEntities(context, entities, limits);
+}
+
+function printCatalogKinds(
+    context: CliContext,
+    triggers: readonly { kind: string; label: string; configHint?: string }[],
+    actions: readonly { kind: string; label: string; risk: string; configHint?: string }[]
+): void {
     printLine(context, 'Gatilhos:');
     triggers.forEach((trigger) => {
         printLine(
@@ -136,6 +145,13 @@ export async function automationsCatalog(context: CliContext, options: Automatio
             `  ${action.kind.padEnd(32)} ${action.label} [${action.risk}]${action.configHint === undefined ? '' : ` — ${action.configHint}`}`
         );
     });
+}
+
+function printCatalogEntities(
+    context: CliContext,
+    entities: readonly EntityDef[] | undefined,
+    limits: { updateWindowHours?: number } | undefined
+): void {
     if (entities !== undefined && entities.length > 0) {
         printLine(context, 'Entidades que os gatilhos entidade.criada, entidade.alterada e entidade.apagada escutam:');
         entities.forEach((entity: EntityDef) => {
@@ -502,6 +518,15 @@ interface RunRow {
     readonly updateWindowEndsAt?: string | null;
 }
 
+function runNote(run: RunRow): string {
+    const reason: string = run.errorCode ?? run.stateReason ?? '';
+    if (run.updateWindowEndsAt === undefined || run.updateWindowEndsAt === null) {
+        return reason;
+    }
+    const window: string = `janela até ${run.updateWindowEndsAt} (${String(run.suppressedUpdates ?? 0)} repetidas descartadas)`;
+    return reason === '' ? window : `${reason}  ${window}`;
+}
+
 export async function automationsRuns(context: CliContext, dir: string | undefined, options: AutomationOptions): Promise<void> {
     const query: string = options.state === undefined ? '' : `?state=${encodeURIComponent(options.state)}`;
     const body: { runs: RunRow[] } = (await call(
@@ -515,11 +540,7 @@ export async function automationsRuns(context: CliContext, dir: string | undefin
         return;
     }
     body.runs.forEach((run: RunRow) => {
-        const window: string =
-            run.updateWindowEndsAt === undefined || run.updateWindowEndsAt === null
-                ? ''
-                : `janela até ${run.updateWindowEndsAt} (${String(run.suppressedUpdates ?? 0)} repetidas descartadas)`;
-        const why: string = [run.errorCode ?? run.stateReason ?? '', window].filter((part: string) => part !== '').join('  ');
+        const why: string = runNote(run);
         printLine(
             context,
             `${run.id}  ${run.state.padEnd(9)} ${run.createdAt}  ${run.subject.type} ${run.subject.name ?? '(apagado)'}  ${why}`.trimEnd()

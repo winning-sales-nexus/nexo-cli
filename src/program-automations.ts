@@ -77,6 +77,11 @@ function addLiveCommands(automations: Command, context: CliContext): void {
 }
 
 function addReadCommands(automations: Command, context: CliContext): void {
+    addGetCommands(automations, context);
+    addEventCommands(automations, context);
+}
+
+function addGetCommands(automations: Command, context: CliContext): void {
     automations
         .command('get')
         .description('Uma automação: o estado, o rascunho e os problemas')
@@ -93,6 +98,16 @@ function addReadCommands(automations: Command, context: CliContext): void {
             await automationsEntities(context, entity, command.optsWithGlobals());
         });
     automations
+        .command('versions')
+        .description('As versões salvas da automação')
+        .argument('[pasta]', 'pasta da automação', '.')
+        .action(async (dir: string, _options: AutomationOptions, command: Command) => {
+            await automationsVersions(context, dir, command.optsWithGlobals());
+        });
+}
+
+function addEventCommands(automations: Command, context: CliContext): void {
+    automations
         .command('events')
         .description('O que aconteceu com um registro (os eventos que as automações escutam, dos últimos 14 dias)')
         .argument('<entidade>', 'a chave da entidade (por exemplo deal ou lead)')
@@ -102,13 +117,6 @@ function addReadCommands(automations: Command, context: CliContext): void {
         .option('--cursor <id>', 'o cursor da página anterior')
         .action(async (entity: string, subjectId: string, _options: AutomationOptions, command: Command) => {
             await automationsEvents(context, entity, subjectId, command.optsWithGlobals());
-        });
-    automations
-        .command('versions')
-        .description('As versões salvas da automação')
-        .argument('[pasta]', 'pasta da automação', '.')
-        .action(async (dir: string, _options: AutomationOptions, command: Command) => {
-            await automationsVersions(context, dir, command.optsWithGlobals());
         });
 }
 
