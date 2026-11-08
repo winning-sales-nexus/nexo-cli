@@ -26,10 +26,10 @@ function notices(context: CliContext, stored: StoredProfile | null, revocation: 
         printNotice(context, 'O acesso da CLI foi revogado no Nexo.');
     }
     if (revocation === 'failed') {
-        printNotice(context, 'Não consegui revogar no Nexo; desconecte a "Nexo CLI" em Configurações › Integrações › Tokens de API e MCP.');
+        printNotice(context, 'Não consegui revogar no Nexo; desconecte a "Nexo CLI" em Configurações › Conexões › IA e API.');
     }
     if (stored?.kind === 'pat') {
-        printNotice(context, 'O token continua valendo até você revogá-lo no Nexo, em Configurações › Integrações › Tokens de API e MCP.');
+        printNotice(context, 'O token continua valendo até você revogá-lo no Nexo, em Configurações › Conexões › IA e API.');
     }
     if ((context.env.NEXO_TOKEN ?? '') !== '') {
         printNotice(context, 'NEXO_TOKEN ainda está definido no ambiente e continua sendo usado.');
