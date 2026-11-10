@@ -110,6 +110,30 @@ nexo dashboards run <relatório> comercial
 
 O painel vive em `dashboard.json`: o painel, as abas, as seções e os relatórios (consultas, apresentação, posição na grade e quem vê). `push` compara a pasta com o painel no Nexo, manda só o que mudou e mostra a prévia, com cada relatório já conferido e rodado pelo servidor. Salva depois do sim; fora de um terminal, mostra o `nexo dashboards save <prévia>` para rodar depois do sim. Depois de salvar, a pasta passa a usar os ids do Nexo. Também atende por `nexo paineis`.
 
+## Propostas e contratos
+
+```sh
+nexo documents templates --agent proposal
+nexo documents templates add modelo.pptx --agent proposal
+nexo documents questionnaire --agent proposal --deal <negócio> --template <modelo> -o respostas.json
+nexo documents create --answers respostas.json
+nexo documents revise <documento> --request "deixa mais direto"
+nexo documents accept <documento>
+nexo documents pdf <documento> -o proposta.pdf
+nexo documents negotiate <documento> --person "Renata Lima <renata@cliente.com.br>" --approver renata@cliente.com.br
+```
+
+A jornada da proposta e do contrato, a mesma do app: o modelo, o questionário, o documento escrito, as versões e as saídas. `--agent` é `proposal` ou `contract`. Também atende por `nexo documentos`.
+
+- **Modelos.** `templates` lista os que você pode usar; `templates add <arquivo>` envia outro (proposta: PDF, PPTX, DOCX ou HTML; contrato: DOCX, PDF ou HTML) e espera o Nexo ler; `templates download <modelo>` baixa o arquivo de origem. Sem modelo nenhum, é preciso enviar um.
+- **Questionário.** `questionnaire` imprime os blocos e os campos, cada um com o valor que o Nexo já sabe, a fonte e o que falta. Ler as calls e o WhatsApp do negócio usa a IA e conta no limite da empresa: `--no-reading` traz só o cadastro. Com `-o respostas.json`, grava o arquivo de respostas: edite o `text` de cada resposta (o `path` é o endereço do campo; o resto é só para ler). Num contrato, ponha ou tire um item de um grupo em `groups`, como `{ "group": "testemunhas", "action": "add" }`, e responda os campos dele pelo `path` (`testemunhas.2.nome`).
+- **Escrita.** `create` manda as respostas, pede a escrita ao Nexo e espera a versão ficar pronta, mostrando a situação; `--no-wait` devolve os ids na hora e `nexo documents get <documento>` acompanha. O negócio e o modelo vêm do arquivo de respostas, ou de `--deal` e `--template`. Só segue para o Nexo a resposta que difere do que ele já preenche sozinho. Resposta obrigatória faltando, ou que não cabe no tipo do campo, sai com a lista e código de saída 1, e nada é escrito. Com `--document arquivo.html`, você manda o documento já escrito: o Nexo limpa o HTML e confere valores, datas e prazos contra as respostas, sem rodar a IA; no contrato, `--adaptations arquivo.json` leva a lista do que foi tirado ou adaptado em relação ao modelo.
+- **Versões.** `revise` pede uma versão nova com o pedido como você diria, e a anterior fica no histórico. Para mudar uma resposta, gere o arquivo com `questionnaire --revising <documento> -o respostas.json` e mande com `revise <documento> --answers respostas.json`. Uma versão que não passa na conferência não sai: a CLI mostra o que não bateu e sai com código 1.
+- **Saídas.** `accept` aceita a versão da proposta, que deixa de ser rascunho (o contrato não tem este passo). `pdf` e `docx` baixam o arquivo da versão; o DOCX é só do contrato. `--version-number <n>` escolhe outra versão que não a atual.
+- **Negociação.** `negotiate` mostra quem vai receber o e-mail com o link e pede o sim; fora de um terminal, só envia com `--yes`. `--person` se repete, até 10 pessoas, e `--approver` diz quem dá o de acordo que encerra a negociação.
+
+O token precisa de `context:read` para ler, `conversations:read` para o questionário e `deals:write` para enviar modelo, escrever, aceitar e negociar. Vale a visibilidade do app: o vendedor vê os negócios dele e os documentos que criou.
+
 ## Plano e cobrança
 
 ```sh

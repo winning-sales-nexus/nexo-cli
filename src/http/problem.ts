@@ -8,6 +8,7 @@ export interface Problem {
     readonly status: number;
     readonly detail: string | null;
     readonly requestId: string | null;
+    readonly meta?: Readonly<Record<string, unknown>>;
 }
 
 function textOf(value: unknown): string | null {
@@ -21,8 +22,30 @@ export function problemOf(status: number, body: unknown): Problem {
         title: textOf(fields.title) ?? `A API respondeu ${String(status)}`,
         status,
         detail: textOf(fields.detail),
-        requestId: textOf(fields.requestId)
+        requestId: textOf(fields.requestId),
+        ...(isRecord(fields.meta) ? { meta: fields.meta } : {})
     };
+}
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function sentenceOf(item: unknown): string | null {
+    if (!isRecord(item)) {
+        return textOf(item);
+    }
+    const label: string | null = textOf(item.label);
+    const reason: string | null = textOf(item.reason);
+    return textOf(item.sentence) ?? (label === null || reason === null ? null : `${label}: ${reason}`);
+}
+
+function listedIn(meta: Readonly<Record<string, unknown>> | undefined): string | null {
+    const items: readonly unknown[] = [meta?.pending, meta?.problems, meta?.findings].flatMap((list: unknown) =>
+        Array.isArray(list) ? (list as readonly unknown[]) : []
+    );
+    const lines: readonly string[] = items.map(sentenceOf).flatMap((line: string | null) => (line === null ? [] : [`  - ${line}`]));
+    return lines.length === 0 ? null : lines.join('\n');
 }
 
 const EXIT_BY_STATUS: Readonly<Record<number, ExitCode>> = {
@@ -45,7 +68,7 @@ export class NexoApiError extends CliError {
         super(
             NexoApiError.messageOf(problem),
             EXIT_BY_STATUS[problem.status] ?? EXIT_CODES.failure,
-            HINT_BY_STATUS[problem.status] ?? null
+            HINT_BY_STATUS[problem.status] ?? listedIn(problem.meta)
         );
         this.name = 'NexoApiError';
         this.problem = problem;

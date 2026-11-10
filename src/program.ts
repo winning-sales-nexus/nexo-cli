@@ -7,6 +7,7 @@ import type { DocsOptions } from './commands/docs.js';
 import { mcpSetup } from './commands/mcp.js';
 import { addConnectCommands } from './program-connect.js';
 import { addAutomationCommands } from './program-automations.js';
+import { addDocumentCommands } from './program-documents.js';
 
 import { addDashboardCommands } from './program-dashboards.js';
 import type { McpOptions } from './commands/mcp.js';
@@ -155,7 +156,7 @@ function addBillingCommands(program: Command, context: CliContext): void {
 
 export function buildProgram(context: CliContext): Command {
     const program: Command = new Command('nexo')
-        .description('CLI do Nexo: a API, o Connect, os dashboards e os fluxos no terminal')
+        .description('CLI do Nexo: a API, o Connect, os dashboards, os fluxos e os documentos no terminal')
         .version(CLI_VERSION, '-v, --version', 'mostra a versão')
         .helpOption('-h, --help', 'mostra a ajuda')
         .helpCommand('help [comando]', 'mostra a ajuda de um comando')
@@ -176,5 +177,6 @@ export function buildProgram(context: CliContext): Command {
 
     addDashboardCommands(program, context);
     addBillingCommands(program, context);
+    addDocumentCommands(program, context);
     return program;
 }
