@@ -567,6 +567,48 @@ describe('nexo documents create', () => {
 });
 
 describe('nexo documents revise, accept, pdf and docx', () => {
+    it('sends a new version already written with --document alone, to the written route', async () => {
+        const h: Harness = harness({
+            [`POST /v1/agents/documents/${DOCUMENT}/versions/written`]: { status: 201, body: receipt(V2, 2, 'ready') }
+        });
+        const html: string = join(h.root, 'v2.html');
+        writeFileSync(html, '<h1>Proposta</h1>');
+
+        expect(await run(h.context, ['documents', 'revise', DOCUMENT, '--document', html])).toBe(0);
+
+        expect(h.calls).toHaveLength(1);
+        expect(h.calls[0]?.body).toEqual({ templateId: null, request: null, answers: [], groups: [], html: '<h1>Proposta</h1>' });
+        expect(h.out()).toContain('versão 2 pronta');
+    });
+
+    it('tells the AI limit of the company apart from the limit of calls and from the limit of files', async () => {
+        const budget: Harness = harness({
+            [`POST /v1/agents/documents/${DOCUMENT}/versions`]: {
+                status: 429,
+                body: {
+                    type: 'agents.writing_budget',
+                    title: 'AgentWritingBudgetError',
+                    status: 429,
+                    detail: 'O limite de IA deste ciclo acabou.'
+                }
+            }
+        });
+        expect(await run(budget.context, ['documents', 'revise', DOCUMENT, '--request', 'deixa mais direto'])).toBe(6);
+        expect(budget.err()).toContain('O limite de IA deste ciclo acabou.');
+        expect(budget.err()).not.toContain('somando todos os tokens');
+
+        const files: Harness = harness({
+            [`GET /v1/agents/documents/${DOCUMENT}`]: { body: document([version(V1, 1, 'ready')]) },
+            [`POST /v1/agents/documents/${DOCUMENT}/versions/${V1}/pdf`]: {
+                status: 429,
+                body: { type: 'core.too_many_attempts', title: 'TooManyAttemptsError', status: 429, detail: 'Muitas tentativas.' }
+            }
+        });
+        expect(await run(files.context, ['documents', 'pdf', DOCUMENT])).toBe(6);
+        expect(files.err()).toContain('somado ao do app');
+        expect(files.err()).not.toContain('somando todos os tokens');
+    });
+
     it('asks for a new version with the request as it was said, and tells what changed', async () => {
         const second: Record<string, unknown> = version(V2, 2, 'ready', {
             changeRequest: 'deixa mais direto',

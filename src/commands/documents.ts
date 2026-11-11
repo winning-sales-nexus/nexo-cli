@@ -257,10 +257,12 @@ export async function documentsCreate(context: CliContext, options: DocumentOpti
 export async function documentsRevise(context: CliContext, documentId: string, options: DocumentOptions): Promise<void> {
     const request: string = (options.request ?? '').trim();
     const file: AnswersFile | null = fileOf(options);
-    if (request === '' && file === null) {
-        throw usageError('Diga o que muda: --request "o pedido", ou --answers com as respostas que mudaram.');
-    }
     const written: { readonly html?: string } = writtenOf(options);
+    if (request === '' && file === null && written.html === undefined) {
+        throw usageError(
+            'Diga o que muda: --request "o pedido", --answers com as respostas que mudaram, ou --document com a versão já escrita.'
+        );
+    }
     const session: Session = sessionOf(context, options);
     const answered: Answered =
         file === null

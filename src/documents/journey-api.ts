@@ -23,7 +23,6 @@ const FAILURE_LABELS: Readonly<Record<string, string>> = {
     ai_unavailable: 'a IA não respondeu; peça de novo',
     ai_rejected: 'a IA recusou o pedido ou a resposta foi cortada',
     budget: 'o limite de IA do ciclo da empresa acabou e nada foi escrito',
-    ai_budget: 'o limite de IA do ciclo da empresa acabou e nada foi escrito',
     values_mismatch: 'a conferência achou valor, data ou prazo que não bate com as respostas',
     check_failed: 'o documento não passou na conferência',
     too_long: 'o contrato passa do tamanho que o Nexo escreve de uma vez'
