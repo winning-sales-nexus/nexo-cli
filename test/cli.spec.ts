@@ -11,7 +11,15 @@ import { run } from '../src/run.js';
 const TOKEN: string = `nexo_pat_${'a'.repeat(38)}`;
 
 const ME: unknown = {
-    user: { id: 'u1', name: 'Ana Souza', email: 'ana@empresa.com.br', role: 'sales_lead' },
+    user: {
+        id: 'u1',
+        name: 'Ana Souza',
+        email: 'ana@empresa.com.br',
+        profiles: [
+            { id: 'p1', name: 'Vendedor' },
+            { id: 'p2', name: 'Líder de vendas' }
+        ]
+    },
     company: { id: 'c1', name: 'Empresa Teste', timezone: 'America/Sao_Paulo' },
     credential: { id: 't1', name: 'cli', kind: 'pat', scopes: ['deals:read'], expiresAt: '2027-01-31T12:00:00.000Z' },
     rateLimits: {}
@@ -77,7 +85,7 @@ describe('nexo login --with-token', () => {
         const file: string = join(h.directory, 'credentials.json');
         expect(statSync(file).mode & 0o777).toBe(0o600);
         expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ profiles: { default: { token: TOKEN, kind: 'pat' } } });
-        expect(h.out()).toContain('Ana Souza <ana@empresa.com.br>, líder de vendas');
+        expect(h.out()).toContain('Ana Souza <ana@empresa.com.br>, perfis: Vendedor, Líder de vendas');
     });
 
     it('saves to the dev API when asked, under the chosen profile', async () => {
