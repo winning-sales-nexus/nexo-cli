@@ -22,6 +22,7 @@ export interface CliContext {
     readonly stderr: Writable;
     readonly fetchFn: FetchFunction;
     readonly openUrl: UrlOpener;
+    readonly sleep?: (ms: number) => Promise<void>;
 }
 
 export function processContext(): CliContext {
