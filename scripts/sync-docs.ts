@@ -3,12 +3,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitPages } from '../src/docs/pages.js';
 import type { DocBundle, DocPage } from '../src/docs/pages.js';
+import { syncSkills } from '../src/skills/sync-skills.js';
+import type { SkillsSyncResult } from '../src/skills/sync-skills.js';
 
 const SITE_FULL: string = 'https://docs.nexo.winningsales.com.br/llms-full.txt';
 const CONNECT_FILES: Readonly<Record<string, string>> = {
     'connect/connect-sdk.d.ts': 'https://mcp-nexo.winningsales.com.br/docs/connect/connect-sdk.d.ts',
     'connect/manifest.schema.json': 'https://mcp-nexo.winningsales.com.br/docs/connect/manifest.schema.json'
 };
+const SKILLS_BASE: string = 'https://mcp-nexo.winningsales.com.br/docs/skills';
 const MINIMUM_PAGES: number = 20;
 
 const root: string = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets');
@@ -45,4 +48,8 @@ async function syncConnect(): Promise<void> {
 
 const count: number = await syncDocs();
 await syncConnect();
-process.stdout.write(`${String(count)} pages and ${String(Object.keys(CONNECT_FILES).length)} Connect files synced into assets/\n`);
+const skills: SkillsSyncResult = await syncSkills(join(root, 'skills'), SKILLS_BASE, download);
+const removed: string = skills.removed.length === 0 ? '' : ` (removed: ${skills.removed.join(', ')})`;
+process.stdout.write(
+    `${String(count)} pages, ${String(Object.keys(CONNECT_FILES).length)} Connect files and ${String(skills.written.length)} skills synced into assets/${removed}\n`
+);

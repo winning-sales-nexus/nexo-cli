@@ -139,8 +139,10 @@ npm ci
 npm run dev -- whoami      # roda direto do código
 npm run check              # formato, lint, tipos e testes
 npm run openapi:sync       # regenera os tipos do /v1 a partir da API de produção
-npm run docs:sync          # atualiza a documentação e os arquivos do Connect embutidos
+npm run docs:sync          # atualiza a documentação, os arquivos do Connect e as skills embutidas
 ```
+
+As skills de `assets/skills/` vêm do nexu-api, a mesma fonte do comportamento do copiloto e do MCP (`packages/comportamento-nexo/cli-skills/`), servidas em `https://mcp-nexo.winningsales.com.br/docs/skills/`. Mude a skill lá; aqui, `npm run docs:sync` traz a versão nova e apaga a que saiu do índice.
 
 ### Publicar uma versão
 
