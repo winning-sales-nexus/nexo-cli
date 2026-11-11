@@ -6,11 +6,10 @@ import type { ApiResponse } from '../http/nexo-client.js';
 
 export type Me = paths['/v1/me']['get']['responses'][200]['content']['application/json'];
 
-const ROLE_LABELS: Readonly<Record<Me['user']['role'], string>> = {
-    admin: 'administrador',
-    sales_lead: 'líder de vendas',
-    rep: 'vendedor'
-};
+function profilesOf(me: Me): string {
+    const names: readonly string[] = me.user.profiles.map((profile: { readonly name: string }) => profile.name);
+    return names.length === 0 ? 'sem perfil' : `${names.length === 1 ? 'perfil' : 'perfis'}: ${names.join(', ')}`;
+}
 
 function isMe(value: unknown): value is Me {
     if (typeof value !== 'object' || value === null) {
@@ -32,7 +31,7 @@ export function describeMe(me: Me, session: Session): readonly string[] {
     const expires: string = new Date(me.credential.expiresAt).toLocaleDateString('pt-BR', { timeZone: me.company.timezone });
     const source: string = session.source === 'env' ? 'NEXO_TOKEN' : `perfil ${session.profile}`;
     return [
-        `${me.user.name} <${me.user.email}>, ${ROLE_LABELS[me.user.role]}`,
+        `${me.user.name} <${me.user.email}>, ${profilesOf(me)}`,
         `Empresa: ${me.company.name}`,
         `Credencial: ${me.credential.name} (${source}), vale até ${expires}`,
         `Escopos: ${me.credential.scopes.join(', ')}`,

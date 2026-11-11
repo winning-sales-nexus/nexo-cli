@@ -14,7 +14,7 @@ import { run } from '../src/run.js';
 const API: string = 'https://mcp-nexo.winningsales.com.br';
 
 const ME: unknown = {
-    user: { id: 'u1', name: 'Ana Souza', email: 'ana@empresa.com.br', role: 'rep' },
+    user: { id: 'u1', name: 'Ana Souza', email: 'ana@empresa.com.br', profiles: [{ id: 'p1', name: 'Vendedor' }] },
     company: { id: 'c1', name: 'Empresa Teste', timezone: 'America/Sao_Paulo' },
     credential: { id: 'o1', name: 'Nexo CLI', kind: 'oauth', scopes: ['context:read'], expiresAt: '2027-01-31T12:00:00.000Z' },
     rateLimits: {}
