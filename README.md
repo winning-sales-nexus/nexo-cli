@@ -134,6 +134,18 @@ A jornada da proposta e do contrato, a mesma do app: o modelo, o questionário, 
 
 O token precisa de `context:read` para ler e para baixar o PDF e o DOCX, `conversations:read` para o questionário e `deals:write` para enviar modelo, escrever, aceitar e negociar. Vale a visibilidade do app: o vendedor vê os negócios dele e os documentos que criou.
 
+## A análise do negócio e os artefatos
+
+```sh
+nexo deals analysis <negócio>                        # gera (ou atualiza) a análise e mostra o link para abrir e o aiState
+nexo deals analysis <negócio> --brief "o que trava o fechamento"
+nexo artifacts list --deal <negócio> --kind analysis # os artefatos do negócio, com a versão atual
+nexo artifacts get <artefato>                        # o artefato com as versões
+nexo artifacts get <artefato> --version-number 2     # uma versão, com o link para abrir (a análise fica num arquivo)
+```
+
+`deals analysis` cria a análise na primeira vez e uma versão nova a cada pedido; o `aiState` diz como a IA terminou (`written`, ou `fallback_*` quando a página saiu só com os números do Nexo; nesse caso, e se já havia uma versão com a leitura da IA, nada é gravado e a CLI avisa). O link `view` abre a página no navegador e vale 5 minutos. Dá 404 para o negócio que você não vê, 403 se o seu Editar de Negócios não alcança o dono e 409 se já há uma análise sendo gerada. `artifacts` só lê. A pessoa só vê o que a regra de Documentos deixa. O token precisa de `dashboards:write` para gerar e de `context:read` para listar e ler. Também atendem por `nexo negocios analise` e `nexo artefatos`. (`--version-number` e não `--version`, que é a versão da CLI.)
+
 ## Plano e cobrança
 
 ```sh
