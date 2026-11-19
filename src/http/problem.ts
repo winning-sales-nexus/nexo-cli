@@ -64,6 +64,7 @@ const HINT_BY_STATUS: Readonly<Record<number, string>> = {
 const HINT_BY_TYPE: Readonly<Record<string, string | null>> = {
     'agents.writing_budget': null,
     'core.too_many_attempts': 'Espere alguns minutos: o limite é por pessoa e por empresa, somado ao do app.',
+    'copilot.confirmation_stale': 'O modelo mudou depois da prévia: rode o comando de novo e confirme.',
     'agents.template_required': 'Diga o modelo da versão nova com --template <id>.'
 };
 

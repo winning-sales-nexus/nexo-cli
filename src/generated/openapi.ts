@@ -5724,6 +5724,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/message-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Modelos de mensagem da empresa
+         * @description A biblioteca dos dois canais (e-mail e WhatsApp), com o conteúdo atual e as regras que usam cada modelo. Exige o escopo automations:read. Só admin e líder de vendas, e o plano precisa incluir o módulo Automações. O modelo é sempre da empresa do token.
+         */
+        get: operations["MessageTemplatesPublicController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/message-templates/professional-structure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Colocar um modelo de e-mail antigo na estrutura nova
+         * @description Nada é gravado. Um modelo no formato antigo (blocos ou texto simples) volta como documento estruturado: o logo ou o nome da empresa no alto, uma faixa na cor da marca, o conteúdo e um fecho, com as cores e a fonte da identidade visual de hoje. Um modelo que já é estruturado volta como está (`converted: false`), então chamar duas vezes não muda nada. `brand` diz o que falta na identidade visual e onde cadastrar. Exige o escopo automations:read. Só admin e líder de vendas, e o plano precisa incluir o módulo Automações. O modelo é sempre da empresa do token.
+         */
+        post: operations["MessageTemplatesPublicController_professionalStructure"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/message-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ler um modelo de mensagem
+         * @description O conteúdo atual, a versão e as regras que usam o modelo. Exige o escopo automations:read. Só admin e líder de vendas, e o plano precisa incluir o módulo Automações. O modelo é sempre da empresa do token.
+         */
+        get: operations["MessageTemplatesPublicController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/message-templates/{templateId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia de um modelo de mensagem
+         * @description Nada é gravado. O conteúdo atual do modelo preenchido só com amostras fixas, nunca com registros reais da empresa (o escopo automations:read não lê o CRM), com o mesmo serviço e o mesmo renderizador da prévia do editor: num modelo de e-mail, `email.html` é o HTML que o editor mostra. Exige o escopo automations:read. Só admin e líder de vendas, e o plano precisa incluir o módulo Automações. O modelo é sempre da empresa do token.
+         */
+        post: operations["MessageTemplatesPublicController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/message-template-changes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia de criar, mudar ou publicar um modelo de mensagem
+         * @description Primeiro passo para criar o rascunho de um modelo (criar_modelo), mudar o rascunho (mudar_modelo) ou publicar (publicar_modelo), no e-mail e no WhatsApp. Não grava nada: devolve o cartão com a prévia preenchida com registros de exemplo, o que sai e o que entra e o confirmation.token. O e-mail é um documento estruturado: o compositor troca os nomes de cor, o logo e os cantos pelos valores da identidade visual de hoje e garante o cabeçalho da marca, e as mesmas recusas do copiloto voltam como 422 com os motivos em meta.problems (hex escrito à mão, contraste, imagem sem https, mais de dois botões). Exige o escopo automations:write, que nenhum token recebe por padrão. Só admin e líder de vendas, e o plano precisa incluir o módulo Automações.
+         */
+        post: operations["MessageTemplateChangesPublicController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/message-template-changes/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gravar a mudança do modelo da prévia
+         * @description Segundo passo, depois do sim da pessoa: grava exatamente o pedido da prévia, com o confirmation.token dela. Sem o token nada grava. Criar e mudar só gravam o rascunho; publicar deixa o modelo pronto para usar e, no WhatsApp, envia à Meta. A regra que usa o modelo e envia sozinha segue o aviso e a confirmação que já existem na tela. O token vale uma vez e só para o mesmo pedido: o modelo que mudou depois da prévia é recusado. Cada gravação fica na atividade da empresa. Exige o escopo automations:write, que nenhum token recebe por padrão. Só admin e líder de vendas, e o plano precisa incluir o módulo Automações.
+         */
+        post: operations["MessageTemplateChangesPublicController_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -84461,6 +84581,1761 @@ export interface operations {
             };
             /** @description Limite de chamadas da empresa ou do token atingido */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MessageTemplatesPublicController_list: {
+        parameters: {
+            query?: {
+                /** @description Canal: email ou whatsapp */
+                channel?: "email" | "whatsapp";
+                /** @description Estado: draft, ready ou archived */
+                state?: "draft" | "ready" | "archived";
+                /** @description Tipo de registro da regra que escolhe o modelo (deal, lead, contact, company ou meeting); com ele, cada modelo traz em compatibility se alcança os objetos que usa */
+                subjectType?: "deal" | "lead" | "contact" | "company" | "meeting";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Os modelos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Modelos da empresa */
+                        items: {
+                            /** @description Id do modelo */
+                            id: string;
+                            /**
+                             * @description Canal: email ou whatsapp
+                             * @enum {string}
+                             */
+                            channel: "email" | "whatsapp";
+                            /** @description Nome do modelo, único por canal na empresa */
+                            name: string;
+                            /**
+                             * @description Estado: draft, ready ou archived
+                             * @enum {string}
+                             */
+                            state: "draft" | "ready" | "archived";
+                            /** @description Versão atual do conteúdo */
+                            currentSeq: number;
+                            /** @description Verdadeiro quando o modelo veio do kit inicial do módulo, para o selo "Modelo inicial" */
+                            fromKit: boolean;
+                            content: {
+                                /** @description Assunto do e-mail; nulo no WhatsApp */
+                                subject: string | null;
+                                /** @description Texto da mensagem, com variáveis {{chave}}; vazio quando o e-mail usa blocos */
+                                body: string;
+                                /** @description Rodapé curto; nulo quando não há */
+                                footer: string | null;
+                                /** @description E-mail montado por blocos; nulo no texto simples e no WhatsApp */
+                                document?: {
+                                    /** @description Versão do formato do documento de blocos */
+                                    schemaVersion: number;
+                                    /** @description Documento de blocos do editor, em JSON */
+                                    json: {
+                                        [key: string]: unknown;
+                                    };
+                                    /** @description Fonte do e-mail */
+                                    style?: {
+                                        /** @description Família da fonte do e-mail */
+                                        font: string;
+                                        /** @description Endereço https do arquivo da fonte, para os clientes que aceitam */
+                                        fontUrl?: string;
+                                    };
+                                } | null;
+                                /**
+                                 * @description Categoria do modelo na Meta, só no WhatsApp; vazio vale marketing
+                                 * @enum {string|null}
+                                 */
+                                category?: "marketing" | "utility" | null;
+                                /** @description Cabeçalho do WhatsApp: texto, imagem, vídeo ou documento */
+                                header?: ({
+                                    /** @enum {string} */
+                                    format: "TEXT";
+                                    /** @description Texto do cabeçalho, com no máximo uma variável */
+                                    text: string;
+                                } | {
+                                    /**
+                                     * @description Tipo da mídia do cabeçalho
+                                     * @enum {string}
+                                     */
+                                    format: "IMAGE" | "VIDEO" | "DOCUMENT";
+                                    /** @description Chave do arquivo no armazenamento do Nexo */
+                                    mediaKey: string;
+                                    /** @description Nome mostrado do documento */
+                                    fileName?: string | null;
+                                }) | null;
+                                /** @description Botões do WhatsApp, na ordem escolhida */
+                                buttons?: ({
+                                    /** @enum {string} */
+                                    type: "quick_reply";
+                                    /** @description Texto do botão de resposta rápida */
+                                    text: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "url";
+                                    /** @description Texto do botão de link */
+                                    text: string;
+                                    /** @description Endereço https; pode terminar com uma variável */
+                                    url: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "phone";
+                                    /** @description Texto do botão de telefone */
+                                    text: string;
+                                    /** @description Telefone com DDI, só dígitos e + */
+                                    phone: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "copy_code";
+                                    /** @description Exemplo do código que o botão copia */
+                                    example: string;
+                                })[] | null;
+                                /** @description Cartões do carrossel do WhatsApp */
+                                carousel?: {
+                                    header: {
+                                        /**
+                                         * @description Tipo da mídia do cartão
+                                         * @enum {string}
+                                         */
+                                        format: "IMAGE" | "VIDEO";
+                                        /** @description Chave do arquivo no armazenamento do Nexo */
+                                        mediaKey: string;
+                                    };
+                                    /** @description Texto do cartão */
+                                    body: string;
+                                    /** @description Botões do cartão */
+                                    buttons: ({
+                                        /** @enum {string} */
+                                        type: "quick_reply";
+                                        /** @description Texto do botão de resposta rápida */
+                                        text: string;
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "url";
+                                        /** @description Texto do botão de link */
+                                        text: string;
+                                        /** @description Endereço https; pode terminar com uma variável */
+                                        url: string;
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "phone";
+                                        /** @description Texto do botão de telefone */
+                                        text: string;
+                                        /** @description Telefone com DDI, só dígitos e + */
+                                        phone: string;
+                                    } | {
+                                        /** @enum {string} */
+                                        type: "copy_code";
+                                        /** @description Exemplo do código que o botão copia */
+                                        example: string;
+                                    })[];
+                                }[] | null;
+                                /** @description Texto padrão por variável: chave sem chaves → texto usado quando o registro não tem valor; até 60 caracteres, sem variável nem quebra de linha */
+                                fallbacks?: {
+                                    [key: string]: string;
+                                } | null;
+                            };
+                            /** @description Regras que usam o modelo, as que mudam com ele */
+                            rules: {
+                                /** @description Id da regra */
+                                flowId: string;
+                                /** @description Nome da regra */
+                                name: string;
+                                /** @description Estado da regra */
+                                status: string;
+                                /** @description true quando a regra usa o modelo numa ação que envia sozinha (mensagem.enviar.*): mudar o modelo passa a valer na próxima execução, sem o sim a cada mensagem; false quando a regra só prepara o rascunho */
+                                sendsAutomatically: boolean;
+                            }[];
+                            /** @description Criado em, ISO */
+                            createdAt: string;
+                            /** @description Atualizado em, ISO */
+                            updatedAt: string;
+                            /** @description Nome de quem criou; nulo quando a pessoa saiu da empresa */
+                            createdByName: string | null;
+                            /** @description Nome de quem mudou por último; nulo quando a pessoa saiu da empresa */
+                            updatedByName: string | null;
+                            /** @description Situação do modelo na Meta; nulo no e-mail e no modelo de WhatsApp que ainda não foi enviado à Meta */
+                            whatsapp: {
+                                /** @description Nome versionado do modelo na Meta (<nome>_vN), o da versão mais recente enviada */
+                                metaName: string;
+                                /** @description Idioma do modelo na Meta, como pt_BR */
+                                language: string;
+                                /**
+                                 * @description Categoria pedida à Meta
+                                 * @enum {string}
+                                 */
+                                category: "marketing" | "utility" | "authentication";
+                                /**
+                                 * @description Categoria com que a Meta devolveu o modelo; nulo enquanto ela não decidiu. Difere de category quando a Meta trocou
+                                 * @enum {string|null}
+                                 */
+                                metaCategory: "marketing" | "utility" | "authentication" | null;
+                                /**
+                                 * @description Situação da versão mais recente na Meta, juntando as contas de WhatsApp Business: in_review, approved, rejected ou paused
+                                 * @enum {string}
+                                 */
+                                metaStatus: "in_review" | "approved" | "rejected" | "paused";
+                                /** @description Motivo da recusa ou da pausa na Meta; nulo quando não há */
+                                reason: string | null;
+                                /** @description Versão aprovada que continua saindo enquanto outra está em análise; nulo quando nenhuma está no ar */
+                                liveMetaName: string | null;
+                                /** @description Versão em análise na Meta; nulo quando nenhuma está em análise */
+                                pendingMetaName: string | null;
+                            } | null;
+                            /** @description O link de leitura, de 5 minutos, da imagem do cabeçalho do modelo de WhatsApp (o logo), para a miniatura; nulo quando o modelo não tem cabeçalho de imagem, não é de WhatsApp ou a imagem não está mais disponível */
+                            headerImageUrl: string | null;
+                            /** @description Só na lista pedida com subjectType; nulo quando a lista não foi pedida para uma regra */
+                            compatibility: {
+                                /** @description Verdadeiro quando o registro da regra alcança todos os objetos que o modelo usa */
+                                compatible: boolean;
+                                /** @description Por que o modelo não serve para esta regra, em português ("Este modelo usa campos de Reunião, e esta regra roda sobre um negócio."); nulo quando serve */
+                                reason: string | null;
+                            } | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Parâmetro fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MessageTemplatesPublicController_professionalStructure: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Conteúdo do e-mail a estruturar: o modelo antigo em blocos ou em texto simples. Um e-mail que já é estruturado volta como está */
+                    content: {
+                        /** @description Assunto do e-mail; nulo no WhatsApp */
+                        subject: string | null;
+                        /** @description Texto da mensagem, com variáveis {{chave}}; vazio quando o e-mail usa blocos */
+                        body: string;
+                        /** @description Rodapé curto; nulo quando não há */
+                        footer: string | null;
+                        /** @description E-mail montado por blocos; nulo no texto simples e no WhatsApp */
+                        document?: {
+                            /** @description Versão do formato do documento de blocos */
+                            schemaVersion: number;
+                            /** @description Documento de blocos do editor, em JSON */
+                            json: {
+                                [key: string]: unknown;
+                            };
+                            /** @description Fonte do e-mail */
+                            style?: {
+                                /** @description Família da fonte do e-mail */
+                                font: string;
+                                /** @description Endereço https do arquivo da fonte, para os clientes que aceitam */
+                                fontUrl?: string;
+                            };
+                        } | null;
+                        /**
+                         * @description Categoria do modelo na Meta, só no WhatsApp; vazio vale marketing
+                         * @enum {string|null}
+                         */
+                        category?: "marketing" | "utility" | null;
+                        /** @description Cabeçalho do WhatsApp: texto, imagem, vídeo ou documento */
+                        header?: ({
+                            /** @enum {string} */
+                            format: "TEXT";
+                            /** @description Texto do cabeçalho, com no máximo uma variável */
+                            text: string;
+                        } | {
+                            /**
+                             * @description Tipo da mídia do cabeçalho
+                             * @enum {string}
+                             */
+                            format: "IMAGE" | "VIDEO" | "DOCUMENT";
+                            /** @description Chave do arquivo no armazenamento do Nexo */
+                            mediaKey: string;
+                            /** @description Nome mostrado do documento */
+                            fileName?: string | null;
+                        }) | null;
+                        /** @description Botões do WhatsApp, na ordem escolhida */
+                        buttons?: ({
+                            /** @enum {string} */
+                            type: "quick_reply";
+                            /** @description Texto do botão de resposta rápida */
+                            text: string;
+                        } | {
+                            /** @enum {string} */
+                            type: "url";
+                            /** @description Texto do botão de link */
+                            text: string;
+                            /** @description Endereço https; pode terminar com uma variável */
+                            url: string;
+                        } | {
+                            /** @enum {string} */
+                            type: "phone";
+                            /** @description Texto do botão de telefone */
+                            text: string;
+                            /** @description Telefone com DDI, só dígitos e + */
+                            phone: string;
+                        } | {
+                            /** @enum {string} */
+                            type: "copy_code";
+                            /** @description Exemplo do código que o botão copia */
+                            example: string;
+                        })[] | null;
+                        /** @description Cartões do carrossel do WhatsApp */
+                        carousel?: {
+                            header: {
+                                /**
+                                 * @description Tipo da mídia do cartão
+                                 * @enum {string}
+                                 */
+                                format: "IMAGE" | "VIDEO";
+                                /** @description Chave do arquivo no armazenamento do Nexo */
+                                mediaKey: string;
+                            };
+                            /** @description Texto do cartão */
+                            body: string;
+                            /** @description Botões do cartão */
+                            buttons: ({
+                                /** @enum {string} */
+                                type: "quick_reply";
+                                /** @description Texto do botão de resposta rápida */
+                                text: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "url";
+                                /** @description Texto do botão de link */
+                                text: string;
+                                /** @description Endereço https; pode terminar com uma variável */
+                                url: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "phone";
+                                /** @description Texto do botão de telefone */
+                                text: string;
+                                /** @description Telefone com DDI, só dígitos e + */
+                                phone: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "copy_code";
+                                /** @description Exemplo do código que o botão copia */
+                                example: string;
+                            })[];
+                        }[] | null;
+                        /** @description Texto padrão por variável: chave sem chaves → texto usado quando o registro não tem valor; até 60 caracteres, sem variável nem quebra de linha */
+                        fallbacks?: {
+                            [key: string]: string;
+                        } | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description O conteúdo estruturado e a situação da identidade visual */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Verdadeiro quando o conteúdo era do formato antigo e voltou na estrutura nova; falso quando já era estruturado ou estava vazio */
+                        converted: boolean;
+                        /** @description O conteúdo estruturado, ou o mesmo conteúdo quando nada foi convertido. Nada é gravado: a pessoa salva */
+                        content: {
+                            /** @description Assunto do e-mail; nulo no WhatsApp */
+                            subject: string | null;
+                            /** @description Texto da mensagem, com variáveis {{chave}}; vazio quando o e-mail usa blocos */
+                            body: string;
+                            /** @description Rodapé curto; nulo quando não há */
+                            footer: string | null;
+                            /** @description E-mail montado por blocos; nulo no texto simples e no WhatsApp */
+                            document?: {
+                                /** @description Versão do formato do documento de blocos */
+                                schemaVersion: number;
+                                /** @description Documento de blocos do editor, em JSON */
+                                json: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Fonte do e-mail */
+                                style?: {
+                                    /** @description Família da fonte do e-mail */
+                                    font: string;
+                                    /** @description Endereço https do arquivo da fonte, para os clientes que aceitam */
+                                    fontUrl?: string;
+                                };
+                            } | null;
+                            /**
+                             * @description Categoria do modelo na Meta, só no WhatsApp; vazio vale marketing
+                             * @enum {string|null}
+                             */
+                            category?: "marketing" | "utility" | null;
+                            /** @description Cabeçalho do WhatsApp: texto, imagem, vídeo ou documento */
+                            header?: ({
+                                /** @enum {string} */
+                                format: "TEXT";
+                                /** @description Texto do cabeçalho, com no máximo uma variável */
+                                text: string;
+                            } | {
+                                /**
+                                 * @description Tipo da mídia do cabeçalho
+                                 * @enum {string}
+                                 */
+                                format: "IMAGE" | "VIDEO" | "DOCUMENT";
+                                /** @description Chave do arquivo no armazenamento do Nexo */
+                                mediaKey: string;
+                                /** @description Nome mostrado do documento */
+                                fileName?: string | null;
+                            }) | null;
+                            /** @description Botões do WhatsApp, na ordem escolhida */
+                            buttons?: ({
+                                /** @enum {string} */
+                                type: "quick_reply";
+                                /** @description Texto do botão de resposta rápida */
+                                text: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "url";
+                                /** @description Texto do botão de link */
+                                text: string;
+                                /** @description Endereço https; pode terminar com uma variável */
+                                url: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "phone";
+                                /** @description Texto do botão de telefone */
+                                text: string;
+                                /** @description Telefone com DDI, só dígitos e + */
+                                phone: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "copy_code";
+                                /** @description Exemplo do código que o botão copia */
+                                example: string;
+                            })[] | null;
+                            /** @description Cartões do carrossel do WhatsApp */
+                            carousel?: {
+                                header: {
+                                    /**
+                                     * @description Tipo da mídia do cartão
+                                     * @enum {string}
+                                     */
+                                    format: "IMAGE" | "VIDEO";
+                                    /** @description Chave do arquivo no armazenamento do Nexo */
+                                    mediaKey: string;
+                                };
+                                /** @description Texto do cartão */
+                                body: string;
+                                /** @description Botões do cartão */
+                                buttons: ({
+                                    /** @enum {string} */
+                                    type: "quick_reply";
+                                    /** @description Texto do botão de resposta rápida */
+                                    text: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "url";
+                                    /** @description Texto do botão de link */
+                                    text: string;
+                                    /** @description Endereço https; pode terminar com uma variável */
+                                    url: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "phone";
+                                    /** @description Texto do botão de telefone */
+                                    text: string;
+                                    /** @description Telefone com DDI, só dígitos e + */
+                                    phone: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "copy_code";
+                                    /** @description Exemplo do código que o botão copia */
+                                    example: string;
+                                })[];
+                            }[] | null;
+                            /** @description Texto padrão por variável: chave sem chaves → texto usado quando o registro não tem valor; até 60 caracteres, sem variável nem quebra de linha */
+                            fallbacks?: {
+                                [key: string]: string;
+                            } | null;
+                        };
+                        brand: {
+                            /**
+                             * @description Quanto da identidade visual a empresa tem: completa, parcial ou ausente
+                             * @enum {string}
+                             */
+                            identity: "complete" | "partial" | "absent";
+                            /** @description O que falta na identidade visual */
+                            missing: ("logo" | "cores")[];
+                            /** @description Falso quando a empresa não tem o módulo de agentes, onde a identidade visual é cadastrada */
+                            moduleEnabled: boolean;
+                            /** @description A frase pronta que diz o que falta e onde cadastrar; nula quando a identidade está completa */
+                            text: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Corpo fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MessageTemplatesPublicController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do modelo de mensagem da empresa */
+                templateId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description O modelo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Id do modelo */
+                        id: string;
+                        /**
+                         * @description Canal: email ou whatsapp
+                         * @enum {string}
+                         */
+                        channel: "email" | "whatsapp";
+                        /** @description Nome do modelo, único por canal na empresa */
+                        name: string;
+                        /**
+                         * @description Estado: draft, ready ou archived
+                         * @enum {string}
+                         */
+                        state: "draft" | "ready" | "archived";
+                        /** @description Versão atual do conteúdo */
+                        currentSeq: number;
+                        /** @description Verdadeiro quando o modelo veio do kit inicial do módulo, para o selo "Modelo inicial" */
+                        fromKit: boolean;
+                        content: {
+                            /** @description Assunto do e-mail; nulo no WhatsApp */
+                            subject: string | null;
+                            /** @description Texto da mensagem, com variáveis {{chave}}; vazio quando o e-mail usa blocos */
+                            body: string;
+                            /** @description Rodapé curto; nulo quando não há */
+                            footer: string | null;
+                            /** @description E-mail montado por blocos; nulo no texto simples e no WhatsApp */
+                            document?: {
+                                /** @description Versão do formato do documento de blocos */
+                                schemaVersion: number;
+                                /** @description Documento de blocos do editor, em JSON */
+                                json: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Fonte do e-mail */
+                                style?: {
+                                    /** @description Família da fonte do e-mail */
+                                    font: string;
+                                    /** @description Endereço https do arquivo da fonte, para os clientes que aceitam */
+                                    fontUrl?: string;
+                                };
+                            } | null;
+                            /**
+                             * @description Categoria do modelo na Meta, só no WhatsApp; vazio vale marketing
+                             * @enum {string|null}
+                             */
+                            category?: "marketing" | "utility" | null;
+                            /** @description Cabeçalho do WhatsApp: texto, imagem, vídeo ou documento */
+                            header?: ({
+                                /** @enum {string} */
+                                format: "TEXT";
+                                /** @description Texto do cabeçalho, com no máximo uma variável */
+                                text: string;
+                            } | {
+                                /**
+                                 * @description Tipo da mídia do cabeçalho
+                                 * @enum {string}
+                                 */
+                                format: "IMAGE" | "VIDEO" | "DOCUMENT";
+                                /** @description Chave do arquivo no armazenamento do Nexo */
+                                mediaKey: string;
+                                /** @description Nome mostrado do documento */
+                                fileName?: string | null;
+                            }) | null;
+                            /** @description Botões do WhatsApp, na ordem escolhida */
+                            buttons?: ({
+                                /** @enum {string} */
+                                type: "quick_reply";
+                                /** @description Texto do botão de resposta rápida */
+                                text: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "url";
+                                /** @description Texto do botão de link */
+                                text: string;
+                                /** @description Endereço https; pode terminar com uma variável */
+                                url: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "phone";
+                                /** @description Texto do botão de telefone */
+                                text: string;
+                                /** @description Telefone com DDI, só dígitos e + */
+                                phone: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "copy_code";
+                                /** @description Exemplo do código que o botão copia */
+                                example: string;
+                            })[] | null;
+                            /** @description Cartões do carrossel do WhatsApp */
+                            carousel?: {
+                                header: {
+                                    /**
+                                     * @description Tipo da mídia do cartão
+                                     * @enum {string}
+                                     */
+                                    format: "IMAGE" | "VIDEO";
+                                    /** @description Chave do arquivo no armazenamento do Nexo */
+                                    mediaKey: string;
+                                };
+                                /** @description Texto do cartão */
+                                body: string;
+                                /** @description Botões do cartão */
+                                buttons: ({
+                                    /** @enum {string} */
+                                    type: "quick_reply";
+                                    /** @description Texto do botão de resposta rápida */
+                                    text: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "url";
+                                    /** @description Texto do botão de link */
+                                    text: string;
+                                    /** @description Endereço https; pode terminar com uma variável */
+                                    url: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "phone";
+                                    /** @description Texto do botão de telefone */
+                                    text: string;
+                                    /** @description Telefone com DDI, só dígitos e + */
+                                    phone: string;
+                                } | {
+                                    /** @enum {string} */
+                                    type: "copy_code";
+                                    /** @description Exemplo do código que o botão copia */
+                                    example: string;
+                                })[];
+                            }[] | null;
+                            /** @description Texto padrão por variável: chave sem chaves → texto usado quando o registro não tem valor; até 60 caracteres, sem variável nem quebra de linha */
+                            fallbacks?: {
+                                [key: string]: string;
+                            } | null;
+                        };
+                        /** @description Regras que usam o modelo, as que mudam com ele */
+                        rules: {
+                            /** @description Id da regra */
+                            flowId: string;
+                            /** @description Nome da regra */
+                            name: string;
+                            /** @description Estado da regra */
+                            status: string;
+                            /** @description true quando a regra usa o modelo numa ação que envia sozinha (mensagem.enviar.*): mudar o modelo passa a valer na próxima execução, sem o sim a cada mensagem; false quando a regra só prepara o rascunho */
+                            sendsAutomatically: boolean;
+                        }[];
+                        /** @description Criado em, ISO */
+                        createdAt: string;
+                        /** @description Atualizado em, ISO */
+                        updatedAt: string;
+                        /** @description Nome de quem criou; nulo quando a pessoa saiu da empresa */
+                        createdByName: string | null;
+                        /** @description Nome de quem mudou por último; nulo quando a pessoa saiu da empresa */
+                        updatedByName: string | null;
+                        /** @description Situação do modelo na Meta; nulo no e-mail e no modelo de WhatsApp que ainda não foi enviado à Meta */
+                        whatsapp: {
+                            /** @description Nome versionado do modelo na Meta (<nome>_vN), o da versão mais recente enviada */
+                            metaName: string;
+                            /** @description Idioma do modelo na Meta, como pt_BR */
+                            language: string;
+                            /**
+                             * @description Categoria pedida à Meta
+                             * @enum {string}
+                             */
+                            category: "marketing" | "utility" | "authentication";
+                            /**
+                             * @description Categoria com que a Meta devolveu o modelo; nulo enquanto ela não decidiu. Difere de category quando a Meta trocou
+                             * @enum {string|null}
+                             */
+                            metaCategory: "marketing" | "utility" | "authentication" | null;
+                            /**
+                             * @description Situação da versão mais recente na Meta, juntando as contas de WhatsApp Business: in_review, approved, rejected ou paused
+                             * @enum {string}
+                             */
+                            metaStatus: "in_review" | "approved" | "rejected" | "paused";
+                            /** @description Motivo da recusa ou da pausa na Meta; nulo quando não há */
+                            reason: string | null;
+                            /** @description Versão aprovada que continua saindo enquanto outra está em análise; nulo quando nenhuma está no ar */
+                            liveMetaName: string | null;
+                            /** @description Versão em análise na Meta; nulo quando nenhuma está em análise */
+                            pendingMetaName: string | null;
+                        } | null;
+                        /** @description O link de leitura, de 5 minutos, da imagem do cabeçalho do modelo de WhatsApp (o logo), para a miniatura; nulo quando o modelo não tem cabeçalho de imagem, não é de WhatsApp ou a imagem não está mais disponível */
+                        headerImageUrl: string | null;
+                        /** @description Só na lista pedida com subjectType; nulo quando a lista não foi pedida para uma regra */
+                        compatibility: {
+                            /** @description Verdadeiro quando o registro da regra alcança todos os objetos que o modelo usa */
+                            compatible: boolean;
+                            /** @description Por que o modelo não serve para esta regra, em português ("Este modelo usa campos de Reunião, e esta regra roda sobre um negócio."); nulo quando serve */
+                            reason: string | null;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Id fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Modelo inexistente na empresa */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MessageTemplatesPublicController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do modelo de mensagem da empresa */
+                templateId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A mensagem preenchida com cada amostra fixa */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description A mensagem preenchida com cada registro de exemplo */
+                        previews: {
+                            /**
+                             * @description record: registro real da empresa, lido como a regra lê; fixed: amostra fixa, usada quando a empresa não tem registro do tipo
+                             * @enum {string}
+                             */
+                            source: "record" | "fixed";
+                            /** @description Os valores do registro de exemplo, já formatados como saem para o cliente */
+                            sample: {
+                                [key: string]: string | null;
+                            };
+                            /** @description Assunto preenchido */
+                            subject: string | null;
+                            /** @description Texto preenchido */
+                            body: string;
+                            /** @description Rodapé preenchido */
+                            footer: string | null;
+                            /** @description Chaves das variáveis sem valor neste registro de exemplo; com elas o rascunho sairia bloqueado, com aviso */
+                            missingVariables: string[];
+                            /** @description As mesmas variáveis sem valor, com o rótulo do campo no lugar da chave */
+                            missing: {
+                                /** @description Chave da variável */
+                                key: string;
+                                /** @description Rótulo do campo para mostrar à pessoa, como Negócio · Valor */
+                                label: string;
+                            }[];
+                            /** @description E-mail completo como sai; nulo no WhatsApp */
+                            email: {
+                                /** @description E-mail pronto em HTML, com assinatura e link de saída */
+                                html: string;
+                                /** @description E-mail em texto simples, gerado do documento */
+                                text: string;
+                            } | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Id fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Modelo inexistente na empresa */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MessageTemplateChangesPublicController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description criar_modelo {canal, nome, ...}: grava um rascunho novo; mudar_modelo {modeloId, ...}: grava uma versão nova do rascunho, o que não vem fica como está; publicar_modelo {modeloId}: deixa pronto para usar e, no WhatsApp, envia à Meta. E-mail em blocos: a lista completa em blocos, com os nomes de cor (marca, marca-escura, suave, texto, apoio, branco), nunca hex, URL de logo ou CSS
+                     * @enum {string}
+                     */
+                    acao: "criar_modelo" | "mudar_modelo" | "publicar_modelo";
+                    /** @description criar e criar_modelo: o nome, único na empresa (no canal, no modelo); mudar_modelo: o nome novo */
+                    nome?: string;
+                    /**
+                     * Format: uuid
+                     * @description mudar_modelo e publicar_modelo: o modelo, de automations parte modelos
+                     */
+                    modeloId?: string;
+                    /**
+                     * @description criar_modelo: o canal do modelo
+                     * @enum {string}
+                     */
+                    canal?: "email" | "whatsapp";
+                    /** @description criar_modelo e mudar_modelo, e-mail: o assunto */
+                    assunto?: string;
+                    /** @description criar_modelo e mudar_modelo: o texto do WhatsApp, ou do e-mail sem blocos */
+                    texto?: string;
+                    /** @description WhatsApp: o rodapé; texto vazio tira */
+                    rodape?: string;
+                    /** @description E-mail: a lista completa de blocos {chave, tipo, texto, ...}; tipo manter deixa o bloco. Tipos: paragrafo, titulo, lista, botao, imagem, divisor, espaco, colunas, logo {variante} (o logo da empresa; o código grava a imagem, nunca se escreve a URL) e secao {fundo, cantos, blocos} (faixa ou card, uma seção dentro de outra só como card). cor (texto e fundo do botão), fundo e cantos (reto, suave, redondo) só com nome de cor da marca: marca, marca-escura, suave, texto, apoio, branco; hex ou CSS o compositor recusa com o motivo, e a lista corrigida pode ser enviada de novo */
+                    blocos?: {
+                        [key: string]: unknown;
+                    }[];
+                    /**
+                     * @description WhatsApp: a categoria na Meta
+                     * @enum {string}
+                     */
+                    categoria?: "marketing" | "utilidade";
+                    /** @description WhatsApp: o cabeçalho de texto; texto vazio tira */
+                    cabecalho?: string;
+                    /** @description WhatsApp: a lista completa de botões {tipo, texto, url, telefone} */
+                    botoes?: {
+                        [key: string]: unknown;
+                    }[];
+                    /**
+                     * @description criar_modelo e mudar_modelo: o registro da regra que vai usar o modelo; a prévia do cartão usa registros reais desse tipo. Sem ele, negocio
+                     * @enum {string}
+                     */
+                    registro?: "negocio" | "lead" | "contato" | "empresa" | "reuniao";
+                    /** @description criar_modelo e mudar_modelo: o texto padrão por variável {"chave sem chaves": "texto"}; texto vazio tira. Com ele a variável é opcional */
+                    fallbacks?: {
+                        [key: string]: string;
+                    };
+                    /** @description criar_modelo e mudar_modelo, e-mail: true só quando a pessoa pede o e-mail sem logo, faixas nem cabeçalho da marca */
+                    semEstrutura?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description O cartão da mudança e a confirmação */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description O título do cartão, como "Criar o rascunho do modelo Boas-vindas" */
+                        title: string;
+                        /** @description O que o sim faz, linha a linha */
+                        details: string[];
+                        /** @description O cartão da mudança, com a prévia e o que entra e sai */
+                        change: {
+                            /**
+                             * @description O tipo do cartão
+                             * @enum {string}
+                             */
+                            kind: "message_template_change";
+                            /**
+                             * @description O que o sim faz: cria, muda o rascunho ou publica
+                             * @enum {string}
+                             */
+                            action: "create" | "change" | "publish";
+                            /** @description O modelo; null numa criação, até o sim */
+                            templateId: string | null;
+                            /**
+                             * @description O canal do modelo
+                             * @enum {string}
+                             */
+                            channel: "email" | "whatsapp";
+                            /** @description O nome do modelo */
+                            name: string;
+                            /** @description Os problemas que impedem a gravação; vazio quando o sim grava */
+                            problems: {
+                                /** @description A chave do bloco com o problema; null quando é do modelo todo */
+                                nodeKey: string | null;
+                                /** @description O código estável do problema */
+                                code: string;
+                                /** @description O motivo, em português, na voz da recusa do compositor ou das regras do canal */
+                                reason: string;
+                            }[];
+                            /** @description O que sai e o que entra, linha a linha */
+                            changes: string[];
+                            /** @description A prévia preenchida com registros de exemplo */
+                            previews: {
+                                /** @description O registro de exemplo com que a prévia foi preenchida */
+                                sample: string;
+                                /** @description O assunto preenchido; null no WhatsApp */
+                                subject: string | null;
+                                /** @description O texto da mensagem preenchido */
+                                body: string;
+                                /** @description O rodapé preenchido */
+                                footer: string | null;
+                                /** @description As variáveis sem valor neste registro de exemplo */
+                                missingVariables: string[];
+                                /** @description O e-mail como sai, o mesmo HTML da prévia do editor; null no WhatsApp */
+                                html: string | null;
+                            }[];
+                            /** @description Cada variável que o texto usa */
+                            variables: {
+                                /** @description A chave da variável, sem chaves */
+                                key: string;
+                                /** @description O nome da variável como a tela mostra */
+                                label: string;
+                                /** @description Se o texto usa a variável sem texto padrão */
+                                required: boolean;
+                                /** @description O texto padrão usado quando o registro não tem valor; null quando é obrigatória */
+                                fallback: string | null;
+                            }[];
+                            /** @description O aviso da marca de um modelo de e-mail, decidido pelo servidor */
+                            brand?: {
+                                /** @description completa, parcial ou ausente */
+                                identidade: string;
+                                /** @description O que falta na identidade visual: logo, cores */
+                                falta: string[];
+                                /** @description Onde cadastrar, no menu do app */
+                                onde: string | null;
+                                /** @description O caminho da tela de identidade visual */
+                                caminho: string | null;
+                            };
+                        };
+                        /** @description O que a confirmação leva */
+                        confirmation: {
+                            /** @description Vai na confirmação; vale uma vez, enquanto o modelo não mudar */
+                            token: string;
+                            /** @description Quando a confirmação expira */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Entrada fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O pedido foi recusado: o compositor, as regras do canal, o nome repetido ou o modelo já pronto (motivos em meta) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MessageTemplateChangesPublicController_apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description criar_modelo {canal, nome, ...}: grava um rascunho novo; mudar_modelo {modeloId, ...}: grava uma versão nova do rascunho, o que não vem fica como está; publicar_modelo {modeloId}: deixa pronto para usar e, no WhatsApp, envia à Meta. E-mail em blocos: a lista completa em blocos, com os nomes de cor (marca, marca-escura, suave, texto, apoio, branco), nunca hex, URL de logo ou CSS
+                     * @enum {string}
+                     */
+                    acao: "criar_modelo" | "mudar_modelo" | "publicar_modelo";
+                    /** @description criar e criar_modelo: o nome, único na empresa (no canal, no modelo); mudar_modelo: o nome novo */
+                    nome?: string;
+                    /**
+                     * Format: uuid
+                     * @description mudar_modelo e publicar_modelo: o modelo, de automations parte modelos
+                     */
+                    modeloId?: string;
+                    /**
+                     * @description criar_modelo: o canal do modelo
+                     * @enum {string}
+                     */
+                    canal?: "email" | "whatsapp";
+                    /** @description criar_modelo e mudar_modelo, e-mail: o assunto */
+                    assunto?: string;
+                    /** @description criar_modelo e mudar_modelo: o texto do WhatsApp, ou do e-mail sem blocos */
+                    texto?: string;
+                    /** @description WhatsApp: o rodapé; texto vazio tira */
+                    rodape?: string;
+                    /** @description E-mail: a lista completa de blocos {chave, tipo, texto, ...}; tipo manter deixa o bloco. Tipos: paragrafo, titulo, lista, botao, imagem, divisor, espaco, colunas, logo {variante} (o logo da empresa; o código grava a imagem, nunca se escreve a URL) e secao {fundo, cantos, blocos} (faixa ou card, uma seção dentro de outra só como card). cor (texto e fundo do botão), fundo e cantos (reto, suave, redondo) só com nome de cor da marca: marca, marca-escura, suave, texto, apoio, branco; hex ou CSS o compositor recusa com o motivo, e a lista corrigida pode ser enviada de novo */
+                    blocos?: {
+                        [key: string]: unknown;
+                    }[];
+                    /**
+                     * @description WhatsApp: a categoria na Meta
+                     * @enum {string}
+                     */
+                    categoria?: "marketing" | "utilidade";
+                    /** @description WhatsApp: o cabeçalho de texto; texto vazio tira */
+                    cabecalho?: string;
+                    /** @description WhatsApp: a lista completa de botões {tipo, texto, url, telefone} */
+                    botoes?: {
+                        [key: string]: unknown;
+                    }[];
+                    /**
+                     * @description criar_modelo e mudar_modelo: o registro da regra que vai usar o modelo; a prévia do cartão usa registros reais desse tipo. Sem ele, negocio
+                     * @enum {string}
+                     */
+                    registro?: "negocio" | "lead" | "contato" | "empresa" | "reuniao";
+                    /** @description criar_modelo e mudar_modelo: o texto padrão por variável {"chave sem chaves": "texto"}; texto vazio tira. Com ele a variável é opcional */
+                    fallbacks?: {
+                        [key: string]: string;
+                    };
+                    /** @description criar_modelo e mudar_modelo, e-mail: true só quando a pessoa pede o e-mail sem logo, faixas nem cabeçalho da marca */
+                    semEstrutura?: boolean;
+                    /** @description O confirmation.token da prévia deste mesmo pedido; vale uma vez */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O modelo gravado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Gravou */
+                        ok: boolean;
+                        /** @description O nome do modelo */
+                        modelo: string;
+                        /** @description draft (rascunho) ou ready (pronto para usar) */
+                        situacao: string;
+                        /** @description A versão gravada */
+                        versao: number;
+                        /** @description O que foi feito, em uma frase */
+                        mensagem: string;
+                        /** @description A situação da identidade visual, num modelo de e-mail */
+                        marca?: {
+                            /** @description completa, parcial ou ausente */
+                            identidade: string;
+                            /** @description O que falta na identidade visual: logo, cores */
+                            falta: string[];
+                            /** @description Onde cadastrar, no menu do app */
+                            onde: string | null;
+                            /** @description O caminho da tela de identidade visual */
+                            caminho: string | null;
+                            /** @description O aviso por extenso */
+                            aviso: string | null;
+                        };
+                        /** @description A fonte gravada no modelo de e-mail */
+                        fonte?: {
+                            familia: string;
+                            propria: boolean;
+                        };
+                        /** @description formato_antigo quando o modelo de e-mail ainda não tem a estrutura da marca */
+                        formato?: string;
+                        /** @description O aviso por extenso do formato antigo */
+                        avisoFormato?: string;
+                        /** @description WhatsApp, ao publicar: a situação do envio à Meta */
+                        meta?: string[];
+                    };
+                };
+            };
+            /** @description Entrada fora do formato, ou sem o confirmationToken (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O modelo mudou depois da prévia (copilot.confirmation_stale) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Confirmação de outro pedido ou expirada, ou o pedido foi recusado de novo (motivos em meta) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O pedido foi aceito e a gravação falhou (copilot.template_change_failed), ou o modelo do WhatsApp foi enviado à Meta e não ficou pronto no Nexo (copilot.template_sent_to_meta_not_published). A confirmação já foi usada: peça uma prévia nova */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

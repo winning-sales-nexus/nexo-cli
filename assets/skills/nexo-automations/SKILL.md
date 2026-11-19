@@ -37,6 +37,18 @@ Além dos gatilhos de cada registro, três gatilhos escutam **qualquer entidade*
 6. Investigar: `nexo automations runs <pasta> --state failed` e `nexo automations run <id>`, que mostra cada passo, o erro e o que produziu. A regra não disparou? `nexo automations events <entidade> <registro>` mostra o que o Nexo guardou do registro nos últimos 14 dias: a operação, os **nomes** dos campos que mudaram (nunca os valores), a origem e se o despacho já ocorreu (`pendente`, `despachado` ou `desistiu`). Sem evento, a gravação não chegou; evento sem execução, confira o filtro `fields`, a janela de 24 h (`runs` mostra `janela até`) e a origem.
 7. `nexo automations get`, `versions` e `restore <seq> --yes` (cria uma versão nova com o documento antigo; só depois do sim da pessoa).
 
+## E-mail com a marca da empresa
+
+Modelo de e-mail pelo `automation_change` e `automation_apply` (`criar_modelo`, `mudar_modelo`) com `blocos`. Antes de criar ou mudar, leia `automations`, parte `modelos`: ela traz `marca` (identidade completa, parcial ou ausente, o que falta e onde cadastrar), os nomes de cor com o papel de cada um e a diretriz do guia confirmado.
+
+- **Estilo.** E-mail corporativo automático, sóbrio e escaneável: abre com a marca (bloco `logo`), um objetivo e uma ação principal (um botão), faixas e cards (`secao`) só onde ajudam. A composição é sua e varia com o conteúdo; não copie um gabarito.
+- **Vocabulário.** `logo {variante: claro | escuro | auto}`, `secao {fundo, cantos, blocos}` (uma seção dentro de outra só como card), `cor` no texto e no fundo do botão, `cantos` (`reto`, `suave`, `redondo`). Cor só por nome: `marca`, `marca-escura`, `suave`, `texto`, `apoio`, `branco`.
+- **Nunca** escreva hex, CSS nem a URL do logo: o código troca os nomes pelas cores reais, garante o logo, o cabeçalho e o contraste e grava tudo no modelo.
+- **Recusa.** Quando o compositor recusar (hex, contraste, seção dentro de seção dentro de seção, botões demais, tamanho), a resposta traz o motivo: corrija a lista de blocos e chame de novo, sem mostrar nada à pessoa antes.
+- **Sem a marca.** `semEstrutura: true` só quando a pessoa pede o e-mail sem logo, faixas nem cabeçalho.
+- **Identidade parcial ou ausente.** Diga à pessoa, em uma frase, o que falta e onde cadastrar (`marca.onde`), sem inventar.
+- **Modelo antigo.** O resultado diz `formato_antigo`: mande a lista de blocos recomposta.
+
 ## Cuidados
 
 - Ações com `risk` `notifies`, `prepares_message` ou `uses_ai` mandam algo a pessoas ou gastam IA: diga isso à pessoa antes de publicar.
