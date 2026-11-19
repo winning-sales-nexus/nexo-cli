@@ -87,6 +87,13 @@ const BRAND_MISSING: Record<string, unknown> = {
     onde: 'Agentes › Configurar › Identidade visual',
     caminho: '/agents/configure/visual-identity'
 };
+const STRUCTURE_BRAND_MISSING: Record<string, unknown> = {
+    identity: 'partial',
+    missing: ['logo'],
+    moduleEnabled: true,
+    text: 'Falta o logo. Cadastre em Agentes › Configurar › Identidade visual.'
+};
+const STRUCTURE_BRAND_COMPLETE: Record<string, unknown> = { identity: 'complete', missing: [], moduleEnabled: true, text: null };
 const CARD: Record<string, unknown> = {
     title: 'Criar o rascunho do modelo Boas-vindas',
     details: ['Canal: e-mail'],
@@ -206,7 +213,7 @@ describe('nexo templates preview and structure', () => {
         const h: Harness = harness({
             [`GET /v1/message-templates/${ID}`]: { body: LEGACY },
             'POST /v1/message-templates/professional-structure': {
-                body: { converted: true, content: STRUCTURED['content'], brand: BRAND_MISSING }
+                body: { converted: true, content: STRUCTURED['content'], brand: STRUCTURE_BRAND_MISSING }
             }
         });
 
@@ -219,7 +226,7 @@ describe('nexo templates preview and structure', () => {
         expect(h.calls[1]?.body).toEqual({ content: LEGACY['content'] });
         expect(h.out()).toContain('colocado na estrutura nova');
         expect(h.out()).toContain('Marca: identidade parcial, falta logo');
-        expect(h.out()).toContain('Cadastre em Agentes › Configurar › Identidade visual (/agents/configure/visual-identity).');
+        expect(h.out()).toContain('Falta o logo. Cadastre em Agentes › Configurar › Identidade visual.');
         expect(JSON.parse(readFileSync(target, 'utf8'))).toEqual(STRUCTURED['content']);
     });
 
@@ -234,6 +241,21 @@ describe('nexo templates preview and structure', () => {
 
         expect(h.calls[0]?.body).toEqual({ content: STRUCTURED['content'] });
         expect(h.out()).toContain('nada mudou');
+    });
+
+    it('prints a complete brand without a notice and still exits 0', async () => {
+        const file: string = join(directory(), 'conteudo.json');
+        writeFileSync(file, JSON.stringify(STRUCTURED['content']));
+        const h: Harness = harness({
+            'POST /v1/message-templates/professional-structure': {
+                body: { converted: false, content: STRUCTURED['content'], brand: STRUCTURE_BRAND_COMPLETE }
+            }
+        });
+
+        expect(await run(h.context, ['templates', 'structure', '--input', file])).toBe(0);
+
+        expect(h.out()).toContain('Marca: identidade completa');
+        expect(h.out()).not.toContain('falta');
     });
 
     it('needs exactly one source to structure', async () => {

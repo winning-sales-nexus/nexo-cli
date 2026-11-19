@@ -71,6 +71,13 @@ interface Brand {
     readonly aviso?: string | null;
 }
 
+interface StructureBrand {
+    readonly identity: 'complete' | 'partial' | 'absent';
+    readonly missing: readonly string[];
+    readonly moduleEnabled: boolean;
+    readonly text: string | null;
+}
+
 interface EmailPreview {
     readonly subject: string | null;
     readonly body: string;
@@ -84,7 +91,7 @@ interface TemplatePreview {
 interface Structured {
     readonly converted: boolean;
     readonly content: TemplateContent;
-    readonly brand?: Brand | null;
+    readonly brand?: StructureBrand | null;
 }
 
 interface ChangeProblem {
@@ -181,6 +188,25 @@ function printBrand(context: CliContext, brand: Brand | null | undefined): void 
     }
     if (brand.onde !== null) {
         printLine(context, `Cadastre em ${brand.onde}${brand.caminho === null ? '' : ` (${brand.caminho})`}.`);
+    }
+}
+
+const IDENTITY_LABELS: Readonly<Record<StructureBrand['identity'], string>> = {
+    complete: 'completa',
+    partial: 'parcial',
+    absent: 'ausente'
+};
+
+function printStructureBrand(context: CliContext, brand: StructureBrand | null | undefined): void {
+    if (brand === null || brand === undefined) {
+        return;
+    }
+    printLine(
+        context,
+        `Marca: identidade ${IDENTITY_LABELS[brand.identity]}${brand.missing.length === 0 ? '' : `, falta ${brand.missing.join(' e ')}`}`
+    );
+    if (brand.text !== null) {
+        printLine(context, brand.text);
     }
 }
 
@@ -281,7 +307,7 @@ export async function templatesStructure(context: CliContext, options: TemplateO
         context,
         structured.converted ? 'O modelo foi colocado na estrutura nova da marca.' : 'O modelo já estava estruturado, ou vazio: nada mudou.'
     );
-    printBrand(context, structured.brand);
+    printStructureBrand(context, structured.brand);
     printNotice(context, 'Nada foi gravado. Para gravar, use `nexo templates change`.');
 }
 
