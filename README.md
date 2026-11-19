@@ -146,6 +146,27 @@ nexo artifacts get <artefato> --version-number 2     # uma versão, com o link p
 
 `deals analysis` cria a análise na primeira vez e uma versão nova a cada pedido; o `aiState` diz como a IA terminou (`written`, ou `fallback_*` quando a página saiu só com os números do Nexo; nesse caso, e se já havia uma versão com a leitura da IA, nada é gravado e a CLI avisa). O link `view` abre a página no navegador e vale 5 minutos. Dá 404 para o negócio que você não vê, 403 se o seu Editar de Negócios não alcança o dono e 409 se já há uma análise sendo gerada. `artifacts` só lê. A pessoa só vê o que a regra de Documentos deixa. O token precisa de `dashboards:write` para gerar e de `context:read` para listar e ler. Também atendem por `nexo negocios analise` e `nexo artefatos`. (`--version-number` e não `--version`, que é a versão da CLI.)
 
+## Modelos de mensagem e o e-mail com a marca
+
+```sh
+nexo templates list --channel email           # os modelos, com o canal, o estado e a versão
+nexo templates get <modelo>                   # o formato (com a marca, antigo ou texto simples) e as regras que usam; --json traz os blocos
+nexo templates preview <modelo> --html email.html   # a prévia do editor, com amostras fixas
+nexo templates structure --template <modelo> --out estruturado.json   # um modelo antigo na estrutura nova; nada é gravado
+nexo templates create --channel email --name "Boas-vindas" --subject "Olá, {{contato_nome}}" --blocks blocos.json
+nexo templates change <modelo> --blocks blocos.json
+nexo templates publish <modelo>
+```
+
+Os modelos são os do app, nos dois canais. O e-mail é um documento de blocos com a identidade visual da empresa (logo, cores, fonte), e a IA que escreve os blocos usa só **nomes** de cor (`marca`, `marca-escura`, `suave`, `texto`, `apoio`, `branco`), nunca hex, CSS nem a URL do logo: o Nexo troca pelos valores reais, garante o cabeçalho, o logo e o contraste e grava tudo no modelo. Os blocos vão em `--blocks` (a lista completa, de um arquivo ou `-` para o stdin) ou no `--input` (o pedido inteiro em JSON); as opções valem mais que o arquivo. `--no-structure` só quando a pessoa pede o e-mail sem logo, faixas nem cabeçalho.
+
+- **Escrever é em dois passos.** `create`, `change` e `publish` pedem a prévia ao Nexo, mostram o cartão (o que sai e o que entra, o assunto e o aviso do que falta na marca, com o lugar de cadastrar) e só gravam depois do sim, mandando o token de confirmação da prévia. Fora de um terminal, só gravam com `--yes`, depois do sim da pessoa. `--html arquivo` guarda o HTML da prévia. Criar e mudar só gravam o rascunho; `publish` deixa o modelo pronto e, no WhatsApp, envia à Meta.
+- **Recusa do compositor.** Hex escrito à mão, contraste baixo, imagem sem https, seção dentro de seção dentro de seção ou mais de dois botões voltam com o motivo (422); nada é gravado. Corrija os blocos e rode de novo. Se o modelo mudar depois da prévia, a API responde 409: rode o comando de novo.
+- **Modelo antigo.** `get` diz o formato. `structure` mostra o modelo antigo na estrutura nova, sem gravar; para gravar, mande o conteúdo com `change`.
+- **Identidade visual.** O resultado diz se a identidade é completa, parcial ou ausente, o que falta (`logo`, `cores`) e onde cadastrar.
+
+O token precisa de `automations:read` para ler, prever e estruturar, e de `automations:write` para criar, mudar e publicar (admin ou líder de vendas, com o módulo Automações no plano). Também atende por `nexo modelos`. A skill `nexo-automations` traz as diretrizes de estilo do e-mail.
+
 ## Plano e cobrança
 
 ```sh
