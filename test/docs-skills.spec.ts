@@ -109,14 +109,14 @@ describe('skills install', () => {
         expect(await run(h.context, ['skills', 'install', '--dir', h.directory])).toBe(2);
     });
 
-    it('writes Cursor rules with the description and keeps the rest of AGENTS.md', async () => {
+    it('writes Cursor skills in the SKILL.md format and keeps the rest of AGENTS.md', async () => {
         const h: Harness = harness();
         writeFileSync(join(h.directory, 'AGENTS.md'), '# Projeto\n\nRegras da casa.\n');
 
         await run(h.context, ['skills', 'install', '--cursor', '--agents', '--dir', h.directory]);
         await run(h.context, ['skills', 'install', '--agents', '--dir', h.directory]);
 
-        expect(readFileSync(join(h.directory, '.cursor/rules/nexo-api.mdc'), 'utf8')).toMatch(/^---\ndescription: Como usar a API/);
+        expect(readFileSync(join(h.directory, '.cursor/skills/nexo-api/SKILL.md'), 'utf8')).toContain('name: nexo-api');
         const agents: string = readFileSync(join(h.directory, 'AGENTS.md'), 'utf8');
         expect(agents.startsWith('# Projeto\n\nRegras da casa.\n')).toBe(true);
         expect(agents.split(BLOCK_START)).toHaveLength(2);

@@ -4,6 +4,7 @@ import { profileName } from '../config/session.js';
 import { printJson, printLine, printNotice } from '../context.js';
 import type { CliContext, GlobalOptions } from '../context.js';
 import { CliError } from '../errors.js';
+import { homeOf, removeUserSkills } from '../skills/user-skills.js';
 
 type Revocation = 'revoked' | 'failed' | 'not_applicable';
 
@@ -41,10 +42,20 @@ export async function logout(context: CliContext, options: GlobalOptions): Promi
     const stored: StoredProfile | null = context.store.profile(profile);
     const revocation: Revocation = await revoke(context, stored);
     const removed: boolean = context.store.remove(profile);
+    const clientSkills: readonly string[] = removeUserSkills(homeOf(context.env), profile);
     if (options.json === true) {
-        printJson(context, { profile, removed, revocation, envTokenStillSet: (context.env.NEXO_TOKEN ?? '') !== '' });
+        printJson(context, {
+            profile,
+            removed,
+            revocation,
+            clientSkillsRemoved: clientSkills.length,
+            envTokenStillSet: (context.env.NEXO_TOKEN ?? '') !== ''
+        });
         return;
     }
     printLine(context, removed ? `Perfil ${profile} removido desta máquina.` : `Nenhum perfil ${profile} salvo nesta máquina.`);
+    if (clientSkills.length > 0) {
+        printLine(context, `${String(clientSkills.length)} skills da empresa saíram da sua pasta (as de produto do projeto ficam).`);
+    }
     notices(context, stored, revocation);
 }
