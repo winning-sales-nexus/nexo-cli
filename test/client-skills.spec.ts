@@ -6,11 +6,14 @@ import { describe, expect, it } from 'vitest';
 import { CredentialsStore } from '../src/config/credentials-store.js';
 import type { CliContext } from '../src/context.js';
 import { run } from '../src/run.js';
+import { sha256Of } from '../src/skills/bundled-freshness.js';
+import { bundledSkills } from '../src/skills/skill-files.js';
 
 interface Served {
     readonly name: string;
     readonly level: string;
     readonly status?: string;
+    readonly version?: string;
     readonly body: string;
 }
 
@@ -26,6 +29,8 @@ interface Harness {
     readonly home: string;
     readonly calls: string[];
     served: Served[];
+    /** What `/docs/skills/index.json` answers: null is a 404. */
+    productIndex: { readonly name: string; readonly sha256?: string }[] | null;
 }
 
 function respond(body: unknown): Response {
@@ -51,6 +56,7 @@ function harness(options: { readonly login?: boolean; readonly offline?: boolean
         home,
         calls: [],
         served: [COMPANY_SKILL, TEAM_SKILL],
+        productIndex: null,
         out: () => out,
         err: () => err,
         context: undefined as unknown as CliContext
@@ -60,6 +66,11 @@ function harness(options: { readonly login?: boolean; readonly offline?: boolean
             return Promise.reject(new Error('sem rede'));
         }
         const path: string = new URL(input).pathname;
+        if (path === '/docs/skills/index.json') {
+            return Promise.resolve(
+                state.productIndex === null ? new Response('{}', { status: 404 }) : respond({ skills: state.productIndex })
+            );
+        }
         state.calls.push(path);
         if (path === '/v1/skills') {
             return Promise.resolve(
@@ -69,7 +80,7 @@ function harness(options: { readonly login?: boolean; readonly offline?: boolean
                         level: skill.level,
                         status: skill.status ?? 'active',
                         description: `Quando usar: ${skill.name}`,
-                        version: 'v1'
+                        version: skill.version ?? 'v1'
                     })),
                     reachVersion: 'r'
                 })
@@ -84,7 +95,7 @@ function harness(options: { readonly login?: boolean; readonly offline?: boolean
                       level: found.level,
                       status: found.status ?? 'active',
                       description: 'd',
-                      version: 'v1',
+                      version: found.version ?? 'v1',
                       body: found.body
                   })
         );
@@ -194,6 +205,105 @@ describe('nexo skills install with a login', () => {
 
         expect(foldersIn(join(h.home, '.claude/skills'))).toEqual(['nexo-default-em-teste-time-novo']);
         expect(readFileSync(join(h.home, '.claude/skills/nexo-default-em-teste-time-novo/SKILL.md'), 'utf8')).toContain('em teste');
+    });
+});
+
+describe('nexo skills install, incremental', () => {
+    async function installed(h: Harness): Promise<void> {
+        mkdirSync(join(h.project, '.claude'), { recursive: true });
+        expect(await run(h.context, ['skills', 'install', '--dir', h.project])).toBe(0);
+    }
+
+    it('does not download or rewrite what did not change, only refreshes the date', async () => {
+        const h: Harness = harness();
+        await installed(h);
+        const file: string = join(h.home, '.claude/skills/nexo-default-regra-da-empresa/SKILL.md');
+        const before: string = readFileSync(file, 'utf8');
+        h.calls.length = 0;
+
+        await installed(h);
+
+        expect(h.calls).toEqual(['/v1/skills']);
+        const after: string = readFileSync(file, 'utf8');
+        expect(after.replace(/nexo-installed-at: .*/, '')).toBe(before.replace(/nexo-installed-at: .*/, ''));
+        expect(h.out()).toContain('0 novas ou atualizadas, 2 já em dia, 0 removidas');
+    });
+
+    it('downloads and rewrites only the skill whose version changed, and removes what left the reach', async () => {
+        const h: Harness = harness();
+        await installed(h);
+        h.served = [{ ...COMPANY_SKILL, version: 'v2', body: 'Procedimento novo.' }];
+        h.calls.length = 0;
+
+        await installed(h);
+
+        expect(h.calls).toEqual(['/v1/skills', '/v1/skills/regra-da-empresa']);
+        expect(foldersIn(join(h.home, '.claude/skills'))).toEqual(['nexo-default-regra-da-empresa']);
+        const file: string = readFileSync(join(h.home, '.claude/skills/nexo-default-regra-da-empresa/SKILL.md'), 'utf8');
+        expect(file).toContain('Procedimento novo.');
+        expect(file).toContain('nexo-version: "v2"');
+        expect(h.out()).toContain('1 novas ou atualizadas, 0 já em dia, 1 removidas');
+    });
+
+    it('leaves the folders as they were when a download fails in the middle', async () => {
+        const h: Harness = harness();
+        await installed(h);
+        h.served = [
+            { ...COMPANY_SKILL, version: 'v2' },
+            { ...TEAM_SKILL, version: 'v2' }
+        ];
+        const broken: CliContext = {
+            ...h.context,
+            fetchFn: (input: string, init: RequestInit) =>
+                input.endsWith('/v1/skills/time-meu') ? Promise.reject(new Error('caiu')) : h.context.fetchFn(input, init)
+        };
+
+        await run(broken, ['skills', 'install', '--dir', h.project]);
+
+        const file: string = readFileSync(join(h.home, '.claude/skills/nexo-default-time-meu/SKILL.md'), 'utf8');
+        expect(file).toContain('nexo-version: "v1"');
+        expect(h.err()).toContain('ficaram como estavam');
+    });
+});
+
+describe('nexo skills with the product skills bundled out of date', () => {
+    const current = (): { name: string; sha256: string }[] =>
+        bundledSkills().map((skill) => ({ name: skill.name, sha256: sha256Of(skill.content) }));
+
+    it('warns when the hash in index.json is not the one of the bundled skill', async () => {
+        const h: Harness = harness({ login: false });
+        h.productIndex = [...current().slice(1), { name: 'nexo-api', sha256: 'velho' }];
+        mkdirSync(join(h.project, '.claude'));
+
+        await run(h.context, ['skills', 'install', '--dir', h.project]);
+
+        expect(h.err()).toContain('estão velhas (nexo-api)');
+        expect(h.err()).toContain('nexo skills install');
+    });
+
+    it('warns about a skill the Nexo serves and the CLI does not carry', async () => {
+        const h: Harness = harness({ login: false });
+        h.productIndex = [...current(), { name: 'nexo-nova', sha256: 'abc' }];
+
+        await run(h.context, ['skills', 'list', '--dir', h.project]);
+
+        expect(h.err()).toContain('estão velhas (nexo-nova)');
+    });
+
+    it('says nothing when the hashes match, with no network, or when the index has no hash', async () => {
+        const same: Harness = harness({ login: false });
+        same.productIndex = current();
+        await run(same.context, ['skills', 'list', '--dir', same.project]);
+        expect(same.err()).not.toContain('velhas');
+
+        const noHash: Harness = harness({ login: false });
+        noHash.productIndex = [{ name: 'nexo-api' }];
+        await run(noHash.context, ['skills', 'list', '--dir', noHash.project]);
+        expect(noHash.err()).not.toContain('velhas');
+
+        const offline: Harness = harness({ login: false, offline: true });
+        expect(await run(offline.context, ['skills', 'list', '--dir', offline.project])).toBe(0);
+        expect(offline.err()).not.toContain('velhas');
     });
 });
 
