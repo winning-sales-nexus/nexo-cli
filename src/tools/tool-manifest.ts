@@ -140,8 +140,11 @@ export const COMMAND_TOOLS: Readonly<Record<string, ToolDeclaration>> = {
     'nexo docs list': { none: 'Documentação embutida na CLI' },
     'nexo docs search': { none: 'Documentação embutida na CLI' },
     'nexo docs show': { none: 'Documentação embutida na CLI' },
-    'nexo skills install': { none: 'Instala as skills da CLI (cli-skills), não é ferramenta de produto' },
-    'nexo skills list': { none: 'Instala as skills da CLI (cli-skills), não é ferramenta de produto' },
+    'nexo skills install': {
+        none: 'Entrega as skills (produto no projeto, empresa/área/time na pasta do usuário); não é ferramenta de produto'
+    },
+    'nexo skills list': { none: 'Lista as skills com o nível de cada uma; lê GET /v1/skills, não é ferramenta de produto' },
+    'nexo skills show': { none: 'Mostra uma skill (GET /v1/skills/{nome}); não é ferramenta de produto' },
     'nexo mcp setup': { none: 'Configura o MCP no cliente de IA' },
     'nexo connect systems': { key: 'connect_systems' },
     'nexo connect list': { key: 'connectors_list' },

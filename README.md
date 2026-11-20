@@ -62,7 +62,9 @@ nexo mcp setup --claude
 ```
 
 - `nexo docs` lê a documentação do [site](https://docs.nexo.winningsales.com.br), embutida na versão da CLI, sem internet. `--online` lê a versão do ar.
-- `nexo skills install` grava as regras do Nexo (API, Connect, painéis) no projeto, para o Claude Code (`.claude/skills`), o Cursor (`.cursor/rules`) e o Codex e outros (`AGENTS.md` com `.nexo/skills`). Sem opção, detecta o que o projeto usa; `--all` grava nos três. Rode de novo depois de atualizar a CLI.
+- `nexo skills install` grava as skills de produto (API, Connect, painéis) no projeto, para o Claude Code (`.claude/skills`), o Cursor (`.cursor/skills`) e o Codex e outros (`AGENTS.md` com `.nexo/skills`). Sem opção, detecta o que o projeto usa; `--all` grava nos três. Rode de novo depois de atualizar a CLI.
+- Com login, `nexo skills install` também traz as skills da sua empresa, área e time (as mesmas que o copiloto mostra para você), **para a sua pasta** (`~/.claude/skills`, `~/.cursor/skills` ou `~/.codex/skills`) e nunca para o projeto, onde seriam commitadas. Cada skill leva o perfil no nome da pasta (`nexo-<perfil>-<skill>`); quem usa o Cursor junto com o Claude Code recebe cada skill uma vez só, na pasta do Claude Code. A skill em teste vem marcada `em-teste` e só para quem a escreveu. O próximo `install` apaga o que saiu do seu alcance, e `nexo logout` apaga as do perfil. Sem login, ou sem rede, ficam as de produto, e a CLI diz por quê.
+- `nexo skills list` mostra o nível de cada skill (produto, empresa, área, time) e `nexo skills show <nome>` mostra uma inteira, lendo a API na hora e sem gravar nada.
 - `nexo mcp setup --claude|--cursor|--codex` configura o MCP do Nexo e o do Nexo Connect no projeto, com o token lido de `NEXO_TOKEN`, fora do arquivo.
 
 ## Nexo Connect como código

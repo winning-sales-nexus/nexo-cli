@@ -13,7 +13,7 @@ import { addTemplateCommands } from './program-templates.js';
 
 import { addDashboardCommands } from './program-dashboards.js';
 import type { McpOptions } from './commands/mcp.js';
-import { skillsInstall, skillsList } from './commands/skills.js';
+import { skillsInstall, skillsList, skillsShow } from './commands/skills.js';
 import type { SkillsOptions } from './commands/skills.js';
 import type { ApiOptions } from './commands/api.js';
 import { login } from './commands/login.js';
@@ -101,21 +101,30 @@ function addSkillsCommands(program: Command, context: CliContext): void {
     const skills: Command = program.command('skills').description('As regras do Nexo para a sua IA (Claude Code, Cursor, Codex)');
     skills
         .command('install')
-        .description('Grava as skills do Nexo no projeto; sem opção, detecta o que o projeto usa')
+        .description(
+            'Grava as skills de produto no projeto; com login, as da sua empresa, área e time vão para a sua pasta (~/.claude, ~/.cursor ou ~/.codex), nunca para o projeto'
+        )
         .option('--claude', 'em .claude/skills')
-        .option('--cursor', 'em .cursor/rules')
+        .option('--cursor', 'em .cursor/skills')
         .option('--agents', 'em AGENTS.md e .nexo/skills (Codex e outros)')
         .option('--all', 'nos três')
         .option('-d, --dir <pasta>', 'pasta do projeto', '.')
-        .action((_options: SkillsOptions, command: Command) => {
-            skillsInstall(context, command.optsWithGlobals());
+        .action(async (_options: SkillsOptions, command: Command) => {
+            await skillsInstall(context, command.optsWithGlobals());
         });
     skills
         .command('list')
-        .description('Lista as skills e onde estão instaladas no projeto')
+        .description('Lista as skills, com o nível de cada uma (produto, empresa, área, time) e onde estão instaladas')
         .option('-d, --dir <pasta>', 'pasta do projeto', '.')
-        .action((_options: SkillsOptions, command: Command) => {
-            skillsList(context, command.optsWithGlobals());
+        .action(async (_options: SkillsOptions, command: Command) => {
+            await skillsList(context, command.optsWithGlobals());
+        });
+    skills
+        .command('show')
+        .description('Mostra uma skill inteira, sem gravar nada')
+        .argument('<nome>', 'nome da skill (de skills list)')
+        .action(async (name: string, _options: SkillsOptions, command: Command) => {
+            await skillsShow(context, name, command.optsWithGlobals());
         });
 }
 

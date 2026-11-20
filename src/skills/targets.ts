@@ -12,10 +12,6 @@ function writeFile(path: string, content: string): string {
     return path;
 }
 
-function cursorRule(skill: Skill): string {
-    return `---\ndescription: ${skill.description}\nglobs:\nalwaysApply: false\n---\n\n${skill.body}\n`;
-}
-
 function agentsBlock(skills: readonly Skill[]): string {
     const lines: readonly string[] = skills.map((skill: Skill) => `- \`.nexo/skills/${skill.name}.md\`: ${skill.description}`);
     return [
@@ -55,7 +51,7 @@ export function installSkills(directory: string, target: SkillTarget, skills: re
         return skills.map((skill: Skill) => writeFile(join(directory, '.claude', 'skills', skill.name, 'SKILL.md'), skill.content));
     }
     if (target === 'cursor') {
-        return skills.map((skill: Skill) => writeFile(join(directory, '.cursor', 'rules', `${skill.name}.mdc`), cursorRule(skill)));
+        return skills.map((skill: Skill) => writeFile(join(directory, '.cursor', 'skills', skill.name, 'SKILL.md'), skill.content));
     }
     return installAgents(directory, skills);
 }
