@@ -39,8 +39,8 @@ describe('COMMAND_TOOLS', () => {
         expect(Object.keys(COMMAND_TOOLS).filter((path) => !paths.has(path))).toEqual([]);
     });
 
-    it('covers the 62 commands and only uses known keys or a non-empty reason', () => {
-        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(62);
+    it('covers the 68 commands and only uses known keys or a non-empty reason', () => {
+        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(68);
         const known: ReadonlySet<string> = new Set(TOOL_KEYS);
         for (const [path, declaration] of Object.entries(COMMAND_TOOLS)) {
             if ('none' in declaration) {

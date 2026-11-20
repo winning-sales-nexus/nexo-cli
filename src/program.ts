@@ -10,6 +10,7 @@ import { addAutomationCommands } from './program-automations.js';
 import { addDocumentCommands } from './program-documents.js';
 import { addArtifactCommands, addDealCommands } from './program-artifacts.js';
 import { addTemplateCommands } from './program-templates.js';
+import { addBrainCommands } from './program-brain.js';
 
 import { addDashboardCommands } from './program-dashboards.js';
 import type { McpOptions } from './commands/mcp.js';
@@ -192,5 +193,6 @@ export function buildProgram(context: CliContext): Command {
     addDealCommands(program, context);
     addArtifactCommands(program, context);
     addTemplateCommands(program, context);
+    addBrainCommands(program, context);
     return program;
 }

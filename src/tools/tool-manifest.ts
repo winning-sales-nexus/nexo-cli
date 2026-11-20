@@ -140,6 +140,12 @@ export const COMMAND_TOOLS: Readonly<Record<string, ToolDeclaration>> = {
     'nexo docs list': { none: 'Documentação embutida na CLI' },
     'nexo docs search': { none: 'Documentação embutida na CLI' },
     'nexo docs show': { none: 'Documentação embutida na CLI' },
+    'nexo brain areas': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo brain moments': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo brain list': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo brain create': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo brain edit': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo brain remove': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
     'nexo skills install': {
         none: 'Entrega as skills (produto no projeto, empresa/área/time na pasta do usuário); não é ferramenta de produto'
     },
