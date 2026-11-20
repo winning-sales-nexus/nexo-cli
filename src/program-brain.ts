@@ -1,5 +1,16 @@
 import type { Command } from 'commander';
-import { brainAreas, brainCreate, brainEdit, brainList, brainMoments, brainRemove } from './commands/brain.js';
+import {
+    brainAreas,
+    brainBlindTest,
+    brainChoose,
+    brainCreate,
+    brainEdit,
+    brainFromTemplate,
+    brainList,
+    brainMoments,
+    brainRemove,
+    brainTemplates
+} from './commands/brain.js';
 import type { BrainOptions } from './commands/brain.js';
 import type { CliContext } from './context.js';
 
@@ -8,7 +19,7 @@ function collect(value: string, previous: readonly string[]): readonly string[] 
 }
 
 const LEVEL: string = '<nível>';
-const LEVEL_HELP: string = 'company (empresa), area ou team (time)';
+const LEVEL_HELP: string = 'company (empresa), area, team (time) ou person (pessoal)';
 
 function addReadCommands(brain: Command, context: CliContext): void {
     brain
@@ -25,7 +36,7 @@ function addReadCommands(brain: Command, context: CliContext): void {
         });
     brain
         .command('list')
-        .description('Lista as skills de área ou de time')
+        .description('Lista as skills de um nível (a pessoal é só sua)')
         .argument(LEVEL, LEVEL_HELP)
         .option('--scope <id>', 'só de uma área ou de um time')
         .action(async (level: string, _options: BrainOptions, command: Command) => {
@@ -50,6 +61,38 @@ function addWriteCommands(brain: Command, context: CliContext): void {
         });
 }
 
+function addPersonCommands(brain: Command, context: CliContext): void {
+    brain
+        .command('templates')
+        .description('Os modelos da Winning para skill pessoal, com os campos de cada um')
+        .action(async (_options: BrainOptions, command: Command) => {
+            await brainTemplates(context, command.optsWithGlobals());
+        });
+    brain
+        .command('from-template')
+        .description('Cria uma skill pessoal de um modelo: você preenche os campos, nunca o texto')
+        .argument('<modelo>', 'id do modelo (nexo brain templates)')
+        .option('--answer <campo=texto>', 'a resposta de um campo do modelo (repita; todos são obrigatórios)', collect, [])
+        .action(async (templateId: string, _options: BrainOptions, command: Command) => {
+            await brainFromTemplate(context, templateId, command.optsWithGlobals());
+        });
+    brain
+        .command('blind-test')
+        .description('Compara às cegas, para uma skill pessoal: dois textos A e B, sem dizer qual tem a skill')
+        .argument('<skill>', 'id da skill pessoal')
+        .action(async (skillId: string, _options: BrainOptions, command: Command) => {
+            await brainBlindTest(context, skillId, command.optsWithGlobals());
+        });
+    brain
+        .command('choose')
+        .description('Escolhe A ou B na comparação às cegas; só então diz qual tinha a skill')
+        .argument('<comparação>', 'id da comparação (nexo brain blind-test)')
+        .argument('<escolha>', 'a ou b')
+        .action(async (choiceId: string, chosen: string, _options: BrainOptions, command: Command) => {
+            await brainChoose(context, choiceId, chosen, command.optsWithGlobals());
+        });
+}
+
 function addChangeCommands(brain: Command, context: CliContext): void {
     brain
         .command('edit')
@@ -68,7 +111,7 @@ function addChangeCommands(brain: Command, context: CliContext): void {
         });
     brain
         .command('remove')
-        .description('Apaga uma skill de área ou de time')
+        .description('Apaga uma skill de qualquer nível (a pessoal dá para restaurar em 30 dias, pelo app)')
         .argument(LEVEL, LEVEL_HELP)
         .argument('<skill>', 'id da skill')
         .option('-y, --yes', 'apaga sem perguntar (só depois do sim da pessoa)')
@@ -84,5 +127,6 @@ export function addBrainCommands(program: Command, context: CliContext): void {
         .description('O Cérebro: as skills da empresa, das áreas e dos times, criadas pela ideia e editadas por item (nunca pelo texto)');
     addReadCommands(brain, context);
     addWriteCommands(brain, context);
+    addPersonCommands(brain, context);
     addChangeCommands(brain, context);
 }

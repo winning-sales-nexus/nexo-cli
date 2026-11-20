@@ -4,7 +4,7 @@ import { usageError } from '../errors.js';
 import type { ApiResponse, HttpMethod } from '../http/nexo-client.js';
 import { confirmed } from '../input/confirm.js';
 
-export type BrainLevel = 'company' | 'area' | 'team';
+export type BrainLevel = 'company' | 'area' | 'team' | 'person';
 
 export interface BrainOptions extends GlobalOptions {
     readonly scope?: string;
@@ -21,6 +21,7 @@ export interface BrainOptions extends GlobalOptions {
     readonly removeNever?: readonly string[];
     readonly updateAlways?: readonly string[];
     readonly updateNever?: readonly string[];
+    readonly answer?: readonly string[];
     readonly confirmShrink?: boolean;
     readonly yes?: boolean;
 }
@@ -46,6 +47,32 @@ interface Skill {
 interface SkillList {
     readonly skills: readonly Skill[];
     readonly momentsOffered?: readonly string[];
+    readonly maxSkills?: number;
+    readonly maxIndexChars?: number;
+    readonly indexChars?: number;
+}
+
+interface Template {
+    readonly id: string;
+    readonly title: string;
+    readonly moment: string;
+    readonly available: boolean;
+    readonly fields: readonly { readonly key: string; readonly label: string }[];
+}
+
+interface BlindPair {
+    readonly id: string;
+    readonly scenario: string;
+    readonly a: string;
+    readonly b: string;
+}
+
+interface BlindResult {
+    readonly chosen: string;
+    readonly withSkillAt: string;
+    readonly withSkillChosen: boolean;
+    readonly activated: boolean;
+    readonly next: string;
 }
 
 interface AreaList {
@@ -55,7 +82,8 @@ interface AreaList {
 const PATHS: Readonly<Record<BrainLevel, string>> = {
     company: '/v1/brain/company-skills',
     area: '/v1/brain/area-skills',
-    team: '/v1/brain/team-skills'
+    team: '/v1/brain/team-skills',
+    person: '/v1/brain/person-skills'
 };
 
 const UPDATE_SEPARATOR: string = '=>';
@@ -72,10 +100,10 @@ async function call(
 }
 
 function levelOf(raw: string): BrainLevel {
-    if (raw === 'company' || raw === 'area' || raw === 'team') {
+    if (raw === 'company' || raw === 'area' || raw === 'team' || raw === 'person') {
         return raw;
     }
-    throw usageError(`Nível "${raw}" não existe: use company (empresa), area ou team (time).`);
+    throw usageError(`Nível "${raw}" não existe: use company (empresa), area, team (time) ou person (pessoal).`);
 }
 
 function skillPath(level: BrainLevel, skillId: string): string {
@@ -152,8 +180,10 @@ export async function brainAreas(context: CliContext, options: BrainOptions): Pr
 }
 
 export async function brainMoments(context: CliContext, options: BrainOptions): Promise<void> {
-    const list: SkillList = (await call(context, options, 'GET', PATHS.area)) as SkillList;
-    const moments: readonly string[] = list.momentsOffered ?? [];
+    const list: { readonly moments?: readonly string[] } = (await call(context, options, 'GET', '/v1/brain/skills/moments')) as {
+        readonly moments?: readonly string[];
+    };
+    const moments: readonly string[] = list.moments ?? [];
     if (options.json === true) {
         printJson(context, { moments });
         return;
@@ -163,10 +193,8 @@ export async function brainMoments(context: CliContext, options: BrainOptions): 
 
 export async function brainList(context: CliContext, rawLevel: string, options: BrainOptions): Promise<void> {
     const level: BrainLevel = levelOf(rawLevel);
-    if (level === 'company') {
-        throw usageError('A API pública não lista as skills da empresa: use `nexo skills list` (com login) ou o app.');
-    }
-    const query: Readonly<Record<string, string>> = options.scope === undefined ? {} : { scopeId: options.scope };
+    const query: Readonly<Record<string, string>> =
+        options.scope === undefined || level === 'company' || level === 'person' ? {} : { scopeId: options.scope };
     const list: SkillList = (await call(context, options, 'GET', PATHS[level], { query })) as SkillList;
     if (options.json === true) {
         printJson(context, list);
@@ -177,6 +205,9 @@ export async function brainList(context: CliContext, rawLevel: string, options: 
     }
     for (const skill of list.skills) {
         printSkill(context, skill);
+    }
+    if (level === 'person' && list.maxSkills !== undefined) {
+        printLine(context, `${String(list.skills.length)} de ${String(list.maxSkills)} skills pessoais.`);
     }
 }
 
@@ -218,12 +249,96 @@ export async function brainEdit(context: CliContext, rawLevel: string, skillId: 
 
 export async function brainRemove(context: CliContext, rawLevel: string, skillId: string, options: BrainOptions): Promise<void> {
     const level: BrainLevel = levelOf(rawLevel);
-    if (level === 'company') {
-        throw usageError('A API pública não apaga skill da empresa: use o app.');
-    }
     if (!(await confirmed(context, options.yes, `Apagar a skill ${skillId}?`))) {
         return;
     }
     await call(context, options, 'DELETE', skillPath(level, skillId));
-    printLine(context, 'Skill apagada.');
+    printLine(context, level === 'person' ? 'Skill apagada. Dá para restaurar em 30 dias, pelo app.' : 'Skill apagada.');
+}
+
+export async function brainTemplates(context: CliContext, options: BrainOptions): Promise<void> {
+    const list: { readonly templates: readonly Template[] } = (await call(context, options, 'GET', `${PATHS.person}/templates`)) as {
+        readonly templates: readonly Template[];
+    };
+    if (options.json === true) {
+        printJson(context, list);
+        return;
+    }
+    for (const template of list.templates) {
+        const keys: string = template.fields.map((field) => `${field.key} (${field.label})`).join(', ');
+        printLine(context, `${template.id}  ${template.title}  [${template.moment}${template.available ? '' : ', indisponível'}]`);
+        printLine(context, `  campos: ${keys}`);
+    }
+}
+
+function answersOf(values: readonly string[] | undefined): Record<string, string> {
+    const answers: Record<string, string> = {};
+    for (const value of listOf(values)) {
+        const at: number = value.indexOf('=');
+        const key: string = at < 0 ? '' : value.slice(0, at).trim();
+        const text: string = at < 0 ? '' : value.slice(at + 1).trim();
+        if (key === '' || text === '') {
+            throw usageError(`Use --answer "campo=texto" (recebi "${value}").`);
+        }
+        answers[key] = text;
+    }
+    if (Object.keys(answers).length === 0) {
+        throw usageError('Falta --answer "campo=texto" (um por campo do modelo; veja `nexo brain templates`).');
+    }
+    return answers;
+}
+
+export async function brainFromTemplate(context: CliContext, templateId: string, options: BrainOptions): Promise<void> {
+    const body: unknown = { templateId, answers: answersOf(options.answer) };
+    const skill: Skill = (await call(context, options, 'POST', `${PATHS.person}/from-template`, { body })) as Skill;
+    if (options.json === true) {
+        printJson(context, skill);
+        return;
+    }
+    printLine(
+        context,
+        'Skill pessoal criada a partir do modelo. Ela nasce em teste e só liga depois do teste "não piora" e da escolha às cegas.'
+    );
+    printSkill(context, skill);
+}
+
+export async function brainBlindTest(context: CliContext, skillId: string, options: BrainOptions): Promise<void> {
+    const pair: BlindPair = (await call(context, options, 'POST', `${skillPath('person', skillId)}/blind-test`)) as BlindPair;
+    if (options.json === true) {
+        printJson(context, pair);
+        return;
+    }
+    printLine(context, `Comparação ${pair.id}`);
+    printLine(context, `Cenário: ${pair.scenario}`);
+    printLine(context, `\n--- Texto A ---\n${pair.a}\n\n--- Texto B ---\n${pair.b}\n`);
+    printLine(context, `Escolha o melhor, sem saber qual tem a skill: nexo brain choose ${pair.id} <a|b>`);
+}
+
+export async function brainChoose(context: CliContext, choiceId: string, chosen: string, options: BrainOptions): Promise<void> {
+    const pick: string = chosen.toLowerCase();
+    if (pick !== 'a' && pick !== 'b') {
+        throw usageError(`Escolha "a" ou "b" (recebi "${chosen}").`);
+    }
+    const result: BlindResult = (await call(
+        context,
+        options,
+        'POST',
+        `${PATHS.person}/blind-tests/${encodeURIComponent(choiceId)}/choose`,
+        {
+            body: { chosen: pick }
+        }
+    )) as BlindResult;
+    if (options.json === true) {
+        printJson(context, result);
+        return;
+    }
+    printLine(context, `A skill estava no texto ${result.withSkillAt.toUpperCase()}; você escolheu ${result.chosen.toUpperCase()}.`);
+    printLine(
+        context,
+        result.next === 'ask_what_was_missing'
+            ? 'A skill continua desligada: faltou algo nela. Diga o que faltava e edite a skill por item.'
+            : result.activated
+              ? 'Ganho confirmado: a skill está ligada.'
+              : 'Ganho confirmado; a skill liga quando o teste "não piora" aprovar esta versão.'
+    );
 }

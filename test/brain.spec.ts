@@ -181,7 +181,8 @@ describe('nexo brain', () => {
 
     it('lists the moments offered, the areas and the skills of a level', async () => {
         const h: Harness = harness({
-            'GET /v1/brain/area-skills': { body: { skills: [SKILL], momentsOffered: ['follow_up_draft'] } },
+            'GET /v1/brain/area-skills': { body: { skills: [SKILL] } },
+            'GET /v1/brain/skills/moments': { body: { moments: ['follow_up_draft'] } },
             'GET /v1/brain/areas': { body: { areas: [{ id: AREA, name: 'Vendas' }] } }
         });
 
@@ -201,5 +202,99 @@ describe('nexo brain', () => {
         expect(h.calls).toEqual([]);
         expect(await run(h.context, ['brain', 'remove', 'team', ID, '--yes'])).toBe(0);
         expect(h.calls[0]?.method).toBe('DELETE');
+    });
+    it('lists and deletes company skills now that the API has the routes', async () => {
+        const h: Harness = harness({
+            'GET /v1/brain/company-skills': { body: { skills: [SKILL] } },
+            [`DELETE /v1/brain/company-skills/${ID}`]: { status: 204, body: null }
+        });
+
+        expect(await run(h.context, ['brain', 'list', 'company'])).toBe(0);
+        expect(h.out()).toContain('area-vendas-follow-up');
+        expect(await run(h.context, ['brain', 'remove', 'company', ID, '--yes'])).toBe(0);
+        expect(h.calls[1]?.method).toBe('DELETE');
+    });
+
+    it('creates, edits, lists and deletes a personal skill', async () => {
+        const h: Harness = harness({
+            'POST /v1/brain/person-skills': { status: 201, body: SKILL },
+            [`PUT /v1/brain/person-skills/${ID}`]: { body: { ...SKILL, version: 2 } },
+            'GET /v1/brain/person-skills': { body: { skills: [SKILL], maxSkills: 10, maxIndexChars: 100, indexChars: 5 } },
+            [`DELETE /v1/brain/person-skills/${ID}`]: { status: 204, body: null }
+        });
+
+        expect(
+            await run(h.context, [
+                'brain',
+                'create',
+                'person',
+                '--objective',
+                'x',
+                '--moment',
+                'follow_up_draft',
+                '--always',
+                'a',
+                '--example',
+                'y'
+            ])
+        ).toBe(0);
+        expect(h.calls[0]?.body).toEqual({ objective: 'x', moment: 'follow_up_draft', always: ['a'], never: [], example: 'y' });
+        expect(await run(h.context, ['brain', 'edit', 'person', ID, '--add-never', 'z'])).toBe(0);
+        expect(await run(h.context, ['brain', 'list', 'person'])).toBe(0);
+        expect(h.out()).toContain('1 de 10 skills pessoais');
+        expect(await run(h.context, ['brain', 'remove', 'person', ID, '--yes'])).toBe(0);
+        expect(h.out()).toContain('30 dias');
+    });
+
+    it('lists the templates and creates a personal skill from one with the answers', async () => {
+        const h: Harness = harness({
+            'GET /v1/brain/person-skills/templates': {
+                body: {
+                    templates: [
+                        {
+                            id: 'tpl-1',
+                            title: 'Follow-up',
+                            moment: 'follow_up_draft',
+                            available: true,
+                            fields: [{ key: 'tom', label: 'Tom' }],
+                            cases: []
+                        }
+                    ]
+                }
+            },
+            'POST /v1/brain/person-skills/from-template': { status: 201, body: SKILL }
+        });
+
+        expect(await run(h.context, ['brain', 'templates'])).toBe(0);
+        expect(h.out()).toContain('tpl-1');
+        expect(await run(h.context, ['brain', 'from-template', 'tpl-1'])).not.toBe(0);
+        expect(await run(h.context, ['brain', 'from-template', 'tpl-1', '--answer', 'tom=direto'])).toBe(0);
+        expect(h.calls[1]?.body).toEqual({ templateId: 'tpl-1', answers: { tom: 'direto' } });
+    });
+
+    it('opens the blind test and sends the choice', async () => {
+        const choice: string = '0192b2f0-0000-7000-8000-0000000000c1';
+        const h: Harness = harness({
+            [`POST /v1/brain/person-skills/${ID}/blind-test`]: {
+                body: { id: choice, skillId: ID, scenario: 'Cenário', a: 'texto A', b: 'texto B' }
+            },
+            [`POST /v1/brain/person-skills/blind-tests/${choice}/choose`]: {
+                body: { id: choice, chosen: 'a', withSkillAt: 'b', withSkillChosen: false, activated: false, next: 'ask_what_was_missing' }
+            }
+        });
+
+        expect(await run(h.context, ['brain', 'blind-test', ID])).toBe(0);
+        expect(h.out()).toContain('texto A');
+        expect(await run(h.context, ['brain', 'choose', choice, 'x'])).not.toBe(0);
+        expect(await run(h.context, ['brain', 'choose', choice, 'A'])).toBe(0);
+        expect(h.calls[1]?.body).toEqual({ chosen: 'a' });
+        expect(h.out()).toContain('desligada');
+    });
+
+    it('reads the moments from the skills/moments route', async () => {
+        const h: Harness = harness({ 'GET /v1/brain/skills/moments': { body: { moments: ['follow_up_draft'] } } });
+
+        expect(await run(h.context, ['brain', 'moments'])).toBe(0);
+        expect(h.out()).toContain('follow_up_draft');
     });
 });

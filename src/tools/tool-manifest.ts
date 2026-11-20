@@ -146,6 +146,10 @@ export const COMMAND_TOOLS: Readonly<Record<string, ToolDeclaration>> = {
     'nexo brain create': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
     'nexo brain edit': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
     'nexo brain remove': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo brain templates': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo brain from-template': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo brain blind-test': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo brain choose': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
     'nexo skills install': {
         none: 'Entrega as skills (produto no projeto, empresa/área/time na pasta do usuário); não é ferramenta de produto'
     },
