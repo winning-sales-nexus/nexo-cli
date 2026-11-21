@@ -65,6 +65,11 @@ const HINT_BY_TYPE: Readonly<Record<string, string | null>> = {
     'agents.writing_budget': null,
     'core.too_many_attempts': 'Espere alguns minutos: o limite é por pessoa e por empresa, somado ao do app.',
     'copilot.confirmation_stale': 'O modelo mudou depois da prévia: rode o comando de novo e confirme.',
+    'brain.skill_shrink_needs_confirmation':
+        'A edição tira item ou encolhe a skill em mais de 30%: mostre à pessoa e, depois do sim, rode de novo com --confirm-shrink.',
+    'brain.layer_skill_refused':
+        'O texto foi recusado (ordem ao assistente, número da empresa ou skill repetida): reescreva o item como um jeito de fazer.',
+    'brain.skill_without_usage_condition': 'Falta dizer quando usar: ajuste o objetivo e o momento.',
     'agents.template_required': 'Diga o modelo da versão nova com --template <id>.'
 };
 
