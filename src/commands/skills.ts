@@ -9,13 +9,14 @@ import type { NexoClient } from '../http/nexo-client.js';
 import { NexoApiError } from '../http/problem.js';
 import { LEVEL_LABELS, clientLevelOnly, remoteIndex, remoteSkill } from '../skills/remote-skills.js';
 import type { RemoteSkill, RemoteSkillEntry } from '../skills/remote-skills.js';
+import { staleBundledSkills, staleNotice } from '../skills/bundled-freshness.js';
 import { bundledSkills } from '../skills/skill-files.js';
 import type { Skill } from '../skills/skill-files.js';
 import { SKILL_TARGETS } from '../skills/skill-targets.types.js';
 import type { SkillTarget } from '../skills/skill-targets.types.js';
 import { detectedTargets, installSkills } from '../skills/targets.js';
-import { homeOf, installedUserTools, userToolsFor, writeUserSkills } from '../skills/user-skills.js';
-import type { UserTool } from '../skills/user-skills.js';
+import { homeOf, installedUserTools, syncUserSkills, userToolsFor } from '../skills/user-skills.js';
+import type { UserSkillsSync, UserTool } from '../skills/user-skills.js';
 
 export interface SkillsOptions extends GlobalOptions {
     readonly dir?: string;
@@ -68,6 +69,14 @@ async function remoteState(context: CliContext, options: GlobalOptions): Promise
     }
 }
 
+/** With network, compares the skills that came with the CLI against the ones the Nexo serves, and warns when they are old. */
+async function staleSkillsNotice(context: CliContext): Promise<void> {
+    const stale: readonly string[] | null = await staleBundledSkills(context.fetchFn);
+    if (stale !== null && stale.length > 0) {
+        printNotice(context, staleNotice(stale));
+    }
+}
+
 function remoteNotice(context: CliContext, state: RemoteState): void {
     if (state.kind === 'logged-out') {
         printNotice(
@@ -80,19 +89,10 @@ function remoteNotice(context: CliContext, state: RemoteState): void {
     }
 }
 
-async function clientSkillsOf(
-    context: CliContext,
-    session: Session,
-    entries: readonly RemoteSkillEntry[]
-): Promise<readonly RemoteSkill[]> {
-    const client: NexoClient = clientOf(context, session);
-    return Promise.all(clientLevelOnly(entries).map((entry: RemoteSkillEntry) => remoteSkill(client, entry.name)));
-}
-
 interface ClientInstall {
     readonly tools: readonly UserTool[];
     readonly skills: readonly string[];
-    readonly files: readonly string[];
+    readonly sync: UserSkillsSync;
 }
 
 async function installClientSkills(
@@ -104,11 +104,14 @@ async function installClientSkills(
         return null;
     }
     try {
-        const skills: readonly RemoteSkill[] = await clientSkillsOf(context, state.session, state.entries);
+        const client: NexoClient = clientOf(context, state.session);
+        const entries: readonly RemoteSkillEntry[] = clientLevelOnly(state.entries);
         const home: string = homeOf(context.env);
         const tools: readonly UserTool[] = userToolsFor(home, targets);
-        const files: readonly string[] = writeUserSkills(home, tools, state.session.profile, skills);
-        return { tools, skills: skills.map((skill: RemoteSkill) => skill.name), files };
+        const sync: UserSkillsSync = await syncUserSkills(home, tools, state.session.profile, entries, (entry: RemoteSkillEntry) =>
+            remoteSkill(client, entry.name)
+        );
+        return { tools, skills: entries.map((entry: RemoteSkillEntry) => entry.name), sync };
     } catch (error: unknown) {
         printNotice(
             context,
@@ -116,6 +119,16 @@ async function installClientSkills(
         );
         return null;
     }
+}
+
+function clientSummary(client: ClientInstall): string {
+    const { written, upToDate, removed } = client.sync;
+    const parts: readonly string[] = [
+        `${String(client.skills.length - upToDate.length)} novas ou atualizadas`,
+        `${String(upToDate.length)} já em dia`,
+        `${String(removed.length)} removidas`
+    ];
+    return `${String(client.skills.length)} skills da sua empresa, área e time na sua pasta (${client.tools.join(', ')}), fora do projeto: ${parts.join(', ')}.${written.length === 0 && removed.length === 0 ? ' Nada mudou desde o último install.' : ''}`;
 }
 
 export async function skillsInstall(context: CliContext, options: SkillsOptions): Promise<void> {
@@ -133,7 +146,9 @@ export async function skillsInstall(context: CliContext, options: SkillsOptions)
             files: written,
             clientSkills: client === null ? [] : client.skills,
             clientTools: client === null ? [] : client.tools,
-            clientFiles: client === null ? [] : client.files
+            clientFiles: client === null ? [] : client.sync.written,
+            clientUpToDate: client === null ? [] : client.sync.upToDate,
+            clientRemoved: client === null ? [] : client.sync.removed
         });
         return;
     }
@@ -142,12 +157,10 @@ export async function skillsInstall(context: CliContext, options: SkillsOptions)
     }
     printLine(context, `${String(skills.length)} skills do Nexo em ${targets.join(', ')}. Rode de novo depois de atualizar a CLI.`);
     if (client !== null) {
-        printLine(
-            context,
-            `${String(client.skills.length)} skills da sua empresa, área e time na sua pasta (${client.tools.join(', ')}), fora do projeto. Rode de novo quando mudarem.`
-        );
+        printLine(context, clientSummary(client));
     }
     remoteNotice(context, state);
+    await staleSkillsNotice(context);
 }
 
 function installedIn(directory: string, skill: Skill): readonly SkillTarget[] {
@@ -201,6 +214,7 @@ export async function skillsList(context: CliContext, options: SkillsOptions): P
         printLine(context, `${row.name} [${row.level}] (${where})\n    ${row.description}`);
     }
     remoteNotice(context, state);
+    await staleSkillsNotice(context);
 }
 
 function bundledNamed(name: string): Skill | undefined {

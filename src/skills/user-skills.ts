@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import type { RemoteSkill } from './remote-skills.js';
+import type { RemoteSkill, RemoteSkillEntry } from './remote-skills.js';
 import { LEVEL_LABELS } from './remote-skills.js';
 import type { SkillTarget } from './skill-targets.types.js';
 
@@ -105,25 +105,98 @@ export function removeUserSkills(home: string, profile: string): readonly string
     return removed;
 }
 
-/** Writes the skills of the client for the profile: first it clears what the profile had, so a skill that left the reach is gone. */
-export function writeUserSkills(
+export interface UserSkillsSync {
+    /** Files written: skills that were new or whose version changed. */
+    readonly written: readonly string[];
+    /** Skills already in every folder at the version the API lists: not downloaded and not rewritten, only their date refreshed. */
+    readonly upToDate: readonly string[];
+    /** Folders of this profile that are no longer in the reach (skill excluded, team left, no longer active). */
+    readonly removed: readonly string[];
+}
+
+export type LoadSkill = (entry: RemoteSkillEntry) => Promise<RemoteSkill>;
+
+const VERSION_LINE: RegExp = /^ {2}nexo-version: (.*)$/m;
+const LEVEL_LINE: RegExp = /^ {2}nexo-level: (.*)$/m;
+const INSTALLED_AT_LINE: RegExp = /^( {2}nexo-installed-at: ).*$/m;
+
+function isCurrent(folder: string, profile: string, entry: RemoteSkillEntry): boolean {
+    const marker: string = join(folder, MARKER);
+    const file: string = join(folder, 'SKILL.md');
+    if (!existsSync(marker) || !existsSync(file) || readFileSync(marker, 'utf8').trim() !== profile) {
+        return false;
+    }
+    const content: string = readFileSync(file, 'utf8');
+    const version: string | undefined = VERSION_LINE.exec(content)?.[1];
+    const level: string | undefined = LEVEL_LINE.exec(content)?.[1];
+    return version === JSON.stringify(entry.version) && level === entry.level;
+}
+
+function folderOf(home: string, tool: UserTool, profile: string, entry: RemoteSkillEntry): string {
+    return join(userSkillsDirectory(home, tool), folderNameOf(profile, entry));
+}
+
+function writeSkill(folder: string, profile: string, fresh: RemoteSkill, now: Date): string {
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(join(folder, MARKER), `${profile}\n`);
+    const file: string = join(folder, 'SKILL.md');
+    writeFileSync(file, userSkillFileOf(profile, fresh, now));
+    return file;
+}
+
+function refreshDate(folder: string, now: Date): void {
+    const file: string = join(folder, 'SKILL.md');
+    writeFileSync(file, readFileSync(file, 'utf8').replace(INSTALLED_AT_LINE, `$1${now.toISOString()}`));
+}
+
+interface Slot {
+    readonly folder: string;
+    readonly entry: RemoteSkillEntry;
+    readonly current: boolean;
+}
+
+/**
+ * Brings the folders of the user to what the API lists for the profile, comparing versions instead of wiping and rewriting: a skill whose
+ * version did not change is neither downloaded nor rewritten (only its date is refreshed, which is what the "older than a day" rule reads),
+ * a new or changed one is written, and what left the reach is removed. Every body is downloaded before anything is touched, so a network
+ * failure in the middle leaves the folders as they were.
+ */
+export async function syncUserSkills(
     home: string,
     tools: readonly UserTool[],
     profile: string,
-    skills: readonly RemoteSkill[],
+    entries: readonly RemoteSkillEntry[],
+    load: LoadSkill,
     now: Date = new Date()
-): readonly string[] {
-    removeUserSkills(home, profile);
-    return tools.flatMap((tool: UserTool) =>
-        skills.map((skill: RemoteSkill) => {
-            const folder: string = join(userSkillsDirectory(home, tool), folderNameOf(profile, skill));
-            mkdirSync(folder, { recursive: true });
-            writeFileSync(join(folder, MARKER), `${profile}\n`);
-            const file: string = join(folder, 'SKILL.md');
-            writeFileSync(file, userSkillFileOf(profile, skill, now));
-            return file;
+): Promise<UserSkillsSync> {
+    const slots: readonly Slot[] = tools.flatMap((tool: UserTool) =>
+        entries.map((entry: RemoteSkillEntry) => {
+            const folder: string = folderOf(home, tool, profile, entry);
+            return { folder, entry, current: isCurrent(folder, profile, entry) };
         })
     );
+    const stale: ReadonlySet<RemoteSkillEntry> = new Set(slots.filter((slot: Slot) => !slot.current).map((slot: Slot) => slot.entry));
+    const loaded: readonly RemoteSkill[] = await Promise.all([...stale].map(load));
+    const bodies: ReadonlyMap<string, RemoteSkill> = new Map(loaded.map((skill: RemoteSkill) => [skill.name, skill]));
+    const wanted: ReadonlySet<string> = new Set(slots.map((slot: Slot) => slot.folder));
+    const removed: readonly string[] = USER_TOOLS.flatMap((tool: UserTool) => foldersOf(userSkillsDirectory(home, tool), profile)).filter(
+        (folder: string) => !wanted.has(folder)
+    );
+    for (const folder of removed) {
+        rmSync(folder, { recursive: true, force: true });
+    }
+    const written: readonly string[] = slots.flatMap((slot: Slot) => {
+        const fresh: RemoteSkill | undefined = bodies.get(slot.entry.name);
+        if (slot.current || fresh === undefined) {
+            refreshDate(slot.folder, now);
+            return [];
+        }
+        return [writeSkill(slot.folder, profile, fresh, now)];
+    });
+    const upToDate: readonly string[] = entries
+        .filter((entry: RemoteSkillEntry) => !stale.has(entry))
+        .map((entry: RemoteSkillEntry) => entry.name);
+    return { written, upToDate, removed };
 }
 
 export function installedUserTools(home: string, profile: string, skill: Pick<RemoteSkill, 'name' | 'status'>): readonly UserTool[] {
