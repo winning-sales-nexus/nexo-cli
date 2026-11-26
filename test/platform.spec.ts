@@ -168,6 +168,11 @@ describe('nexo use', () => {
         expect(none.err()).toContain('Nenhuma empresa casa com "zzz"');
         expect(none.calls.some((call: Call) => call.method === 'PUT')).toBe(false);
 
+        const unknownId: Harness = harness(platformApi);
+        expect(await run(unknownId.context, ['use', '0192b2f0-0000-7000-8000-00000000ffff'])).toBe(2);
+        expect(unknownId.err()).toContain('Nenhuma empresa com o id');
+        expect(unknownId.calls.some((call: Call) => call.method === 'PUT')).toBe(false);
+
         const empty: Harness = harness(platformApi);
         expect(await run(empty.context, ['use'])).toBe(2);
         expect(empty.calls).toHaveLength(0);
@@ -205,6 +210,16 @@ describe('nexo whoami on a platform connection', () => {
         const h: Harness = harness(() => json(200, meOf(null)));
 
         await run(h.context, ['whoami']);
+
+        expect(h.out()).toContain('Empresa: Nexo');
+    });
+
+    it('keeps working against an API without the platform field', async () => {
+        const me: Record<string, unknown> = { ...(meOf(null) as Record<string, unknown>) };
+        delete me['platform'];
+        const h: Harness = harness(() => json(200, me));
+
+        expect(await run(h.context, ['whoami'])).toBe(0);
 
         expect(h.out()).toContain('Empresa: Nexo');
     });

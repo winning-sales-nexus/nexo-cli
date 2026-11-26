@@ -61,6 +61,9 @@ async function resolveCompany(context: CliContext, target: string, options: Glob
     if (byId !== undefined) {
         return byId;
     }
+    if (UUID.test(trimmed)) {
+        throw usageError(`Nenhuma empresa com o id ${trimmed}.`, 'Veja as opções com `nexo companies`.');
+    }
     const exact: readonly Company[] = list.filter((company: Company) => company.name.toLowerCase() === trimmed.toLowerCase());
     const matches: readonly Company[] = exact.length === 1 ? exact : list;
     if (matches.length === 1 && matches[0] !== undefined) {
