@@ -136,6 +136,10 @@ export const COMMAND_TOOLS: Readonly<Record<string, ToolDeclaration>> = {
     'nexo login': { none: 'Autenticação da própria CLI' },
     'nexo logout': { none: 'Autenticação da própria CLI' },
     'nexo whoami': { none: 'Identidade da sessão da CLI' },
+    'nexo companies': {
+        none: 'Escolha de empresa da conexão de plataforma (GET /v1/platform/companies); a ferramenta do MCP não tem comando próprio'
+    },
+    'nexo use': { none: 'Escolha de empresa da conexão de plataforma (PUT/DELETE /v1/platform/active-company)' },
     'nexo api': { none: 'Chama qualquer rota /v1; não é uma ferramenta' },
     'nexo docs list': { none: 'Documentação embutida na CLI' },
     'nexo docs search': { none: 'Documentação embutida na CLI' },

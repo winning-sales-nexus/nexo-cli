@@ -30,7 +30,8 @@ function isObject(value: unknown): value is JsonObject {
 function serversOf(apiUrl: string): readonly McpServer[] {
     return [
         { name: 'nexo', url: `${apiUrl}/mcp` },
-        { name: 'nexo-connect', url: `${apiUrl}/connect/mcp` }
+        { name: 'nexo-connect', url: `${apiUrl}/connect/mcp` },
+        { name: 'nexo-admin', url: `${apiUrl}/admin/mcp` }
     ];
 }
 

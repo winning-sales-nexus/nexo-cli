@@ -21,6 +21,8 @@ import { login } from './commands/login.js';
 import type { LoginOptions } from './commands/login.js';
 import { logout } from './commands/logout.js';
 import { whoami } from './commands/whoami.js';
+import { companies, useCompany } from './commands/platform.js';
+import type { UseOptions } from './commands/platform.js';
 import type { CliContext, GlobalOptions } from './context.js';
 import { CLI_VERSION } from './version.js';
 
@@ -56,6 +58,26 @@ function addAuthCommands(program: Command, context: CliContext): void {
         .description('Mostra quem está conectado, em qual empresa e com quais escopos')
         .action(async (_options: GlobalOptions, command: Command) => {
             await whoami(context, globalsOf(command));
+        });
+}
+
+function addPlatformCommands(program: Command, context: CliContext): void {
+    program
+        .command('companies')
+        .description('Lista as empresas em que o usuário da plataforma pode agir (só com login de plataforma)')
+        .argument('[busca]', 'parte do nome da empresa')
+        .action(async (search: string | undefined, _options: GlobalOptions, command: Command) => {
+            await companies(context, search, globalsOf(command));
+        });
+    program
+        .command('use')
+        .description(
+            'Escolhe a empresa em que a conexão de plataforma age, por id ou por um nome que case com uma só; fica valendo até a troca'
+        )
+        .argument('[empresa]', 'id da empresa, ou parte do nome')
+        .option('--none', 'sai da empresa escolhida')
+        .action(async (target: string | undefined, _options: UseOptions, command: Command) => {
+            await useCompany(context, target, command.optsWithGlobals());
         });
 }
 
@@ -134,7 +156,7 @@ function addMcpCommand(program: Command, context: CliContext): void {
         .command('mcp')
         .description('Configura os servidores MCP do Nexo no cliente de IA do projeto')
         .command('setup')
-        .description('Escreve a configuração do MCP do Nexo e do Nexo Connect, com o token lido de NEXO_TOKEN')
+        .description('Escreve a configuração do MCP do Nexo, do Nexo Admin e do Nexo Connect, com o token lido de NEXO_TOKEN')
         .option('--claude', 'em .mcp.json (Claude Code)')
         .option('--cursor', 'em .cursor/mcp.json')
         .option('--codex', 'em .codex/config.toml')
@@ -180,6 +202,7 @@ export function buildProgram(context: CliContext): Command {
             writeErr: (text: string) => context.stderr.write(text)
         });
     addAuthCommands(program, context);
+    addPlatformCommands(program, context);
     addApiCommand(program, context);
     addDocsCommands(program, context);
     addSkillsCommands(program, context);

@@ -27,12 +27,21 @@ export async function fetchMe(context: CliContext, session: Session): Promise<Me
     return response.body;
 }
 
+function companyLines(me: Me): readonly string[] {
+    if (me.platform?.global !== true) {
+        return [`Empresa: ${me.company.name}`];
+    }
+    return me.platform.activeCompanyId === null
+        ? ['Conexão de plataforma: nenhuma empresa escolhida; rode `nexo companies` e `nexo use <empresa>`']
+        : [`Conexão de plataforma, empresa ativa: ${me.company.name} (${me.platform.activeCompanyId})`];
+}
+
 export function describeMe(me: Me, session: Session): readonly string[] {
     const expires: string = new Date(me.credential.expiresAt).toLocaleDateString('pt-BR', { timeZone: me.company.timezone });
     const source: string = session.source === 'env' ? 'NEXO_TOKEN' : `perfil ${session.profile}`;
     return [
         `${me.user.name} <${me.user.email}>, ${profilesOf(me)}`,
-        `Empresa: ${me.company.name}`,
+        ...companyLines(me),
         `Credencial: ${me.credential.name} (${source}), vale até ${expires}`,
         `Escopos: ${me.credential.scopes.join(', ')}`,
         `API: ${session.apiUrl}`

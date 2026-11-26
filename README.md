@@ -41,6 +41,9 @@ NEXO_TOKEN=nexo_pat_... nexo whoami # sem login, pelo ambiente
 
 ```sh
 nexo whoami                      # quem está conectado, empresa, escopos e validade
+nexo companies [busca]           # (login de plataforma) lista as empresas em que se pode agir
+nexo use <empresa>               # escolhe a empresa, por id ou por um nome que case com uma só
+nexo use --none                  # sai da empresa escolhida
 nexo api deals                   # GET /v1/deals
 nexo api deals -X GET -f limit=5 # campos viram query string no GET
 nexo api crm/dashboards/catalog -X GET -f text=receita -F limit=5           # -F manda o número como número
@@ -49,6 +52,8 @@ nexo logout                      # remove o perfil desta máquina
 ```
 
 `-f` manda o valor como texto; `-F` entende número, `true`, `false`, `null` e JSON. Com campos e sem `-X`, o método é POST, como no `gh api`.
+
+**Usuário da plataforma.** O admin da empresa do Nexo que roda `nexo login` entra com uma conexão de plataforma: ela não age em empresa nenhuma até a escolha. `nexo companies` lista as empresas, `nexo use <empresa>` escolhe uma (por id, ou por um nome que case com uma só; se casar com várias, lista as opções e não escolhe nenhuma) e `nexo whoami` mostra a empresa ativa. A escolha fica no servidor e vale até a troca ou `nexo use --none`; dentro da empresa, `nexo connect ...` e `nexo api ...` agem como o usuário de suporte do Nexo. Um comando que ainda esbarre em "escolha uma empresa" aponta esses dois comandos. Para qualquer outro login, `companies` e `use` respondem que não existem.
 
 `--json` deixa toda saída em JSON, e o erro sai no stderr como o `problem+json` da API.
 
@@ -66,7 +71,7 @@ nexo mcp setup --claude
 - Com login, `nexo skills install` também traz as skills da sua empresa, área e time (as mesmas que o copiloto mostra para você), **para a sua pasta** (`~/.claude/skills`, `~/.cursor/skills` ou `~/.codex/skills`) e nunca para o projeto, onde seriam commitadas. Cada skill leva o perfil no nome da pasta (`nexo-<perfil>-<skill>`); quem usa o Cursor junto com o Claude Code recebe cada skill uma vez só, na pasta do Claude Code. A skill em teste vem marcada `em-teste` e só para quem a escreveu. O `install` é incremental: compara a versão de cada skill e só baixa e regrava a que mudou (as que não mudaram só têm a data renovada), e apaga o que saiu do seu alcance; se a rede cai no meio, a pasta fica como estava. `nexo logout` apaga as do perfil. Sem login, ou sem rede, ficam as de produto, e a CLI diz por quê.
 - Com rede, `nexo skills install` e `nexo skills list` comparam o hash das skills de produto que vêm com a CLI com o do `/docs/skills/index.json` e avisam quando estão velhas: atualize a CLI (`npm install -g @winning-sales/nexo@latest`) e rode `nexo skills install` de novo. A skill de produto também orienta a sua IA a pedir esse `install` quando as skills da sua empresa tiverem mais de um dia.
 - `nexo skills list` mostra o nível de cada skill (produto, empresa, área, time) e `nexo skills show <nome>` mostra uma inteira, lendo a API na hora e sem gravar nada.
-- `nexo mcp setup --claude|--cursor|--codex` configura o MCP do Nexo e o do Nexo Connect no projeto, com o token lido de `NEXO_TOKEN`, fora do arquivo.
+- `nexo mcp setup --claude|--cursor|--codex` configura o MCP do Nexo, o do Nexo Admin e o do Nexo Connect no projeto, com o token lido de `NEXO_TOKEN`, fora do arquivo.
 
 ## Nexo Connect como código
 
