@@ -144,8 +144,9 @@ describe('mcp setup', () => {
         const config: { mcpServers: Record<string, { url: string; headers?: Record<string, string> }> } = JSON.parse(
             readFileSync(join(h.directory, '.mcp.json'), 'utf8')
         ) as { mcpServers: Record<string, { url: string; headers?: Record<string, string> }> };
-        expect(Object.keys(config.mcpServers)).toEqual(['other', 'nexo', 'nexo-connect']);
+        expect(Object.keys(config.mcpServers)).toEqual(['other', 'nexo', 'nexo-connect', 'nexo-admin']);
         expect(config.mcpServers['nexo-connect']?.url).toBe('https://mcp-nexo-dev.winningsales.com.br/connect/mcp');
+        expect(config.mcpServers['nexo-admin']?.url).toBe('https://mcp-nexo-dev.winningsales.com.br/admin/mcp');
         expect(config.mcpServers.nexo?.headers?.Authorization).toBe('Bearer ${NEXO_TOKEN}');
     });
 

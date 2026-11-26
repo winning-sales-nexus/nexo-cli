@@ -9,7 +9,7 @@ O Nexo é o CRM e a IA de vendas da empresa. A API pública (`/v1`) faz o que o 
 
 ## Antes de tudo
 
-- Confira quem está conectado: `nexo whoami` (pessoa, empresa, escopos, validade). Sem login, peça para a pessoa rodar `nexo login`. **Nunca peça para ela colar um token no chat**, e nunca escreva um token em arquivo do projeto.
+- Confira quem está conectado: `nexo whoami` (pessoa, empresa, escopos, validade). Se mostrar "nenhuma empresa escolhida" (conexão de plataforma, do admin da empresa do Nexo), liste com `nexo companies` e escolha com `nexo use <empresa>`; a escolha fica valendo até a troca. Sem login, peça para a pessoa rodar `nexo login`. **Nunca peça para ela colar um token no chat**, e nunca escreva um token em arquivo do projeto.
 - Em CI, a credencial vem de `NEXO_TOKEN` no ambiente. Não a imprima.
 
 ## Chamar a API
