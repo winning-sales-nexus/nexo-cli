@@ -16,6 +16,7 @@ export const DEFAULT_ENVIRONMENT: NexoEnvironment = {
 };
 
 export const TOKENS_PAGE: string = '/settings/api-tokens';
+export const AGENT_PAIRING_PAGE: string = '/settings/connections/connectors?tab=agent&foco=parear';
 
 export function environmentNamed(name: string): NexoEnvironment {
     const environment: NexoEnvironment | undefined = ENVIRONMENTS[name];
@@ -40,4 +41,17 @@ export function normalizedApiUrl(raw: string): string {
 
 function isLoopback(hostname: string): boolean {
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+}
+
+/** O app do ambiente da API, ou `null` quando a API não é de nenhum ambiente conhecido (localhost, staging). */
+export function knownAppUrl(apiUrl: string): string | null {
+    const known: NexoEnvironment | undefined = Object.values(ENVIRONMENTS).find(
+        (environment: NexoEnvironment) => environment.apiUrl === apiUrl
+    );
+    return known?.appUrl ?? null;
+}
+
+/** O endereço do app para o `nexo login`; um ambiente desconhecido cai no de produção. */
+export function appUrlOf(apiUrl: string): string {
+    return knownAppUrl(apiUrl) ?? DEFAULT_ENVIRONMENT.appUrl;
 }
