@@ -11,14 +11,13 @@ export interface ErpOperation {
     readonly args: readonly Readonly<Record<string, unknown>>[];
     readonly saida?: Readonly<Record<string, unknown>>;
     /** Campos que o `/v1` ainda pode trazer (guia, exemplo, notas): sem eles, o comando segue. */
-    readonly guide?: unknown;
-    readonly example?: unknown;
-    readonly notes?: unknown;
 }
 
 export interface ErpCatalog {
     readonly total: number;
     readonly mostrando: number;
+    /** O guia de cada conector que tem um: vem no topo da resposta, não dentro da operação. */
+    readonly guias?: readonly { readonly conector: string; readonly guia: string }[];
     readonly operacoes: readonly ErpOperation[];
     readonly aviso?: string;
 }
@@ -97,23 +96,27 @@ function argLine(arg: Readonly<Record<string, unknown>>): string {
     return `${key}${type === '' ? '' : `:${type}`}${arg.required === true ? '*' : ''}`;
 }
 
-function extra(label: string, value: unknown): readonly string[] {
-    if (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)) {
-        return [];
-    }
-    const text: string = typeof value === 'string' ? value : JSON.stringify(value);
-    return [`  ${label}: ${text}`];
-}
-
 export function operationLines(operation: ErpOperation): readonly string[] {
     const args: string = operation.args.length === 0 ? 'sem argumentos' : `args: ${operation.args.map(argLine).join(', ')}`;
     return [
         `${operation.id}  ${operation.kind === 'action' ? 'ação   ' : 'consulta'}  ${operation.label}  [${operation.conector}]`,
-        `  chave ${operation.key}; ${args}`,
-        ...extra('guia', operation.guide),
-        ...extra('exemplo', operation.example),
-        ...extra('notas', operation.notes)
+        `  chave ${operation.key}; ${args}`
     ];
+}
+
+/** O guia de cada conector vem antes das operações dele; os conectores seguem a ordem da resposta. */
+export function catalogLines(catalog: ErpCatalog): readonly string[] {
+    const guides: ReadonlyMap<string, string> = new Map((catalog.guias ?? []).map((entry) => [entry.conector, entry.guia]));
+    const byConnector: Map<string, ErpOperation[]> = new Map();
+    for (const operation of catalog.operacoes) {
+        byConnector.set(operation.conector, [...(byConnector.get(operation.conector) ?? []), operation]);
+    }
+    return [...byConnector].flatMap(([connector, operations]: [string, ErpOperation[]]) => {
+        const guide: string | undefined = guides.get(connector);
+        const head: readonly string[] =
+            guide === undefined ? [] : [`Guia do conector ${connector}:`, ...guide.split('\n').map((line: string) => `  ${line}`)];
+        return [...head, ...operations.flatMap(operationLines)];
+    });
 }
 
 export function outputLines(output: Readonly<Record<string, unknown>> | null): readonly string[] {

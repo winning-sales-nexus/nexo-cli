@@ -72,6 +72,7 @@ function harness(routes: Readonly<Record<string, Route>>, options: { readonly tt
 const operations: unknown = {
     total: 2,
     mostrando: 2,
+    guias: [{ conector: 'Omie', guia: 'Comece pelo estoque.\nUse o SKU do cadastro.' }],
     operacoes: [
         {
             id: QUERY_ID,
@@ -81,9 +82,7 @@ const operations: unknown = {
             label: 'Estoque por SKU',
             description: 'Lê o estoque',
             args: [{ key: 'sku', type: 'string', required: true }],
-            saida: {},
-            guide: 'Use o SKU do cadastro',
-            notes: ['SKU em maiúsculas']
+            saida: {}
         },
         {
             id: ACTION_ID,
@@ -118,14 +117,14 @@ function applied(repetida: boolean): unknown {
 }
 
 describe('nexo erp list', () => {
-    it('lists the operations with id, key, kind, connector, args, guide and notes, and survives answers without them', async () => {
+    it('lists the operations with id, key, kind, connector, args and the guide of the connector before its operations', async () => {
         const h: Harness = harness({ [LIST]: () => operations });
 
         expect(await run(h.context, ['erp', 'list'])).toBe(0);
         expect(h.out()).toContain(`${QUERY_ID}  consulta  Estoque por SKU  [Omie]`);
         expect(h.out()).toContain('chave estoque_por_sku; args: sku:string*');
-        expect(h.out()).toContain('guia: Use o SKU do cadastro');
-        expect(h.out()).toContain('notas: ["SKU em maiúsculas"]');
+        expect(h.out()).toContain('Guia do conector Omie:\n  Comece pelo estoque.\n  Use o SKU do cadastro.\n');
+        expect(h.out().indexOf('Guia do conector')).toBeLessThan(h.out().indexOf(QUERY_ID));
         expect(h.out()).toContain(`${ACTION_ID}  ação`);
         expect(h.out()).toContain('sem argumentos');
     });
@@ -276,10 +275,19 @@ describe('erp errors', () => {
     });
 
     it('says the company has no Nexo Connect in the plan', async () => {
-        const h: Harness = harness({ [LIST]: () => problem(403, 'plans.product_not_contracted', 'Sem o Nexo Connect.') });
+        const h: Harness = harness({
+            [LIST]: () =>
+                json(403, {
+                    type: 'plans.product_not_contracted',
+                    title: 'plans.product_not_contracted',
+                    status: 403,
+                    detail: 'Sem o Nexo Connect.',
+                    meta: { product: 'crm_connect' }
+                })
+        });
 
         expect(await run(h.context, ['erp', 'list'])).not.toBe(0);
-        expect(h.err()).toContain('não tem o Nexo Connect no plano');
+        expect(h.err()).toContain('não tem crm_connect no plano');
     });
 
     it('says the ERP is down and that it is the other system, not Nexo', async () => {

@@ -127,7 +127,7 @@ Cada comando que muda algo mostra a prévia e pede o sim num terminal; `-y` apli
 As consultas e as ações que um conector declara no manifesto (ler o estoque, incluir um pedido), para quem vende ou para um agente em nome dela. Vale a mesma regra de acesso do MCP: só aparece o que o seu perfil alcança.
 
 ```sh
-nexo erp list                                                    # as operações: id, chave, tipo, conector, argumentos, guia e notas
+nexo erp list                                                    # as operações: id, chave, tipo, conector, argumentos e guia do conector
 nexo erp list estoque                                            # filtra por palavras
 nexo erp query estoque_por_sku --args '{"sku":"CAD-001"}'        # roda uma consulta (--args aceita @arquivo)
 nexo erp action incluir_pedido --args @pedido.json               # prévia do que seria gravado no outro sistema e o sim
