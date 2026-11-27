@@ -13,7 +13,6 @@ export interface ErpOptions extends GlobalOptions {
     readonly confirm?: string | boolean;
     readonly field?: string;
     readonly remove?: boolean;
-    readonly yes?: boolean;
 }
 
 const NOT_FOUND_HINT: string = 'Veja as operações que você alcança com `nexo erp list`.';
@@ -214,7 +213,7 @@ async function currentNote(context: CliContext, session: Session, path: string, 
 }
 
 function noteCommand(id: string, options: ErpOptions, text: string | undefined): string {
-    const field: string = options.field === undefined ? '' : ` --field ${shellQuote(options.field)}`;
+    const field: string = options.field === undefined ? '' : ` --field ${shellQuote(options.field.trim())}`;
     return `nexo erp note ${id}${field} ${text === undefined ? '--remove' : shellQuote(text)}`;
 }
 
@@ -236,19 +235,27 @@ function noteRequest(path: string, field: string | null, text: string | null): A
         : { method: 'PUT', path, body: { ...(field === null ? {} : { field }), text } };
 }
 
+function fieldOf(options: ErpOptions): string | null {
+    return options.field?.trim() ?? null;
+}
+
+function afterOf(text: string | undefined, options: ErpOptions): string | null {
+    return options.remove === true ? null : (text?.trim() ?? null);
+}
+
 function unchangedMessage(where: string, after: string | null): string {
     return after === null ? `Não há nota em ${where} para apagar.` : `A nota de ${where} já tem este texto.`;
 }
 
-/** A nota é da empresa, mas não é do outro sistema: o sim pode vir de `-y`, como nas mudanças do `nexo connect`. */
+/** Sem `-y`: o assistente lê a nota como verdade da empresa, então só a pessoa (terminal) ou o `--confirm` do script grava. */
 export async function erpNote(context: CliContext, target: string, text: string | undefined, options: ErpOptions): Promise<void> {
     checkNoteInput(text, options);
     const session: Session = sessionOf(context, options);
     const id: string = await resolveOperation(context, session, target);
     const { path, key } = noteBase(id);
-    const field: string | null = options.field ?? null;
+    const field: string | null = fieldOf(options);
     const before: string | null = await currentNote(context, session, path, field);
-    const after: string | null = options.remove === true ? null : (text?.trim() ?? null);
+    const after: string | null = afterOf(text, options);
     const where: string = `${key}${field === null ? '' : ` / ${field}`}`;
     if (before === after) {
         printLine(context, unchangedMessage(where, after));
@@ -261,7 +268,7 @@ export async function erpNote(context: CliContext, target: string, text: string 
         },
         command: noteCommand(id, options, after === null ? undefined : after),
         confirmed: options.confirm === true,
-        yes: options.yes === true,
+        yes: false,
         json: options.json === true,
         apply: () => clientOf(context, session).request(noteRequest(path, field, after)),
         report: () => {

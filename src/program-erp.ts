@@ -16,7 +16,6 @@ function addNoteCommand(erp: Command, context: CliContext): void {
         .option('--field <campo>', 'o argumento ou o campo de saída da operação; sem ele, a nota é da operação')
         .option('--remove', 'apaga a nota')
         .option('--confirm', 'aplica, depois do sim da pessoa')
-        .option('-y, --yes', 'aplica logo depois de mostrar o antes e o depois')
         .action(async (target: string, text: string | undefined, _options: ErpOptions, command: Command) => {
             await erpNote(context, target, text, command.optsWithGlobals());
         });

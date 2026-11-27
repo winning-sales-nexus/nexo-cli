@@ -17,7 +17,7 @@ export interface ErpOperation {
     readonly args: readonly Readonly<Record<string, unknown>>[];
     /** A nota da empresa na operação; a de um argumento vem no próprio argumento. */
     readonly notaDaEmpresa?: ErpNote;
-    readonly saida?: Readonly<Record<string, unknown>>;
+    readonly saida?: { readonly fields?: readonly Readonly<Record<string, unknown>>[] } & Readonly<Record<string, unknown>>;
     /** Campos que o `/v1` ainda pode trazer (guia, exemplo, notas): sem eles, o comando segue. */
 }
 
@@ -117,7 +117,10 @@ function noteLines(operation: ErpOperation): readonly string[] {
     const ofArgs: readonly string[] = operation.args.flatMap((arg: Readonly<Record<string, unknown>>) =>
         isNote(arg.notaDaEmpresa) ? [noteLine(`nota da empresa em ${String(arg.key)}`, arg.notaDaEmpresa)] : []
     );
-    return [...own, ...ofArgs];
+    const ofOutput: readonly string[] = (operation.saida?.fields ?? []).flatMap((field: Readonly<Record<string, unknown>>) =>
+        isNote(field.notaDaEmpresa) ? [noteLine(`nota da empresa no campo de saída ${String(field.key)}`, field.notaDaEmpresa)] : []
+    );
+    return [...own, ...ofArgs, ...ofOutput];
 }
 
 export function operationLines(operation: ErpOperation): readonly string[] {

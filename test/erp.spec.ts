@@ -82,7 +82,7 @@ const operations: unknown = {
             label: 'Estoque por SKU',
             description: 'Lê o estoque',
             args: [{ key: 'sku', type: 'string', required: true }],
-            saida: {},
+            saida: { fields: [{ key: 'saldo', notaDaEmpresa: { texto: 'Em unidades.', autor: null, em: '2026-11-26T10:00:00.000Z' } }] },
             notaDaEmpresa: { texto: 'Só o depósito 2.', autor: 'Ana', em: '2026-11-26T10:00:00.000Z' }
         },
         {
@@ -129,6 +129,7 @@ describe('nexo erp list', () => {
         expect(h.out()).toContain(`${ACTION_ID}  ação`);
         expect(h.out()).toContain('sem argumentos');
         expect(h.out()).toContain('nota da empresa: Só o depósito 2. (Ana)');
+        expect(h.out()).toContain('nota da empresa no campo de saída saldo: Em unidades.');
     });
 
     it('sends the search and prints the whole answer with --json', async () => {
@@ -363,8 +364,15 @@ describe('nexo erp note', () => {
             [`DELETE ${NOTES}?field=sku`]: () => noteOf('sku', 'X.')
         });
 
-        expect(await run(h.context, ['erp', 'note', QUERY_ID, '--field', 'sku', '--remove', '-y'])).toBe(0);
+        expect(await run(h.context, ['erp', 'note', QUERY_ID, '--field', ' sku ', '--remove', '--confirm'])).toBe(0);
         expect(h.calls.at(-1)?.path).toBe(`${NOTES}?field=sku`);
+    });
+
+    it('does not accept -y', async () => {
+        const h: Harness = harness({});
+
+        expect(await run(h.context, ['erp', 'note', QUERY_ID, 'x', '-y'])).not.toBe(0);
+        expect(h.calls).toEqual([]);
     });
 
     it('says when nothing changes and refuses bad input before calling', async () => {
