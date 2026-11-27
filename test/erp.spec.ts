@@ -162,15 +162,12 @@ describe('nexo erp query', () => {
 
     it('resolves a key to the id through the listing', async () => {
         const h: Harness = harness({
-            [LIST_SEARCH('estoque+por+sku')]: () => operations,
+            [LIST]: () => operations,
             [QUERY]: () => ({ id: QUERY_ID, saida: { saldo: 7 }, emCache: true })
         });
 
         expect(await run(h.context, ['erp', 'query', 'estoque_por_sku', '--args', '{}'])).toBe(0);
-        expect(h.calls.map((call) => call.path)).toEqual([
-            '/v1/erp/operations?search=estoque+por+sku',
-            `/v1/erp/operations/${CONNECTOR}%3Aestoque_por_sku/query`
-        ]);
+        expect(h.calls.map((call) => call.path)).toEqual(['/v1/erp/operations', `/v1/erp/operations/${CONNECTOR}%3Aestoque_por_sku/query`]);
         expect(h.out()).toContain('da memória do conector');
     });
 
@@ -339,7 +336,7 @@ describe('nexo erp note', () => {
 
     it('writes with --confirm, with the field, and resolves a key', async () => {
         const h: Harness = harness({
-            [LIST_SEARCH('estoque+por+sku')]: () => operations,
+            [LIST]: () => operations,
             [`GET ${NOTES}`]: () => listed(),
             [`PUT ${NOTES}`]: () => noteOf('sku', 'Em maiúsculas.')
         });
