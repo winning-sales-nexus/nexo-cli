@@ -89,6 +89,119 @@ O conector vive numa pasta do seu repositório: `connector.ts`, `manifest.json`,
 
 Publicar, ligar e pausar mostram a prévia e pedem o sim. Fora de um terminal (numa IA ou num script), a CLI mostra a prévia e o comando para aplicar com `--confirm <token>`, que vale uma vez. O valor de um segredo só é digitado por uma pessoa num terminal (ou por `--stdin`, num script) e nunca volta pela API.
 
+### Renomear, apagar e a agenda
+
+```sh
+nexo connect rename "Clientes do Omie" clientes-erp   # mostra o nome antigo e o novo; --description <texto> muda a descrição
+nexo connect delete clientes-erp                      # prévia do Nexo; digite o nome do conector para apagar
+nexo connect delete clientes-erp --confirm <token>    # num script: o token da prévia (-y não existe aqui)
+```
+
+`delete` apaga o conector sem volta e só vale para um conector pausado ou em rascunho; um conector ligado é recusado com a dica de `nexo connect pause`. A pasta local continua no disco.
+
+O gatilho `cron` do manifesto tem duas formas: `{ "type": "cron", "everyMinutes": 60 }` e, em horário fixo no fuso da empresa, `{ "type": "cron", "at": "22:00" }` ou uma lista, `{ "type": "cron", "at": ["08:00", "18:00"], "days": ["mon", "fri"] }`. `nexo connect init` grava um `README.md` na pasta com as duas. A agenda muda no manifesto, com `push` e `publish`. `status` mostra a linha "Agenda" (a agenda e a próxima execução no fuso da empresa, ou "pausado", ou "sem agenda") e `list` a coluna "próxima".
+
+### Versões, execuções e o resultado do ensaio
+
+```sh
+nexo connect versions clientes-erp                       # número, resumo, origem, quem e quando, ensaio limpo; marca a publicada e a em edição
+nexo connect diff 1 3 clientes-erp                       # o que mudou no código e no manifesto (sem <para>, até a em edição)
+nexo connect restore 1 clientes-erp                      # mostra a versão, pede o sim (ou -y) e reescreve connector.ts e manifest.json
+nexo connect rehearse --operation pedidos --args '{"dias":3}'   # ensaia uma operação; --args aceita @arquivo.json
+nexo connect run-now clientes-erp                        # roda a versão publicada ao vivo: mostra, pede o sim (ou -y) e espera
+nexo connect initial-load clientes-erp                   # a carga inicial, ao vivo; --no-wait só abre a execução
+nexo connect undo <execução> clientes-erp                # prévia do Nexo; aplica depois do sim
+nexo connect run <execução> --quiet                      # só o resumo
+```
+
+`restore` grava a versão antiga como uma versão nova, em edição (o que está publicado não muda) e reescreve a pasta. Se a pasta tem mudanças que não subiram, recusa sem chamar o Nexo, a não ser com `--force`. `run-now` e `initial-load` gravam no Nexo de verdade: mostram qual versão roda e que o `undo` leva de volta, e só abrem a execução depois do sim (`-y`, ou `--confirm` fora de um terminal). Um conector pausado responde `connect.not_enabled` e o comando sai com código diferente de zero.
+
+`rehearse` e `run <id>` mostram, depois do resumo: os **logs do script** (hora, mensagem e `data` em JSON compacto), o **resultado da operação** (`output`) e **"Iriam para a quarentena (N)"** (objeto, chave, motivo e valores). Na tela os logs e o resultado são cortados em 20 linhas e a quarentena em 10 registros; `--json` traz tudo, sem corte, e `--quiet` só o resumo. Uma resposta antiga, sem esses campos, não quebra o comando.
+
+### Registros retidos: quarentena e escritas no outro sistema
+
+```sh
+nexo connect quarantine clientes-erp                                  # os registros abertos: id, objeto, motivo, valores mascarados e execução
+nexo connect quarantine fix <registro> --set cnpj=12345678000190      # mostra campo, valor de hoje e valor novo; pede o sim
+nexo connect quarantine fix <registro> --file correcao.json           # o corpo do PATCH: { "values": {...}, "properties": {...} }
+nexo connect quarantine discard <registro>                            # mostra o registro; pede o sim
+nexo connect quarantine reprocess                                     # prévia do Nexo; aplica depois do sim
+nexo connect writes clientes-erp                                      # as escritas retidas e os hosts confirmados
+nexo connect writes confirm <escrita>                                 # prévia do Nexo; a escrita sai e não se desfaz
+nexo connect write-hosts confirm api.erp.example.com.br               # confirma a escrita num host do manifesto
+nexo connect write-hosts revoke api.erp.example.com.br                # revoga
+```
+
+Cada comando que muda algo mostra a prévia e pede o sim num terminal; `-y` aplica logo depois de mostrar. Fora de um terminal, a CLI mostra a prévia e o comando que aplica: `reprocess`, `writes confirm` e `write-hosts` com `--confirm <token>`, que vale uma vez; `fix` e `discard` (o `/v1` não tem prévia para eles, a prévia é montada pela CLI) com `--confirm`, sem token. Em `fix`, `--set campo=valor` mexe num campo nativo e `--set properties.chave=valor` numa propriedade; `true` e `false` viram booleano e o resto é texto (para outro tipo, use `--file`). Um campo fora do manifesto, ou um host que não é dele, volta como a recusa do Nexo, em português. Todos aceitam `--json`.
+
+### Acesso do conector: hosts, segredos, OAuth, SFTP e e-mail
+
+```sh
+nexo connect hosts                                  # os hosts aprovados e os que esperam o sim de uma pessoa
+nexo connect hosts approve                          # abre a tela do conector nos hosts e espera a aprovação (até 10 minutos); --no-wait só abre
+nexo connect secrets list                           # cada segredo: preenchido ou faltando, e desde quando (nunca o valor)
+nexo connect webhook                                # a URL, como o outro sistema assina e se há segredo
+nexo connect webhook secret set --generate          # gera 32 bytes em hexadecimal aqui e mostra o valor uma vez (ou digite sem eco, ou --stdin)
+nexo connect oauth                                  # o app, o estado e até quando o token vale
+nexo connect oauth authorize                        # abre a página do outro sistema e espera a volta (até 10 minutos)
+nexo connect oauth client set --client-id <id>      # o app OAuth da empresa; o client secret é digitado sem eco ou vem por --stdin; pede o sim
+nexo connect oauth client remove                    # volta ao app do Nexo; pede o sim
+nexo connect sftp keys                              # a chave guardada de cada servidor, com a impressão digital
+nexo connect sftp accept sftp.cliente.com.br --port 22   # mostra a impressão digital, pede o sim e apaga a chave antiga
+nexo connect email                                  # o endereço e quem pode mandar para ele
+nexo connect email renew                            # o anterior para de valer; pede o sim
+nexo connect email files                            # os arquivos recebidos e os deixados de fora, com o motivo
+```
+
+**Aprovar host é da pessoa, na tela.** O token do `nexo login` nunca recebe `connectors:hosts`, e por isso a CLI não aprova nada sozinha: `hosts approve` mostra os hosts (cada um passa a receber as chamadas do conector com os segredos dele), abre a tela do conector já nos hosts, a pessoa aprova lá com a sessão dela, e a CLI só espera o host aparecer entre os aprovados e diz quais foram. Não precisa mais criar uma chave pessoal para isso; uma chave pessoal com `connectors:hosts` continua valendo, mas só com uma pessoa no terminal: a CLI mostra a prévia do `/v1` e a pessoa digita `aprovar` (ou o host) para aplicar. `hosts approve` não tem `-y` nem `--confirm`, e fora de um terminal vai sempre pela tela. Passou dos 10 minutos, a CLI sai com código 1. Num ambiente que a CLI não conhece, ela mostra o link e não abre o navegador.
+
+**Nenhum valor secreto sai na tela nem no `--json`.** `secrets list` diz só se está preenchido. O client secret do `oauth client set` e o segredo do `webhook secret set` são digitados sem eco ou vêm por `--stdin`; `--generate` mostra o valor gerado uma vez, para você levar ao outro sistema (ele não dá acesso ao Nexo), e por isso não vai com `--json`. `oauth client set` e `remove` avisam que as autorizações do app anterior caem; `sftp accept` e `email renew` mostram o que muda. Os quatro pedem o sim num terminal (`-y`, ou `--confirm` fora de um terminal, só depois do sim da pessoa).
+
+`oauth authorize` não conclui sem o navegador: a volta do outro sistema passa pela página do Nexo, no navegador em que a pessoa está logada. A CLI abre a página, espera o estado virar autorizado e diz "Autorizado". Sem app configurado para o sistema, ela abre a tela do conector no OAuth, onde a empresa traz o app dela. Todos aceitam `--json`.
+
+### Agentes locais
+
+O **agente local** é o programa instalado na rede da empresa que leva as chamadas até um ERP sem porta aberta. Os comandos são da empresa, não de uma pasta de conector.
+
+```sh
+nexo connect agents                      # id, conectado ou não, versão, último contato e os conectores de cada agente
+nexo connect agents show <agente>        # um agente e o que a lista local dele alcança
+nexo connect agents pair                 # abre a aba Agente local e espera até 10 minutos por um agente novo; --no-wait só abre
+nexo connect agents pair --code          # com uma chave pessoal com connectors:hosts: gera o código e o mostra aqui (--name <nome>)
+nexo connect agents revoke <agente>      # mostra a máquina e os conectores que dependem dela; o túnel é cortado sem volta; pede o sim (ou -y)
+```
+
+`pair` não gera o código por conta própria: com o token do `nexo login`, a pessoa gera o código na aba, com a sessão dela, e o usa na instalação do agente; a CLI só confere se um agente novo da empresa foi pareado depois do pedido e o mostra. A rota que gera o código pede `connectors:hosts`, então `--code` só funciona com uma chave pessoal que tenha esse escopo (senão a CLI sai com código 4 e aponta a aba). `revoke` não tem volta: para ter um agente de novo, instale outro com um código novo; fora de um terminal, aplique com `--confirm` só depois do sim da pessoa. Todos aceitam `--json`.
+
+### A conversa com a IA do Connect
+
+```sh
+nexo connect build "ler os clientes do Omie"              # fora de uma pasta de conector: começa um conector novo
+nexo connect build "traga também a cidade" clientes-erp   # numa pasta com conector: manda a mensagem na conversa dele
+nexo connect build show clientes-erp                      # a conversa inteira: suas mensagens, as da IA e o que ela fez
+nexo connect build fix <execução> clientes-erp            # pede a correção de uma execução que falhou
+nexo connect build "..." --no-wait                        # só manda; acompanhe com build show
+```
+
+É a mesma conversa da tela do conector. `build` e `build fix` avisam numa linha (no stderr) que gastam a franquia de IA da empresa, mandam a mensagem e esperam a IA responder (até 10 minutos; passou disso, a CLI sai com código 1 e aponta `build show`). Mostram o id do conector e a vez, a resposta da IA, as versões que ela escreveu e a dica de `nexo connect pull <id> <pasta>` para trazer o código. Uma mensagem enquanto a IA ainda responde a anterior volta `connect.build_turn_in_progress`. `build fix` leva a execução inteira à IA (`-m` acrescenta um pedido) e só vale para uma execução que já terminou. Publicar a correção e reprocessar continuam com você. Todos aceitam `--json`.
+
+## Operações de ERP: `nexo erp`
+
+As consultas e as ações que um conector declara no manifesto (ler o estoque, incluir um pedido), para quem vende ou para um agente em nome dela. Vale a mesma regra de acesso do MCP: só aparece o que o seu perfil alcança.
+
+```sh
+nexo erp list                                                    # as operações: id, chave, tipo, conector, argumentos e guia do conector
+nexo erp list estoque                                            # filtra por palavras
+nexo erp query estoque_por_sku --args '{"sku":"CAD-001"}'        # roda uma consulta (--args aceita @arquivo)
+nexo erp action incluir_pedido --args @pedido.json               # prévia do que seria gravado no outro sistema e o sim
+nexo erp action incluir_pedido --args @pedido.json --confirm <token>
+nexo erp note estoque_por_sku "Só o depósito 2."                 # nota da empresa na operação (até 500 caracteres)
+nexo erp note estoque_por_sku --field sku "Em maiúsculas."        # ou num argumento ou campo de saída
+nexo erp note estoque_por_sku --remove                           # apaga a nota
+```
+
+`<operação>` é o id (`<conector>:<chave>`) ou a chave; a chave é resolvida pela lista, e se existir em mais de um conector a CLI pede o id. `--args` é um objeto JSON e é recusado antes de chamar o Nexo se não for. Uma consulta mostra o resultado cortado em 20 linhas (`--json` traz tudo). Uma ação mostra a prévia e só aplica depois do sim num terminal; fora dele, mostra a prévia e o comando com `--confirm <token>` (vale 10 minutos e grava uma vez, com os mesmos `--args`). Não existe `-y` aqui: gravar no sistema do cliente pede o sim da pessoa. O mesmo token de novo devolve a resposta da primeira vez, avisando que nada foi gravado de novo. `nexo erp note` mostra o texto de antes e o de depois e pede o sim (não existe `-y`: o assistente lê a nota como verdade da empresa; fora de um terminal a CLI mostra o comando e não grava, e `--confirm` aplica o que a prévia mostrou); a nota é da empresa e serve a todos que usam a operação, e `list` a mostra junto de cada operação. Erros: operação não encontrada (aponta `nexo erp list`), empresa sem o Nexo Connect no plano, e ERP fora do ar (diz que é o outro sistema, não o Nexo).
+
 ## As automações
 
 ```sh

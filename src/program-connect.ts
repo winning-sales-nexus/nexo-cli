@@ -3,7 +3,9 @@ import { connectInit, connectPull, connectPush, connectStatus } from './commands
 import type { ConnectFileOptions } from './commands/connect-files.js';
 import {
     connectChange,
+    connectDelete,
     connectList,
+    connectRename,
     connectRehearse,
     connectRun,
     connectRuns,
@@ -11,9 +13,32 @@ import {
     connectSystems
 } from './commands/connect-runs.js';
 import type { ConnectRunOptions } from './commands/connect-runs.js';
+import { agentPair, agentRevoke, agentShow, agentsList } from './commands/connect-agents.js';
+import type { AgentOptions } from './commands/connect-agents.js';
+import { connectBuild, connectBuildFix, connectBuildShow } from './commands/connect-build.js';
+import type { BuildOptions } from './commands/connect-build.js';
+import { connectExecute, connectUndo } from './commands/connect-execute.js';
+import type { ExecuteOptions } from './commands/connect-execute.js';
+import { connectDiff, connectRestore, connectVersions } from './commands/connect-versions.js';
+import type { VersionOptions } from './commands/connect-versions.js';
+import {
+    quarantineDiscard,
+    quarantineFix,
+    quarantineList,
+    quarantineReprocess,
+    writeHost,
+    writesConfirm,
+    writesList
+} from './commands/connect-retained.js';
+import type { RetainedOptions } from './commands/connect-retained.js';
+import { secretsList } from './commands/connect-access.js';
+import type { AccessOptions } from './commands/connect-access.js';
+import { addAccessCommands } from './program-connect-access.js';
 import { CHANGES } from './connect/changes.types.js';
 import type { ChangeKind } from './connect/changes.types.js';
 import type { CliContext } from './context.js';
+
+const YES_HELP: string = 'aplica logo depois de mostrar a prévia';
 
 const CHANGE_DESCRIPTIONS: Readonly<Record<ChangeKind, string>> = {
     publish: 'Publica a versão em edição (prévia, e o sim de uma pessoa)',
@@ -67,6 +92,9 @@ function addRunCommands(connect: Command, context: CliContext): void {
         .argument('[pasta]', 'pasta do conector', '.')
         .option('--full', 'ensaio completo, no lugar da amostra')
         .option('--no-wait', 'só começa o ensaio, sem esperar')
+        .option('--operation <chave>', 'ensaia esta operação do manifesto (com --args)')
+        .option('--args <json|@arquivo>', 'argumentos da operação: um objeto JSON, ou @arquivo')
+        .option('-q, --quiet', 'só o resumo, sem logs, resultado nem quarentena')
         .action(async (dir: string, _options: ConnectRunOptions, command: Command) => {
             await connectRehearse(context, dir, command.optsWithGlobals());
         });
@@ -79,11 +107,74 @@ function addRunCommands(connect: Command, context: CliContext): void {
         });
     connect
         .command('run')
-        .description('Uma execução, com o que escreveria, os passos com erro e o stack')
+        .description(
+            'Uma execução: o que escreveria, os passos com erro, o stack, os logs do script, o resultado e o que iria para a quarentena'
+        )
         .argument('<execução>', 'id da execução')
         .argument('[pasta]', 'pasta do conector', '.')
+        .option('-q, --quiet', 'só o resumo, sem logs, resultado nem quarentena')
         .action(async (runId: string, dir: string, _options: ConnectRunOptions, command: Command) => {
             await connectRun(context, runId, dir, command.optsWithGlobals());
+        });
+}
+
+function addVersionCommands(connect: Command, context: CliContext): void {
+    connect
+        .command('versions')
+        .description('As versões do conector: resumo, origem, quem escreveu, quando e se tem ensaio limpo')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .action(async (dir: string, _options: VersionOptions, command: Command) => {
+            await connectVersions(context, dir, command.optsWithGlobals());
+        });
+    connect
+        .command('diff')
+        .description('O que mudou no código e no manifesto entre duas versões (sem <para>, até a em edição)')
+        .argument('<de>', 'versão mais antiga')
+        .argument('[para]', 'versão mais nova (padrão: a em edição)')
+        .argument('[pasta]', 'pasta do conector')
+        .action(async (from: string, to: string | undefined, dir: string | undefined, _options: VersionOptions, command: Command) => {
+            await connectDiff(context, from, to, dir, command.optsWithGlobals());
+        });
+    connect
+        .command('restore')
+        .description('Volta a uma versão: o Nexo guarda como versão nova em edição e a pasta é reescrita (mostra e pede o sim)')
+        .argument('<versão>', 'número da versão (veja `nexo connect versions`)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('--confirm', 'aplica, depois do sim da pessoa')
+        .option('-y, --yes', YES_HELP)
+        .option('--force', 'descarta mudanças da pasta que não foram para o Nexo')
+        .action(async (seq: string, dir: string, _options: VersionOptions, command: Command) => {
+            await connectRestore(context, seq, dir, command.optsWithGlobals());
+        });
+}
+
+function addExecuteCommands(connect: Command, context: CliContext): void {
+    for (const kind of ['run-now', 'initial-load'] as const) {
+        connect
+            .command(kind)
+            .description(
+                kind === 'run-now'
+                    ? 'Roda a versão publicada agora, ao vivo: grava no Nexo e o desfazer leva de volta (mostra e pede o sim)'
+                    : 'Faz a carga inicial, ao vivo: lê a origem inteira e grava no Nexo (mostra e pede o sim)'
+            )
+            .argument('[pasta]', 'pasta do conector', '.')
+            .option('--confirm', 'aplica, depois do sim da pessoa')
+            .option('-y, --yes', YES_HELP)
+            .option('--no-wait', 'só abre a execução, sem esperar')
+            .option('-q, --quiet', 'só o resumo, sem logs, resultado nem quarentena')
+            .action(async (dir: string, _options: ExecuteOptions, command: Command) => {
+                await connectExecute(context, kind, dir, command.optsWithGlobals());
+            });
+    }
+    connect
+        .command('undo')
+        .description('Desfaz uma execução: mostra a prévia do Nexo e aplica depois do sim')
+        .argument('<execução>', 'id da execução (veja `nexo connect runs`)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('--confirm <token>', 'aplica com o token da prévia, depois do sim da pessoa')
+        .option('-y, --yes', YES_HELP)
+        .action(async (runId: string, dir: string, _options: ExecuteOptions, command: Command) => {
+            await connectUndo(context, runId, dir, command.optsWithGlobals());
         });
 }
 
@@ -99,9 +190,10 @@ function addChangeCommands(connect: Command, context: CliContext): void {
                 await connectChange(context, kind, dir, command.optsWithGlobals());
             });
     }
-    connect
+    const secrets: Command = connect
         .command('secrets')
-        .description('Segredos do conector: o valor é digitado por uma pessoa e nunca volta')
+        .description('Segredos do conector: o valor é digitado por uma pessoa e nunca volta');
+    secrets
         .command('set')
         .description('Preenche um segredo do manifesto')
         .argument('<nome>', 'nome do segredo, como no manifesto')
@@ -109,6 +201,197 @@ function addChangeCommands(connect: Command, context: CliContext): void {
         .option('--stdin', 'lê o valor do stdin (para script)')
         .action(async (name: string, dir: string, _options: ConnectRunOptions, command: Command) => {
             await connectSecretSet(context, name, dir, command.optsWithGlobals());
+        });
+    secrets
+        .command('list')
+        .description('Os segredos que o manifesto pede: o nome, se está preenchido e desde quando (nunca o valor)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .action(async (dir: string, _options: AccessOptions, command: Command) => {
+            await secretsList(context, dir, command.optsWithGlobals());
+        });
+}
+
+function addBuildCommands(connect: Command, context: CliContext): void {
+    const build: Command = connect
+        .command('build')
+        .description(
+            'Conversa com a IA do Connect: sem conector na pasta começa um, com conector manda a mensagem (gasta a franquia de IA da empresa)'
+        )
+        .argument('<pedido>', 'o que você quer, em português')
+        .argument('[pasta]', 'pasta do conector')
+        .option('--no-wait', 'só manda, sem esperar a resposta')
+        .action(async (message: string, dir: string | undefined, _options: BuildOptions, command: Command) => {
+            await connectBuild(context, message, dir, command.optsWithGlobals());
+        });
+    build
+        .command('show')
+        .description('A conversa com a IA do Connect: as mensagens e o que ela fez')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .action(async (dir: string, _options: BuildOptions, command: Command) => {
+            await connectBuildShow(context, dir, command.optsWithGlobals());
+        });
+    build
+        .command('fix')
+        .description('Pede à IA a correção de uma execução que falhou e espera a resposta (gasta a franquia de IA da empresa)')
+        .argument('<execução>', 'id da execução (veja `nexo connect runs`)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('-m, --message <texto>', 'o que acrescentar ao pedido')
+        .option('--no-wait', 'só manda, sem esperar a resposta')
+        .action(async (runId: string, dir: string, _options: BuildOptions, command: Command) => {
+            await connectBuildFix(context, runId, dir, command.optsWithGlobals());
+        });
+}
+
+function collect(value: string, previous: readonly string[]): readonly string[] {
+    return [...previous, value];
+}
+
+const TOKEN_OPTION: string = '--confirm <token>';
+const TOKEN_HELP: string = 'aplica com o token da prévia, depois do sim da pessoa';
+
+function addQuarantineCommands(connect: Command, context: CliContext): void {
+    const quarantine: Command = connect
+        .command('quarantine')
+        .description('Os registros que o Nexo recusou: lista os abertos; corrigir, descartar e reprocessar pedem o sim')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .action(async (dir: string, _options: RetainedOptions, command: Command) => {
+            await quarantineList(context, dir, command.optsWithGlobals());
+        });
+    quarantine
+        .command('fix')
+        .description('Corrige os valores de um registro (mostra campo, valor de hoje e valor novo; pede o sim)')
+        .argument('<registro>', 'id do registro (veja `nexo connect quarantine`)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('--set <campo=valor>', 'campo nativo, ou properties.<chave> para uma propriedade; repita para vários', collect, [])
+        .option('--file <json>', 'o corpo do PATCH: { "values": {...}, "properties": {...} }')
+        .option('--confirm', 'aplica, depois do sim da pessoa')
+        .option('-y, --yes', YES_HELP)
+        .action(async (item: string, dir: string, _options: RetainedOptions, command: Command) => {
+            await quarantineFix(context, item, dir, command.optsWithGlobals());
+        });
+    quarantine
+        .command('discard')
+        .description('Descarta um registro: ele sai da quarentena sem ir para o Nexo (mostra o registro; pede o sim)')
+        .argument('<registro>', 'id do registro (veja `nexo connect quarantine`)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('--confirm', 'aplica, depois do sim da pessoa')
+        .option('-y, --yes', YES_HELP)
+        .action(async (item: string, dir: string, _options: RetainedOptions, command: Command) => {
+            await quarantineDiscard(context, item, dir, command.optsWithGlobals());
+        });
+    addReprocessCommand(quarantine, context);
+}
+
+function addReprocessCommand(quarantine: Command, context: CliContext): void {
+    quarantine
+        .command('reprocess')
+        .description('Reprocessa os registros abertos (prévia do Nexo e o sim)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option(TOKEN_OPTION, TOKEN_HELP)
+        .option('-y, --yes', YES_HELP)
+        .action(async (dir: string, _options: RetainedOptions, command: Command) => {
+            await quarantineReprocess(context, dir, command.optsWithGlobals());
+        });
+}
+
+function addWriteCommands(connect: Command, context: CliContext): void {
+    const writes: Command = connect
+        .command('writes')
+        .description('Escritas no outro sistema: as retidas e os hosts confirmados')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .action(async (dir: string, _options: RetainedOptions, command: Command) => {
+            await writesList(context, dir, command.optsWithGlobals());
+        });
+    writes
+        .command('confirm')
+        .description('Confirma a escrita retida, que sai para o outro sistema e não se desfaz (prévia e sim)')
+        .argument('<escrita>', 'id da escrita retida (veja `nexo connect writes`)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option(TOKEN_OPTION, TOKEN_HELP)
+        .option('-y, --yes', YES_HELP)
+        .action(async (id: string, dir: string, _options: RetainedOptions, command: Command) => {
+            await writesConfirm(context, id, dir, command.optsWithGlobals());
+        });
+    addWriteHostCommands(connect, context);
+}
+
+function addWriteHostCommands(connect: Command, context: CliContext): void {
+    const hosts: Command = connect.command('write-hosts').description('A escrita do conector num host do outro sistema');
+    for (const action of ['confirm', 'revoke'] as const) {
+        hosts
+            .command(action)
+            .description(
+                action === 'confirm'
+                    ? 'Confirma a escrita num host do manifesto (prévia e sim)'
+                    : 'Revoga a escrita num host confirmado (prévia e sim)'
+            )
+            .argument('<host>', 'host do outro sistema, como no manifesto')
+            .argument('[pasta]', 'pasta do conector', '.')
+            .option(TOKEN_OPTION, TOKEN_HELP)
+            .option('-y, --yes', YES_HELP)
+            .action(async (host: string, dir: string, _options: RetainedOptions, command: Command) => {
+                await writeHost(context, action, host, dir, command.optsWithGlobals());
+            });
+    }
+}
+
+function addLifecycleCommands(connect: Command, context: CliContext): void {
+    connect
+        .command('rename')
+        .description('Muda o nome do conector (e, se quiser, a descrição) e mostra o nome antigo e o novo')
+        .argument('<nome>', 'nome novo')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('--description <texto>', 'descrição nova (vazia apaga a descrição)')
+        .action(async (name: string, dir: string, _options: ConnectRunOptions, command: Command) => {
+            await connectRename(context, name, dir, command.optsWithGlobals());
+        });
+    connect
+        .command('delete')
+        .description(
+            'Apaga o conector, sem volta (só pausado ou em rascunho): mostra a prévia e pede que você digite o nome; a pasta local fica no disco'
+        )
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option(TOKEN_OPTION, 'apaga com o token da prévia, depois do sim da pessoa (num script; -y não basta)')
+        .action(async (dir: string, _options: ConnectRunOptions, command: Command) => {
+            await connectDelete(context, dir, command.optsWithGlobals());
+        });
+}
+
+function addAgentCommands(connect: Command, context: CliContext): void {
+    const agents: Command = connect
+        .command('agents')
+        .description('Os agentes locais da empresa: o id, se está conectado, a versão, o último contato e os conectores que passam por ele')
+        .action(async (_options: AgentOptions, command: Command) => {
+            await agentsList(context, command.optsWithGlobals());
+        });
+    agents
+        .command('show')
+        .description('Mostra um agente e o que a lista local dele alcança')
+        .argument('<agente>', 'id do agente (veja `nexo connect agents`)')
+        .action(async (id: string, _options: AgentOptions, command: Command) => {
+            await agentShow(context, id, command.optsWithGlobals());
+        });
+    addAgentPairRevoke(agents, context);
+}
+
+function addAgentPairRevoke(agents: Command, context: CliContext): void {
+    agents
+        .command('pair')
+        .description('Abre a aba Agente local, onde a pessoa gera o código, e espera um agente novo ser pareado (até 10 minutos)')
+        .option('--code', 'gera o código e o mostra aqui (só com uma chave pessoal com o escopo connectors:hosts)')
+        .option('--name <nome>', 'o nome que o agente recebe, com --code')
+        .option('--no-wait', 'só abre a aba, sem esperar o agente')
+        .action(async (_options: AgentOptions, command: Command) => {
+            await agentPair(context, command.optsWithGlobals());
+        });
+    agents
+        .command('revoke')
+        .description('Revoga o agente: o túnel é cortado sem volta (mostra a máquina e os conectores dele e pede o sim)')
+        .argument('<agente>', 'id do agente (veja `nexo connect agents`)')
+        .option('--confirm', 'aplica, depois do sim da pessoa')
+        .option('-y, --yes', YES_HELP)
+        .action(async (id: string, _options: AgentOptions, command: Command) => {
+            await agentRevoke(context, id, command.optsWithGlobals());
         });
 }
 
@@ -130,8 +413,16 @@ export function addConnectCommands(program: Command, context: CliContext): void 
         .action(async (_options: ConnectRunOptions, command: Command) => {
             await connectList(context, command.optsWithGlobals());
         });
+    addLifecycleCommands(connect, context);
     addFileCommands(connect, context);
     addSyncCommands(connect, context);
     addRunCommands(connect, context);
+    addVersionCommands(connect, context);
+    addExecuteCommands(connect, context);
     addChangeCommands(connect, context);
+    addBuildCommands(connect, context);
+    addQuarantineCommands(connect, context);
+    addWriteCommands(connect, context);
+    addAgentCommands(connect, context);
+    addAccessCommands(connect, context);
 }

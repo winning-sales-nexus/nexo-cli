@@ -37,11 +37,16 @@ function sentenceOf(item: unknown): string | null {
     }
     const label: string | null = textOf(item.label);
     const reason: string | null = textOf(item.reason);
+    const field: string | null = textOf(item.path) ?? textOf(item.field);
+    const message: string | null = textOf(item.message);
+    if (field !== null && message !== null) {
+        return `${field}: ${message}`;
+    }
     return textOf(item.sentence) ?? (label === null || reason === null ? null : `${label}: ${reason}`);
 }
 
 function listedIn(meta: Readonly<Record<string, unknown>> | undefined): string | null {
-    const items: readonly unknown[] = [meta?.pending, meta?.problems, meta?.findings].flatMap((list: unknown) =>
+    const items: readonly unknown[] = [meta?.issues, meta?.pending, meta?.problems, meta?.findings].flatMap((list: unknown) =>
         Array.isArray(list) ? (list as readonly unknown[]) : []
     );
     const lines: readonly string[] = items.map(sentenceOf).flatMap((line: string | null) => (line === null ? [] : [`  - ${line}`]));
@@ -72,10 +77,25 @@ const HINT_BY_TYPE: Readonly<Record<string, string | null>> = {
     'brain.layer_skill_refused':
         'O texto foi recusado (ordem ao assistente, número da empresa ou skill repetida): reescreva o item como um jeito de fazer.',
     'brain.skill_without_usage_condition': 'Falta dizer quando usar: ajuste o objetivo e o momento.',
+    'connect.erp_operation_not_found': 'Veja as operações que você alcança com `nexo erp list`.',
+    'connect.operation_failed': 'O erro veio do outro sistema (o ERP), não do Nexo. Quem cuida do conector lê a execução citada e corrige.',
+    'connect.operation_timeout': 'O outro sistema (o ERP) não respondeu a tempo; o Nexo está de pé. Tente de novo mais tarde.',
+    'connect.hosts_awaiting_approval': 'Aprove os hosts: `nexo connect hosts approve` abre a tela do conector, e a aprovação é da pessoa.',
+    'connect.pause_before_delete': 'Só se apaga um conector pausado ou em rascunho: pause antes com `nexo connect pause`.',
+    'connect.run_in_progress': 'Há uma execução em andamento: espere terminar (veja `nexo connect runs`) e tente de novo.',
     'agents.template_required': 'Diga o modelo da versão nova com --template <id>.'
 };
 
+function planHint(problem: Problem): string {
+    const product: unknown = problem.meta?.product;
+    const what: string = typeof product === 'string' && product !== '' ? product : 'este produto';
+    return `A empresa não tem ${what} no plano: peça a quem administra o Nexo para contratar.`;
+}
+
 function hintOf(problem: Problem): string | null {
+    if (problem.type === 'plans.product_not_contracted') {
+        return planHint(problem);
+    }
     const typed: string | null | undefined = HINT_BY_TYPE[problem.type];
     return typed === undefined ? (HINT_BY_STATUS[problem.status] ?? listedIn(problem.meta)) : typed;
 }

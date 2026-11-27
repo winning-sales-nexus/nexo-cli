@@ -1,5 +1,4 @@
-import { DEFAULT_ENVIRONMENT, ENVIRONMENTS, TOKENS_PAGE, environmentNamed, normalizedApiUrl } from '../config/environments.js';
-import type { NexoEnvironment } from '../config/environments.js';
+import { TOKENS_PAGE, appUrlOf, environmentNamed, normalizedApiUrl } from '../config/environments.js';
 import type { StoredProfile } from '../config/credentials-store.js';
 import { profileName } from '../config/session.js';
 import type { Session } from '../config/session.js';
@@ -21,11 +20,6 @@ export interface LoginOptions extends GlobalOptions {
 }
 
 const PERSONAL_TOKEN: RegExp = /^nexo_pat_[A-Za-z0-9]{38}$/;
-
-function appUrlOf(apiUrl: string): string {
-    const known: NexoEnvironment | undefined = Object.values(ENVIRONMENTS).find((environment) => environment.apiUrl === apiUrl);
-    return (known ?? DEFAULT_ENVIRONMENT).appUrl;
-}
 
 function targetApiUrl(options: LoginOptions): string {
     if (options.apiUrl !== undefined) {
