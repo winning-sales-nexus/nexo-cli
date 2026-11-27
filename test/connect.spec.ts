@@ -873,3 +873,207 @@ describe('build: the conversation with the AI of Connect', () => {
         await expect(connectBuild(h.context, 'x', h.root, {}, { intervalMs: 1, timeoutMs: 20 })).rejects.toThrow('ainda está respondendo');
     });
 });
+
+describe('connector lifecycle: rename, delete and the schedule', () => {
+    const ONE: string = `/v1/connect/connectors/${CONNECTOR}`;
+    const detail = (extra: Record<string, unknown>): unknown => ({
+        connector: { id: CONNECTOR, name: 'Clientes do ERP', systemId: null, headSeq: 1, publishedSeq: 1, status: 'enabled', ...extra },
+        missingSecrets: [],
+        pendingHosts: [],
+        link: LINK
+    });
+    const me: unknown = {
+        user: { name: 'Ana', email: 'ana@example.com', profiles: [] },
+        company: { id: 'c1', name: 'Empresa', timezone: 'Asia/Tokyo' },
+        credential: { name: 'x', expiresAt: '2027-01-01T00:00:00Z', scopes: [] }
+    };
+    const deletePreview: unknown = {
+        change: 'apagar',
+        connectorId: CONNECTOR,
+        title: 'Apagar Clientes do ERP',
+        changes: ['Sai das listas e para de rodar', 'Não tem volta'],
+        confirmation: { token: 'v1.del', expiresAt: '2026-11-27T10:00:00Z' }
+    };
+
+    function ttyStdin(text: string): Readable & { isTTY: boolean } {
+        const stream: PassThrough & { isTTY?: boolean } = new PassThrough();
+        stream.isTTY = true;
+        stream.end(text);
+        return stream as Readable & { isTTY: boolean };
+    }
+
+    it('rename sends the PATCH and shows the old and the new name', async () => {
+        let name: string = 'Clientes do ERP';
+        const h: Harness = harness({
+            [`GET ${ONE}`]: () => detail({ name }),
+            [`PATCH ${ONE}`]: (call: Call) => {
+                name = (call.body as { name: string }).name;
+                return { id: CONNECTOR, name };
+            },
+            'GET /v1/connect/connectors': () => [{ id: CONNECTOR, name, status: 'enabled', headSeq: 1, publishedSeq: 1 }]
+        });
+
+        expect(await run(h.context, ['connect', '--connector', CONNECTOR, 'rename', 'Clientes do Omie', '--description', 'Do Omie'])).toBe(
+            0
+        );
+
+        expect(h.calls.at(-1)).toEqual({ method: 'PATCH', path: ONE, body: { name: 'Clientes do Omie', description: 'Do Omie' } });
+        expect(h.out()).toContain('"Clientes do ERP" -> "Clientes do Omie"');
+
+        expect(await run(h.context, ['connect', 'list'])).toBe(0);
+        expect(h.out()).toContain('Clientes do Omie');
+    });
+
+    it('rename keeps the name of the local folder in step', async () => {
+        const h: Harness = harness({
+            'POST /v1/connect/connectors': () => saved(1),
+            [`GET ${ONE}`]: () => detail({}),
+            [`PATCH ${ONE}`]: () => ({ id: CONNECTOR, name: 'Novo' })
+        });
+        const dir: string = join(h.root, 'c');
+        await run(h.context, ['connect', 'init', dir]);
+        await run(h.context, ['connect', 'push', dir, '-m', 'v1']);
+
+        expect(await run(h.context, ['connect', 'rename', 'Novo', dir])).toBe(0);
+
+        expect(JSON.parse(readFileSync(join(dir, 'nexo-connector.json'), 'utf8'))).toMatchObject({ name: 'Novo' });
+    });
+
+    it('delete on an enabled connector shows the refusal and the hint to pause', async () => {
+        const refusing: Harness = harness({
+            [`GET ${ONE}`]: () => detail({}),
+            [`POST ${ONE}/delete/preview`]: () =>
+                json(409, {
+                    type: 'connect.pause_before_delete',
+                    title: 'Conflito',
+                    status: 409,
+                    detail: 'Esse conector está ligado: pause antes de apagar.'
+                })
+        });
+
+        expect(await run(refusing.context, ['connect', '--connector', CONNECTOR, 'delete'])).toBe(1);
+
+        expect(refusing.err()).toContain('pause antes de apagar');
+        expect(refusing.err()).toContain('nexo connect pause');
+        expect(refusing.calls.some((call) => call.method === 'DELETE')).toBe(false);
+    });
+
+    it('delete only applies after the name is typed', async () => {
+        const wrong: Harness = harness({
+            [`GET ${ONE}`]: () => detail({ status: 'paused' }),
+            [`POST ${ONE}/delete/preview`]: () => deletePreview
+        });
+        (wrong.context as { stdin: unknown }).stdin = ttyStdin('outro nome\n');
+
+        expect(await run(wrong.context, ['connect', '--connector', CONNECTOR, 'delete'])).toBe(0);
+
+        expect(wrong.out()).toContain('Apagar Clientes do ERP');
+        expect(wrong.calls.some((call) => call.method === 'DELETE')).toBe(false);
+
+        const right: Harness = harness({
+            [`GET ${ONE}`]: () => detail({ status: 'paused' }),
+            [`POST ${ONE}/delete/preview`]: () => deletePreview,
+            [`DELETE ${ONE}`]: () => ({ connectorId: CONNECTOR, deleted: true })
+        });
+        (right.context as { stdin: unknown }).stdin = ttyStdin('Clientes do ERP\n');
+
+        expect(await run(right.context, ['connect', '--connector', CONNECTOR, 'delete'])).toBe(0);
+
+        expect(right.calls.at(-1)).toEqual({ method: 'DELETE', path: ONE, body: { confirmationToken: 'v1.del' } });
+        expect(right.out()).toContain('A pasta local continua no disco');
+    });
+
+    it('delete -y is not enough without a terminal; --confirm <token> applies', async () => {
+        const h: Harness = harness({
+            [`GET ${ONE}`]: () => detail({ status: 'paused' }),
+            [`POST ${ONE}/delete/preview`]: () => deletePreview,
+            [`DELETE ${ONE}`]: () => ({ connectorId: CONNECTOR, deleted: true })
+        });
+
+        expect(await run(h.context, ['connect', '--connector', CONNECTOR, 'delete', '-y'])).not.toBe(0);
+        expect(await run(h.context, ['connect', '--connector', CONNECTOR, 'delete'])).toBe(0);
+        expect(h.err()).toContain('nexo connect delete --confirm v1.del');
+        expect(h.calls.some((call) => call.method === 'DELETE')).toBe(false);
+
+        expect(await run(h.context, ['connect', '--connector', CONNECTOR, 'delete', '--confirm', 'v1.del'])).toBe(0);
+        expect(h.calls.at(-1)).toEqual({ method: 'DELETE', path: ONE, body: { confirmationToken: 'v1.del' } });
+        expect(h.out()).toContain('A pasta local continua no disco');
+    });
+
+    it('status shows the schedule and the next run in the company time zone', async () => {
+        const h: Harness = harness({
+            'POST /v1/connect/connectors': () => saved(1),
+            [`GET ${ONE}`]: () => detail({ schedule: 'todo dia às 08:00 e 18:00', nextRunAt: '2026-11-27T21:00:00.000Z' }),
+            'GET /v1/me': () => me
+        });
+        const dir: string = join(h.root, 'c');
+        await run(h.context, ['connect', 'init', dir]);
+        await run(h.context, ['connect', 'push', dir, '-m', 'v1']);
+
+        expect(await run(h.context, ['connect', 'status', dir])).toBe(0);
+
+        expect(h.out()).toContain('Agenda: todo dia às 08:00 e 18:00. Próxima: 28/11 06:00.');
+    });
+
+    it('status says paused or no schedule, and an old answer without the fields does not break', async () => {
+        const answers: Record<string, unknown>[] = [
+            { status: 'paused', schedule: 'todo dia às 22:00', nextRunAt: null },
+            { schedule: null, nextRunAt: null },
+            {}
+        ];
+        const expected: (string | null)[] = ['Agenda: todo dia às 22:00 (pausado).', 'Agenda: sem agenda.', null];
+        for (const [index, extra] of answers.entries()) {
+            const h: Harness = harness({
+                'POST /v1/connect/connectors': () => saved(1),
+                [`GET ${ONE}`]: () => detail(extra)
+            });
+            const dir: string = join(h.root, 'c');
+            await run(h.context, ['connect', 'init', dir]);
+            await run(h.context, ['connect', 'push', dir, '-m', 'v1']);
+
+            expect(await run(h.context, ['connect', 'status', dir])).toBe(0);
+
+            const line: string | null = expected[index] ?? null;
+            if (line === null) {
+                expect(h.out()).not.toContain('Agenda');
+            } else {
+                expect(h.out()).toContain(line);
+            }
+        }
+    });
+
+    it('list shows the Próxima column, and an old answer without it prints a dash', async () => {
+        const h: Harness = harness({
+            'GET /v1/connect/connectors': () => [
+                {
+                    id: 'a',
+                    name: 'Novo',
+                    status: 'enabled',
+                    headSeq: 1,
+                    publishedSeq: 1,
+                    schedule: 'todo dia às 22:00',
+                    nextRunAt: '2026-11-28T01:00:00.000Z'
+                },
+                { id: 'b', name: 'Velho', status: 'paused', headSeq: 2, publishedSeq: 1 }
+            ],
+            'GET /v1/me': () => me
+        });
+
+        expect(await run(h.context, ['connect', 'list'])).toBe(0);
+
+        const lines: string[] = h.out().trim().split('\n');
+        expect(lines[0]).toContain('próxima 28/11 10:00');
+        expect(lines[1]).toContain('próxima -');
+    });
+
+    it('init writes a README with both forms of the cron trigger', async () => {
+        const h: Harness = harness({});
+        const dir: string = join(h.root, 'c');
+
+        await run(h.context, ['connect', 'init', dir]);
+
+        const readme: string = readFileSync(join(dir, 'README.md'), 'utf8');
+        expect(readme).toContain('"everyMinutes": 60');
+        expect(readme).toContain('"at": ["08:00", "18:00"]');
+    });
+});

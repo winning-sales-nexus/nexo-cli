@@ -3,7 +3,9 @@ import { connectInit, connectPull, connectPush, connectStatus } from './commands
 import type { ConnectFileOptions } from './commands/connect-files.js';
 import {
     connectChange,
+    connectDelete,
     connectList,
+    connectRename,
     connectRehearse,
     connectRun,
     connectRuns,
@@ -320,6 +322,28 @@ function addWriteHostCommands(connect: Command, context: CliContext): void {
     }
 }
 
+function addLifecycleCommands(connect: Command, context: CliContext): void {
+    connect
+        .command('rename')
+        .description('Muda o nome do conector (e, se quiser, a descrição) e mostra o nome antigo e o novo')
+        .argument('<nome>', 'nome novo')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('--description <texto>', 'descrição nova (vazia apaga a descrição)')
+        .action(async (name: string, dir: string, _options: ConnectRunOptions, command: Command) => {
+            await connectRename(context, name, dir, command.optsWithGlobals());
+        });
+    connect
+        .command('delete')
+        .description(
+            'Apaga o conector, sem volta (só pausado ou em rascunho): mostra a prévia e pede que você digite o nome; a pasta local fica no disco'
+        )
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option(TOKEN_OPTION, 'apaga com o token da prévia, depois do sim da pessoa (num script; -y não basta)')
+        .action(async (dir: string, _options: ConnectRunOptions, command: Command) => {
+            await connectDelete(context, dir, command.optsWithGlobals());
+        });
+}
+
 export function addConnectCommands(program: Command, context: CliContext): void {
     const connect: Command = program
         .command('connect')
@@ -338,6 +362,7 @@ export function addConnectCommands(program: Command, context: CliContext): void 
         .action(async (_options: ConnectRunOptions, command: Command) => {
             await connectList(context, command.optsWithGlobals());
         });
+    addLifecycleCommands(connect, context);
     addFileCommands(connect, context);
     addSyncCommands(connect, context);
     addRunCommands(connect, context);
