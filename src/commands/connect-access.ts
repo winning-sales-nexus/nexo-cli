@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import type { Session } from '../config/session.js';
 import { clientOf, printJson, printLine, printNotice, sessionOf } from '../context.js';
 import type { CliContext } from '../context.js';
@@ -9,6 +8,8 @@ import {
     describeOAuth,
     describeSecret,
     describeSftpKey,
+    authSecretNames,
+    describeDelivery,
     describeWebhook,
     isMailAddress,
     isMailFileList,
@@ -17,11 +18,23 @@ import {
     isSecretList,
     isSftpKeyList,
     isWebhook,
+    isWebhookDeliveryList,
     pollUntil,
-    timedOut
+    timedOut,
+    WEBHOOK_URL_WARNING
 } from '../connect/access.js';
-import type { MailAddress, MailFile, OAuthAuthorization, OAuthStatus, Patience, SecretSlot, SftpKey, Webhook } from '../connect/access.js';
-import { requestLocalChange } from '../connect/changes.js';
+import type {
+    MailAddress,
+    MailFile,
+    OAuthAuthorization,
+    OAuthStatus,
+    Patience,
+    SecretSlot,
+    SftpKey,
+    Webhook,
+    WebhookDeliveryList
+} from '../connect/access.js';
+import { requestChange, requestLocalChange } from '../connect/changes.js';
 import { usageError } from '../errors.js';
 import { pause } from '../documents/journey-api.js';
 import { NexoApiError } from '../http/problem.js';
@@ -35,7 +48,6 @@ import type { ConnectRunOptions } from './connect-runs.js';
 export interface AccessOptions extends Omit<ConnectRunOptions, 'confirm'> {
     /** O sim local (sem token): as rotas de acesso não têm prévia no `/v1`. */
     readonly confirm?: boolean;
-    readonly generate?: boolean;
     readonly clientId?: string;
     readonly port?: string;
 }
@@ -73,41 +85,91 @@ export async function secretsList(context: CliContext, dir: string | undefined, 
     }
 }
 
+/** Os segredos que a autenticação do webhook usa e o Nexo ainda não tem preenchidos; sem a lista, não afirma nada. */
+async function missingSecrets(context: CliContext, target: Target, webhook: Webhook): Promise<readonly string[]> {
+    const names: readonly string[] = [...new Set([...authSecretNames(webhook.auth), ...authSecretNames(webhook.authInEdit)])];
+    if (names.length === 0) {
+        return [];
+    }
+    const slots: readonly SecretSlot[] = await read(context, target, 'secrets', isSecretList, 'Lista de segredos');
+    const filled: ReadonlySet<string> = new Set(slots.filter((slot: SecretSlot) => slot.filled).map((slot: SecretSlot) => slot.name));
+    return names.filter((name: string) => !filled.has(name));
+}
+
 export async function webhookShow(context: CliContext, dir: string | undefined, options: AccessOptions): Promise<void> {
-    const webhook: Webhook = await read(context, targetOf(context, dir, options), 'webhook', isWebhook, 'Webhook');
+    const target: Target = targetOf(context, dir, options);
+    const webhook: Webhook = await read(context, target, 'webhook', isWebhook, 'Webhook');
+    const missing: readonly string[] = await missingSecrets(context, target, webhook);
     if (options.json === true) {
-        printJson(context, webhook);
+        printJson(context, { ...webhook, missingSecrets: missing, urlIsCredential: true });
         return;
     }
-    for (const line of describeWebhook(webhook)) {
+    for (const line of describeWebhook(webhook, missing)) {
         printLine(context, line);
     }
 }
 
-export async function webhookSecretSet(context: CliContext, dir: string | undefined, options: AccessOptions): Promise<void> {
-    if (options.generate === true && (options.stdin === true || options.json === true)) {
-        throw usageError('--generate não vai com --stdin nem --json: o valor gerado sai uma vez, na tela.');
+export interface WebhookDeliveriesOptions extends AccessOptions {
+    readonly before?: string;
+    readonly limit?: string;
+}
+
+function deliveriesPath(options: WebhookDeliveriesOptions): string {
+    const query: URLSearchParams = new URLSearchParams();
+    if (options.before !== undefined) {
+        query.set('before', options.before);
     }
+    if (options.limit !== undefined) {
+        const limit: number = Number(options.limit);
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+            throw usageError('--limit pede um número inteiro de 1 a 100.');
+        }
+        query.set('limit', String(limit));
+    }
+    return `webhook/deliveries${query.size === 0 ? '' : `?${query.toString()}`}`;
+}
+
+export async function webhookDeliveries(context: CliContext, dir: string | undefined, options: WebhookDeliveriesOptions): Promise<void> {
     const target: Target = targetOf(context, dir, options);
-    const secret: string =
-        options.generate === true ? randomBytes(32).toString('hex') : await secretValue(context, 'o segredo do webhook', options);
-    if (secret === '') {
-        throw usageError('O valor veio vazio; nada foi salvo.');
-    }
-    const response: ApiResponse = await clientOf(context, target.session).request({
-        method: 'PUT',
-        path: `${target.base}/webhook/secret`,
-        body: { secret }
-    });
+    const path: string = deliveriesPath(options);
+    const list: WebhookDeliveryList = await read(context, target, path, isWebhookDeliveryList, 'Lista de entregas');
     if (options.json === true) {
-        printJson(context, response.body);
+        printJson(context, list);
         return;
     }
-    printLine(context, 'Segredo do webhook salvo. O anterior deixou de valer na hora.');
-    if (options.generate === true) {
-        printLine(context, `Segredo: ${secret}`);
-        printLine(context, 'Este valor sai só agora e não volta. Leve-o ao outro sistema; ele não dá acesso ao Nexo.');
+    if (list.deliveries.length === 0) {
+        printLine(context, 'Nenhuma entrega no webhook ainda.');
+        return;
     }
+    for (const delivery of list.deliveries) {
+        printLine(context, describeDelivery(delivery));
+    }
+    if (list.next !== null) {
+        printLine(context, `Há mais: use --before ${list.next}.`);
+    }
+}
+
+/** Troca o token do endereço: prévia do `/v1`, o sim (ou `--yes`) e só então aplica. O endereço antigo para na hora. */
+export async function webhookRotate(context: CliContext, dir: string | undefined, options: ConnectRunOptions): Promise<void> {
+    if (options.confirm !== undefined && options.confirm.trim() === '') {
+        throw usageError('--confirm pede o token da prévia; o valor veio vazio. Nada foi trocado.');
+    }
+    await requestChange(context, sessionOf(context, options), {
+        connectorId: connectorIdOf(options, dir),
+        path: 'webhook/token',
+        command: 'nexo connect webhook rotate',
+        summarize: (body: unknown): readonly string[] =>
+            isWebhook(body)
+                ? [
+                      `Novo endereço: ${body.url}`,
+                      WEBHOOK_URL_WARNING,
+                      'O endereço anterior parou de valer agora: leve este ao outro sistema.'
+                  ]
+                : [],
+        confirm: options.confirm,
+        yes: options.yes === true,
+        json: options.json === true
+    });
 }
 
 export async function oauthShow(context: CliContext, dir: string | undefined, options: AccessOptions): Promise<void> {

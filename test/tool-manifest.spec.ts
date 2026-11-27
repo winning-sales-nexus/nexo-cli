@@ -43,14 +43,19 @@ describe('COMMAND_TOOLS', () => {
         expect(missing).toEqual([]);
     });
 
+    it('maps webhook deliveries to its own tool key, known to the mirror', () => {
+        expect(COMMAND_TOOLS['nexo connect webhook deliveries']).toEqual({ key: 'connector_webhook_deliveries' });
+        expect(TOOL_KEYS).toContain('connector_webhook_deliveries');
+    });
+
     it('has no entry for a command that no longer exists', () => {
         const paths: Set<string> = new Set(invocable(tree));
 
         expect(Object.keys(COMMAND_TOOLS).filter((path) => !paths.has(path))).toEqual([]);
     });
 
-    it('covers the 122 commands and only uses known keys or a non-empty reason', () => {
-        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(122);
+    it('covers the 123 commands and only uses known keys or a non-empty reason', () => {
+        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(123);
         const known: ReadonlySet<string> = new Set(TOOL_KEYS);
         for (const [path, declaration] of Object.entries(COMMAND_TOOLS)) {
             if ('none' in declaration) {
