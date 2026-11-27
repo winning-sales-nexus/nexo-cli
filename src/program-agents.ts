@@ -3,14 +3,11 @@ import { agentsHours, agentsList, agentsSet, agentsShow } from './commands/agent
 import type { AgentsOptions } from './commands/agents.js';
 import type { CliContext } from './context.js';
 
-export function addAgentCommands(program: Command, context: CliContext): void {
-    const agents: Command = program
-        .command('agents')
-        .alias('agentes')
-        .description('Os Agentes de atendimento (SDR e CS): o estado, a configuração e o horário de reunião')
-        .action(async (_options: AgentsOptions, command: Command) => {
-            await agentsList(context, command.optsWithGlobals());
-        });
+function collect(value: string, previous: readonly string[] | undefined): readonly string[] {
+    return [...(previous ?? []), value];
+}
+
+function addShowAndSet(agents: Command, context: CliContext): void {
     agents
         .command('show')
         .description('Mostra a configuração de um agente')
@@ -34,6 +31,9 @@ export function addAgentCommands(program: Command, context: CliContext): void {
         .action(async (role: string, _options: AgentsOptions, command: Command) => {
             await agentsSet(context, role, command.optsWithGlobals());
         });
+}
+
+function addHours(agents: Command, context: CliContext): void {
     agents
         .command('hours')
         .description(
@@ -43,11 +43,23 @@ export function addAgentCommands(program: Command, context: CliContext): void {
         .option(
             '--day <dias=faixas>',
             'o horário próprio inteiro, como seg-sex=09:00-12:00,14:00-18:00 (repita por dia ou grupo de dias)',
-            (value: string, previous: readonly string[] = []) => [...previous, value]
+            collect
         )
         .option('--company', 'apaga o horário próprio e volta ao da empresa')
         .option('-y, --yes', 'salva logo depois de mostrar o que muda')
         .action(async (seller: string | undefined, _options: AgentsOptions, command: Command) => {
             await agentsHours(context, seller, command.optsWithGlobals());
         });
+}
+
+export function addAgentCommands(program: Command, context: CliContext): void {
+    const agents: Command = program
+        .command('agents')
+        .alias('agentes')
+        .description('Os Agentes de atendimento (SDR e CS): o estado, a configuração e o horário de reunião')
+        .action(async (_options: AgentsOptions, command: Command) => {
+            await agentsList(context, command.optsWithGlobals());
+        });
+    addShowAndSet(agents, context);
+    addHours(agents, context);
 }

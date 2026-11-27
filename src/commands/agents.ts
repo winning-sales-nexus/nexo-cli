@@ -61,7 +61,7 @@ interface HoursPreview extends Preview {
 }
 
 const ROLES: readonly Role[] = ['sdr', 'cs'];
-const CASES: readonly string[] = ['after_hours', 'stalled_queue', 'covered_by_knowledge'];
+const CASES: ReadonlySet<string> = new Set(['after_hours', 'stalled_queue', 'covered_by_knowledge']);
 const WEEKDAYS: readonly string[] = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
 const STATES: Readonly<Record<string, string>> = { enabled: 'ligado', disabled: 'desligado', locked: 'travado' };
 
@@ -128,9 +128,9 @@ function casesOf(raw: string): readonly string[] {
         .split(',')
         .map((entry: string): string => entry.trim())
         .filter((entry: string): boolean => entry !== '');
-    const unknown: string | undefined = cases.find((entry: string): boolean => !CASES.includes(entry));
+    const unknown: string | undefined = cases.find((entry: string): boolean => !CASES.has(entry));
     if (unknown !== undefined || cases.length === 0) {
-        throw usageError(`Caso "${unknown ?? raw}" não existe: use ${CASES.join(', ')} (separados por vírgula), ou none.`);
+        throw usageError(`Caso "${unknown ?? raw}" não existe: use ${[...CASES].join(', ')} (separados por vírgula), ou none.`);
     }
     return cases;
 }
@@ -251,29 +251,19 @@ function hoursText(view: HoursView): string[] {
     return [`Horário de reunião (${view.source === 'user' ? 'o seu próprio' : 'o da empresa'}):`, ...lines];
 }
 
-export async function agentsHours(context: CliContext, seller: string | undefined, options: AgentsOptions): Promise<void> {
-    const changing: boolean = options.day !== undefined || options.company === true;
-    if (seller !== undefined && changing) {
-        throw usageError(
-            'Cada vendedor muda o próprio horário de reunião; o horário de outra pessoa só se lê.',
-            'Peça a ela para rodar `nexo agents hours --day ...` com o login dela.'
-        );
-    }
-    if (options.day !== undefined && options.company === true) {
-        throw usageError('Escolha --day (horário próprio) ou --company (volta ao da empresa), não os dois.');
-    }
-    if (!changing) {
-        const path: string = seller === undefined ? '/v1/me/meeting-hours' : `/v1/users/${encodeURIComponent(seller)}/meeting-hours`;
-        const view: HoursView = (await call(context, options, 'GET', path)) as HoursView;
-        if (options.json === true) {
-            printJson(context, view);
-            return;
-        }
-        hoursText(view).forEach((line: string) => {
-            printLine(context, line);
-        });
+async function showHours(context: CliContext, seller: string | undefined, options: AgentsOptions): Promise<void> {
+    const path: string = seller === undefined ? '/v1/me/meeting-hours' : `/v1/users/${encodeURIComponent(seller)}/meeting-hours`;
+    const view: HoursView = (await call(context, options, 'GET', path)) as HoursView;
+    if (options.json === true) {
+        printJson(context, view);
         return;
     }
+    hoursText(view).forEach((line: string) => {
+        printLine(context, line);
+    });
+}
+
+async function changeHours(context: CliContext, options: AgentsOptions): Promise<void> {
     const body: { readonly days: readonly Day[] | null } = { days: options.company === true ? null : daysOf(options.day ?? []) };
     const preview: HoursPreview = (await call(context, options, 'POST', '/v1/me/meeting-hours/preview', body)) as HoursPreview;
     const token: string | null = await decide(context, preview, options);
@@ -292,4 +282,25 @@ export async function agentsHours(context: CliContext, seller: string | undefine
     hoursText(saved).forEach((line: string) => {
         printLine(context, line);
     });
+}
+
+function checkHoursFlags(seller: string | undefined, options: AgentsOptions): void {
+    if (seller !== undefined) {
+        throw usageError(
+            'Cada vendedor muda o próprio horário de reunião; o horário de outra pessoa só se lê.',
+            'Peça a ela para rodar `nexo agents hours --day ...` com o login dela.'
+        );
+    }
+    if (options.day !== undefined && options.company === true) {
+        throw usageError('Escolha --day (horário próprio) ou --company (volta ao da empresa), não os dois.');
+    }
+}
+
+export async function agentsHours(context: CliContext, seller: string | undefined, options: AgentsOptions): Promise<void> {
+    if (options.day === undefined && options.company !== true) {
+        await showHours(context, seller, options);
+        return;
+    }
+    checkHoursFlags(seller, options);
+    await changeHours(context, options);
 }
