@@ -11,6 +11,8 @@ import {
     connectSystems
 } from './commands/connect-runs.js';
 import type { ConnectRunOptions } from './commands/connect-runs.js';
+import { connectBuild, connectBuildFix, connectBuildShow } from './commands/connect-build.js';
+import type { BuildOptions } from './commands/connect-build.js';
 import { connectExecute, connectUndo } from './commands/connect-execute.js';
 import type { ExecuteOptions } from './commands/connect-execute.js';
 import { connectDiff, connectRestore, connectVersions } from './commands/connect-versions.js';
@@ -194,6 +196,37 @@ function addChangeCommands(connect: Command, context: CliContext): void {
         });
 }
 
+function addBuildCommands(connect: Command, context: CliContext): void {
+    const build: Command = connect
+        .command('build')
+        .description(
+            'Conversa com a IA do Connect: sem conector na pasta começa um, com conector manda a mensagem (gasta a franquia de IA da empresa)'
+        )
+        .argument('<pedido>', 'o que você quer, em português')
+        .argument('[pasta]', 'pasta do conector')
+        .option('--no-wait', 'só manda, sem esperar a resposta')
+        .action(async (message: string, dir: string | undefined, _options: BuildOptions, command: Command) => {
+            await connectBuild(context, message, dir, command.optsWithGlobals());
+        });
+    build
+        .command('show')
+        .description('A conversa com a IA do Connect: as mensagens e o que ela fez')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .action(async (dir: string, _options: BuildOptions, command: Command) => {
+            await connectBuildShow(context, dir, command.optsWithGlobals());
+        });
+    build
+        .command('fix')
+        .description('Pede à IA a correção de uma execução que falhou e espera a resposta (gasta a franquia de IA da empresa)')
+        .argument('<execução>', 'id da execução (veja `nexo connect runs`)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('-m, --message <texto>', 'o que acrescentar ao pedido')
+        .option('--no-wait', 'só manda, sem esperar a resposta')
+        .action(async (runId: string, dir: string, _options: BuildOptions, command: Command) => {
+            await connectBuildFix(context, runId, dir, command.optsWithGlobals());
+        });
+}
+
 function collect(value: string, previous: readonly string[]): readonly string[] {
     return [...previous, value];
 }
@@ -311,6 +344,7 @@ export function addConnectCommands(program: Command, context: CliContext): void 
     addVersionCommands(connect, context);
     addExecuteCommands(connect, context);
     addChangeCommands(connect, context);
+    addBuildCommands(connect, context);
     addQuarantineCommands(connect, context);
     addWriteCommands(connect, context);
 }

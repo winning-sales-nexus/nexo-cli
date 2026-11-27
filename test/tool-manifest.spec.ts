@@ -7,7 +7,12 @@ import { COMMAND_TOOLS, TOOL_KEYS } from '../src/tools/tool-manifest.js';
 import { PassThrough, Readable } from 'node:stream';
 
 /** Grupos que também são comandos (têm ação própria além dos subcomandos). */
-const GROUPS_WITH_ACTION: readonly string[] = ['nexo documents templates', 'nexo connect quarantine', 'nexo connect writes'];
+const GROUPS_WITH_ACTION: readonly string[] = [
+    'nexo documents templates',
+    'nexo connect build',
+    'nexo connect quarantine',
+    'nexo connect writes'
+];
 
 function invocable(entry: CommandEntry): string[] {
     const own: string[] = entry.commands.length === 0 || GROUPS_WITH_ACTION.includes(entry.path) ? [entry.path] : [];
@@ -39,8 +44,8 @@ describe('COMMAND_TOOLS', () => {
         expect(Object.keys(COMMAND_TOOLS).filter((path) => !paths.has(path))).toEqual([]);
     });
 
-    it('covers the 95 commands and only uses known keys or a non-empty reason', () => {
-        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(95);
+    it('covers the 98 commands and only uses known keys or a non-empty reason', () => {
+        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(98);
         const known: ReadonlySet<string> = new Set(TOOL_KEYS);
         for (const [path, declaration] of Object.entries(COMMAND_TOOLS)) {
             if ('none' in declaration) {
