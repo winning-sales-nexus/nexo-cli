@@ -212,6 +212,9 @@ export const COMMAND_TOOLS: Readonly<Record<string, ToolDeclaration>> = {
     'nexo erp list': { key: 'erp_consultas' },
     'nexo erp query': { key: 'erp_consultar' },
     'nexo erp action': { key: ['erp_acao_previa', 'erp_acao_aplicar'] },
+    'nexo erp note': {
+        none: 'A nota da empresa na operação vive em /v1/connect/.../operations/{key}/notes; ainda sem chave de ferramenta no produto'
+    },
     'nexo connect secrets set': { none: 'O segredo é digitado por uma pessoa e nunca passa por IA/MCP' },
     'nexo automations catalog': { key: 'automations' },
     'nexo automations list': { key: 'automations' },

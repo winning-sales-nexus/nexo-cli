@@ -82,7 +82,8 @@ const operations: unknown = {
             label: 'Estoque por SKU',
             description: 'Lê o estoque',
             args: [{ key: 'sku', type: 'string', required: true }],
-            saida: {}
+            saida: {},
+            notaDaEmpresa: { texto: 'Só o depósito 2.', autor: 'Ana', em: '2026-11-26T10:00:00.000Z' }
         },
         {
             id: ACTION_ID,
@@ -127,6 +128,7 @@ describe('nexo erp list', () => {
         expect(h.out().indexOf('Guia do conector')).toBeLessThan(h.out().indexOf(QUERY_ID));
         expect(h.out()).toContain(`${ACTION_ID}  ação`);
         expect(h.out()).toContain('sem argumentos');
+        expect(h.out()).toContain('nota da empresa: Só o depósito 2. (Ana)');
     });
 
     it('sends the search and prints the whole answer with --json', async () => {
@@ -301,5 +303,88 @@ describe('erp errors', () => {
         const slow: Harness = harness({ [QUERY]: () => problem(504, 'connect.operation_timeout', 'Demorou demais.') });
         expect(await run(slow.context, ['erp', 'query', QUERY_ID])).not.toBe(0);
         expect(slow.err()).toContain('o Nexo está de pé');
+    });
+});
+
+describe('nexo erp note', () => {
+    const NOTES: string = `/v1/connect/connectors/${CONNECTOR}/operations/estoque_por_sku/notes`;
+    const noteOf = (field: string | null, text: string): unknown => ({
+        connectorId: CONNECTOR,
+        operation: 'estoque_por_sku',
+        field,
+        text,
+        author: 'Ana',
+        writtenAt: '2026-11-26T10:00:00.000Z'
+    });
+    const listed = (...notes: unknown[]): unknown => ({ connectorId: CONNECTOR, operation: 'estoque_por_sku', notes });
+
+    it('shows before and after, and without a terminal writes nothing and prints the command with --confirm', async () => {
+        const h: Harness = harness({ [`GET ${NOTES}`]: () => listed(noteOf(null, 'Antiga.')) });
+
+        expect(await run(h.context, ['erp', 'note', QUERY_ID, 'Nova.'])).toBe(0);
+        expect(h.out()).toContain('Antes: Antiga.');
+        expect(h.out()).toContain('Depois: Nova.');
+        expect(h.err()).toContain(`nexo erp note ${QUERY_ID} 'Nova.' --confirm`);
+        expect(h.calls.map((call) => call.method)).toEqual(['GET']);
+    });
+
+    it('writes with --confirm, with the field, and resolves a key', async () => {
+        const h: Harness = harness({
+            [LIST_SEARCH('estoque_por_sku')]: () => operations,
+            [`GET ${NOTES}`]: () => listed(),
+            [`PUT ${NOTES}`]: () => noteOf('sku', 'Em maiúsculas.')
+        });
+
+        expect(await run(h.context, ['erp', 'note', 'estoque_por_sku', '--field', 'sku', 'Em maiúsculas.', '--confirm'])).toBe(0);
+        expect(h.calls.at(-1)).toEqual({ method: 'PUT', path: NOTES, body: { field: 'sku', text: 'Em maiúsculas.' } });
+        expect(h.out()).toContain('Antes: (sem nota)');
+        expect(h.out()).toContain('Nota gravada.');
+    });
+
+    it('asks on a terminal and removes only after the yes', async () => {
+        const yes: Harness = harness(
+            { [`GET ${NOTES}`]: () => listed(noteOf(null, 'Antiga.')), [`DELETE ${NOTES}`]: () => noteOf(null, 'Antiga.') },
+            { tty: true, stdin: 's\n' }
+        );
+        expect(await run(yes.context, ['erp', 'note', QUERY_ID, '--remove'])).toBe(0);
+        expect(yes.calls.at(-1)?.method).toBe('DELETE');
+        expect(yes.out()).toContain('Depois: (sem nota)');
+        expect(yes.out()).toContain('Nota apagada.');
+
+        const no: Harness = harness({ [`GET ${NOTES}`]: () => listed(noteOf(null, 'Antiga.')) }, { tty: true, stdin: 'n\n' });
+        expect(await run(no.context, ['erp', 'note', QUERY_ID, '--remove'])).toBe(0);
+        expect(no.calls).toHaveLength(1);
+        expect(no.err()).toContain('Nada mudou.');
+    });
+
+    it('sends the field of a removal in the query', async () => {
+        const h: Harness = harness({
+            [`GET ${NOTES}`]: () => listed(noteOf('sku', 'X.')),
+            [`DELETE ${NOTES}?field=sku`]: () => noteOf('sku', 'X.')
+        });
+
+        expect(await run(h.context, ['erp', 'note', QUERY_ID, '--field', 'sku', '--remove', '-y'])).toBe(0);
+        expect(h.calls.at(-1)?.path).toBe(`${NOTES}?field=sku`);
+    });
+
+    it('says when nothing changes and refuses bad input before calling', async () => {
+        const same: Harness = harness({ [`GET ${NOTES}`]: () => listed(noteOf(null, 'Igual.')) });
+        expect(await run(same.context, ['erp', 'note', QUERY_ID, 'Igual.', '--confirm'])).toBe(0);
+        expect(same.out()).toContain('já tem este texto');
+        expect(same.calls).toHaveLength(1);
+
+        const none: Harness = harness({ [`GET ${NOTES}`]: () => listed() });
+        expect(await run(none.context, ['erp', 'note', QUERY_ID, '--remove', '--confirm'])).toBe(0);
+        expect(none.out()).toContain('para apagar');
+
+        for (const argv of [
+            ['erp', 'note', QUERY_ID],
+            ['erp', 'note', QUERY_ID, 'x', '--remove'],
+            ['erp', 'note', QUERY_ID, 'a'.repeat(501)]
+        ]) {
+            const refused: Harness = harness({});
+            expect(await run(refused.context, argv)).not.toBe(0);
+            expect(refused.calls).toEqual([]);
+        }
     });
 });
