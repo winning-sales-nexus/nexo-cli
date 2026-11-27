@@ -115,6 +115,18 @@ export interface LocalChange {
     readonly report?: (body: unknown) => void;
 }
 
+function reportApplied(context: CliContext, change: LocalChange, response: ApiResponse): void {
+    if (change.json) {
+        printJson(context, response.body);
+        return;
+    }
+    if (change.report === undefined) {
+        printLine(context, 'Feito.');
+        return;
+    }
+    change.report(response.body);
+}
+
 /** Mudança sem prévia no `/v1`: a prévia é montada aqui e o sim é local (`--confirm` sem token). */
 export async function requestLocalChange(context: CliContext, change: LocalChange): Promise<void> {
     const approved: boolean = change.yes || change.confirmed;
@@ -126,16 +138,7 @@ export async function requestLocalChange(context: CliContext, change: LocalChang
         showPreview(context, change.preview);
     }
     if (approved || (context.stdin.isTTY === true && (await ask(context, 'Confirma? (s/N) ')))) {
-        const response: ApiResponse = await change.apply();
-        if (change.json) {
-            printJson(context, response.body);
-            return;
-        }
-        if (change.report === undefined) {
-            printLine(context, 'Feito.');
-        } else {
-            change.report(response.body);
-        }
+        reportApplied(context, change, await change.apply());
         return;
     }
     if (context.stdin.isTTY === true) {

@@ -136,7 +136,7 @@ export async function connectPush(context: CliContext, dir: string | undefined, 
     reportSaved(context, saved);
 }
 
-interface ConnectorView {
+export interface ConnectorView {
     readonly connector: {
         readonly id: string;
         readonly name: string;

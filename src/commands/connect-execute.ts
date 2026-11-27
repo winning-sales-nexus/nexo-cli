@@ -31,6 +31,51 @@ function opened(body: unknown): Rehearsal {
     return { runId: fields.runId, link: fields.link ?? '' };
 }
 
+interface Outcome {
+    run: Run | null;
+    link: string;
+}
+
+function executionPreview(kind: ExecutionKind, published: number | null): { title: string; changes: readonly string[] } {
+    const version: string = published === null ? 'publicada' : `${String(published)} (a publicada)`;
+    return {
+        title: `A versão ${version} ${EXECUTIONS[kind].what}`,
+        changes: [
+            'Grava no Nexo de verdade: não é ensaio.',
+            'Tudo o que ela gravar no Nexo vai num conjunto que o desfazer leva de volta (`nexo connect undo <execução>`).',
+            'O que ela mandar ao outro sistema não se desfaz.'
+        ]
+    };
+}
+
+async function openAndWait(
+    context: CliContext,
+    session: Session,
+    request: { connectorId: string; path: string; wait: WaitOptions; noWait: boolean },
+    outcome: Outcome
+): Promise<ApiResponse> {
+    const response: ApiResponse = await clientOf(context, session).request({
+        method: 'POST',
+        path: `/v1/connect/connectors/${request.connectorId}/${request.path}`
+    });
+    const started: Rehearsal = opened(response.body);
+    outcome.link = started.link;
+    if (request.noWait) {
+        return response;
+    }
+    outcome.run = await waitForRun(context, session, { connectorId: request.connectorId, runId: started.runId }, request.wait);
+    return { status: response.status, body: outcome.run };
+}
+
+function reportOutcome(context: CliContext, outcome: Outcome, quiet: boolean, body: unknown): void {
+    if (outcome.run === null) {
+        printLine(context, `Execução ${opened(body).runId} começou: ${outcome.link}`);
+        return;
+    }
+    printRun(context, outcome.run, { quiet });
+    printLine(context, `Tela: ${outcome.link}`);
+}
+
 export async function connectExecute(
     context: CliContext,
     kind: ExecutionKind,
@@ -41,41 +86,17 @@ export async function connectExecute(
     const connectorId: string = connectorIdOf(options, dir);
     const session: Session = sessionOf(context, options);
     const published: number | null = (await fetchConnector(context, session, connectorId)).connector.publishedSeq;
-    const version: string = published === null ? 'publicada' : `${String(published)} (a publicada)`;
-    const outcome: { run: Run | null; link: string } = { run: null, link: '' };
+    const outcome: Outcome = { run: null, link: '' };
     await requestLocalChange(context, {
-        preview: {
-            title: `A versão ${version} ${EXECUTIONS[kind].what}`,
-            changes: [
-                'Grava no Nexo de verdade: não é ensaio.',
-                'Tudo o que ela gravar no Nexo vai num conjunto que o desfazer leva de volta (`nexo connect undo <execução>`).',
-                'O que ela mandar ao outro sistema não se desfaz.'
-            ]
-        },
+        preview: executionPreview(kind, published),
         command: `nexo connect ${kind}`,
         confirmed: options.confirm === true,
         yes: options.yes === true,
         json: options.json === true,
-        apply: async (): Promise<ApiResponse> => {
-            const response: ApiResponse = await clientOf(context, session).request({
-                method: 'POST',
-                path: `/v1/connect/connectors/${connectorId}/${EXECUTIONS[kind].path}`
-            });
-            const started: Rehearsal = opened(response.body);
-            outcome.link = started.link;
-            if (options.wait === false) {
-                return response;
-            }
-            outcome.run = await waitForRun(context, session, { connectorId, runId: started.runId }, wait);
-            return { status: response.status, body: outcome.run };
-        },
+        apply: () =>
+            openAndWait(context, session, { connectorId, path: EXECUTIONS[kind].path, wait, noWait: options.wait === false }, outcome),
         report: (body: unknown) => {
-            if (outcome.run === null) {
-                printLine(context, `Execução ${opened(body).runId} começou: ${outcome.link}`);
-                return;
-            }
-            printRun(context, outcome.run, { quiet: options.quiet === true });
-            printLine(context, `Tela: ${outcome.link}`);
+            reportOutcome(context, outcome, options.quiet === true, body);
         }
     });
     if (outcome.run !== null && !runIsClean(outcome.run)) {

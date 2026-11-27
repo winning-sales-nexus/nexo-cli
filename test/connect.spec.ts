@@ -734,7 +734,10 @@ describe('result of a run: logs, output and quarantine', () => {
 
         const full: Harness = harness({ [`GET ${BASE}/runs/run-1`]: () => detailed });
         await run(full.context, ['connect', '--connector', CONNECTOR, 'run', 'run-1', '--json']);
-        const printed = JSON.parse(full.out()) as { plannedQuarantine: { items: unknown[] }; output: unknown };
+        const printed: { plannedQuarantine: { items: unknown[] }; output: unknown } = JSON.parse(full.out()) as {
+            plannedQuarantine: { items: unknown[] };
+            output: unknown;
+        };
         expect(printed.plannedQuarantine.items).toHaveLength(12);
         expect(printed.output).toEqual({ pedidos: [{ id: 1 }], total: 1 });
     });

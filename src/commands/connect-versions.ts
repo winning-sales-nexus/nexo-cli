@@ -10,6 +10,7 @@ import type { ConnectorFiles, ConnectorState } from '../connect/project.js';
 import { describeVersion, isVersionDiff, isVersionFiles, isVersionList, sameFiles } from '../connect/versions.js';
 import type { VersionFiles } from '../connect/versions.js';
 import { fetchConnector } from './connect-files.js';
+import type { ConnectorView } from './connect-files.js';
 import { connectorIdOf } from './connect-runs.js';
 import type { ConnectRunOptions } from './connect-runs.js';
 
@@ -53,18 +54,20 @@ export async function connectVersions(context: CliContext, dir: string | undefin
         printJson(context, response.body);
         return;
     }
-    const view = (await fetchConnector(context, session, connectorId)).connector;
+    const view: ConnectorView['connector'] = (await fetchConnector(context, session, connectorId)).connector;
     for (const version of response.body) {
         printLine(context, describeVersion(version, { head: view.headSeq, published: view.publishedSeq }));
     }
 }
 
+interface DiffArguments {
+    readonly from: number;
+    readonly to: number | null;
+    readonly dir: string | undefined;
+}
+
 /** `diff <de> [para] [pasta]`: o segundo argumento que não é número é a pasta. */
-function diffArguments(
-    from: string,
-    second: string | undefined,
-    third: string | undefined
-): { from: number; to: number | null; dir: string | undefined } {
+function diffArguments(from: string, second: string | undefined, third: string | undefined): DiffArguments {
     if (second !== undefined && !/^\d+$/.test(second) && third === undefined) {
         return { from: seqOf(from), to: null, dir: second };
     }
@@ -78,7 +81,7 @@ export async function connectDiff(
     third: string | undefined,
     options: VersionOptions
 ): Promise<void> {
-    const wanted = diffArguments(from, second, third);
+    const wanted: DiffArguments = diffArguments(from, second, third);
     const connectorId: string = connectorIdOf(options, wanted.dir);
     const session: Session = sessionOf(context, options);
     const to: number = wanted.to ?? (await fetchConnector(context, session, connectorId)).connector.headSeq;
@@ -124,6 +127,33 @@ async function assertFolderUnchanged(
     }
 }
 
+function restorePreview(target: VersionFiles, seq: number): { title: string; changes: readonly string[] } {
+    return {
+        title: `Voltar à versão ${String(seq)}${target.summary === null ? '' : `: ${target.summary}`}`,
+        changes: [
+            `Escrita em ${target.createdAt.slice(0, 16).replace('T', ' ')} (${target.origin}).`,
+            'O Nexo guarda isto como uma versão nova, em edição; o que está publicado não muda.',
+            'connector.ts e manifest.json desta pasta são reescritos com ela.'
+        ]
+    };
+}
+
+async function applyRestore(
+    context: CliContext,
+    session: Session,
+    where: { connectorId: string; directory: string; state: ConnectorState },
+    target: VersionFiles
+): Promise<ApiResponse> {
+    const response: ApiResponse = await clientOf(context, session).request({
+        method: 'POST',
+        path: `${base(where.connectorId)}/versions/${String(target.seq)}/restore`
+    });
+    const created: number = (response.body as { seq?: number }).seq ?? target.seq;
+    writeFiles(where.directory, { code: target.code, manifest: target.manifest });
+    writeState(where.directory, { ...where.state, connectorId: where.connectorId, baseSeq: created });
+    return response;
+}
+
 export async function connectRestore(
     context: CliContext,
     seqText: string,
@@ -140,28 +170,12 @@ export async function connectRestore(
         await assertFolderUnchanged(context, session, connectorId, directory, state);
     }
     await requestLocalChange(context, {
-        preview: {
-            title: `Voltar à versão ${String(seq)}${target.summary === null ? '' : `: ${target.summary}`}`,
-            changes: [
-                `Escrita em ${target.createdAt.slice(0, 16).replace('T', ' ')} (${target.origin}).`,
-                'O Nexo guarda isto como uma versão nova, em edição; o que está publicado não muda.',
-                'connector.ts e manifest.json desta pasta são reescritos com ela.'
-            ]
-        },
+        preview: restorePreview(target, seq),
         command: `nexo connect restore ${String(seq)}`,
         confirmed: options.confirm === true,
         yes: options.yes === true,
         json: options.json === true,
-        apply: async () => {
-            const response: ApiResponse = await clientOf(context, session).request({
-                method: 'POST',
-                path: `${base(connectorId)}/versions/${String(seq)}/restore`
-            });
-            const created: number = (response.body as { seq?: number }).seq ?? seq;
-            writeFiles(directory, { code: target.code, manifest: target.manifest });
-            writeState(directory, { ...state, connectorId, baseSeq: created });
-            return response;
-        },
+        apply: () => applyRestore(context, session, { connectorId, directory, state }, target),
         report: (body: unknown) => {
             const created: number | undefined = (body as { seq?: number }).seq;
             printLine(
