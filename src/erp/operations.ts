@@ -1,6 +1,12 @@
 import type { ApiResponse } from '../http/nexo-client.js';
 import { MAX_OUTPUT_LINES, cut } from '../connect/runs.js';
 
+export interface ErpNote {
+    readonly texto: string;
+    readonly autor: string | null;
+    readonly em: string;
+}
+
 export interface ErpOperation {
     readonly id: string;
     readonly conector: string;
@@ -9,7 +15,9 @@ export interface ErpOperation {
     readonly label: string;
     readonly description: string;
     readonly args: readonly Readonly<Record<string, unknown>>[];
-    readonly saida?: Readonly<Record<string, unknown>>;
+    /** A nota da empresa na operação; a de um argumento vem no próprio argumento. */
+    readonly notaDaEmpresa?: ErpNote;
+    readonly saida?: { readonly fields?: readonly Readonly<Record<string, unknown>>[] } & Readonly<Record<string, unknown>>;
     /** Campos que o `/v1` ainda pode trazer (guia, exemplo, notas): sem eles, o comando segue. */
 }
 
@@ -96,11 +104,31 @@ function argLine(arg: Readonly<Record<string, unknown>>): string {
     return `${key}${type === '' ? '' : `:${type}`}${arg.required === true ? '*' : ''}`;
 }
 
+function isNote(value: unknown): value is ErpNote {
+    return isRecord(value) && typeof value.texto === 'string';
+}
+
+export function noteLine(label: string, note: ErpNote): string {
+    return `  ${label}: ${note.texto}${note.autor === null ? '' : ` (${note.autor})`}`;
+}
+
+function noteLines(operation: ErpOperation): readonly string[] {
+    const own: readonly string[] = isNote(operation.notaDaEmpresa) ? [noteLine('nota da empresa', operation.notaDaEmpresa)] : [];
+    const ofArgs: readonly string[] = operation.args.flatMap((arg: Readonly<Record<string, unknown>>) =>
+        isNote(arg.notaDaEmpresa) ? [noteLine(`nota da empresa em ${String(arg.key)}`, arg.notaDaEmpresa)] : []
+    );
+    const ofOutput: readonly string[] = (operation.saida?.fields ?? []).flatMap((field: Readonly<Record<string, unknown>>) =>
+        isNote(field.notaDaEmpresa) ? [noteLine(`nota da empresa no campo de saída ${String(field.key)}`, field.notaDaEmpresa)] : []
+    );
+    return [...own, ...ofArgs, ...ofOutput];
+}
+
 export function operationLines(operation: ErpOperation): readonly string[] {
     const args: string = operation.args.length === 0 ? 'sem argumentos' : `args: ${operation.args.map(argLine).join(', ')}`;
     return [
         `${operation.id}  ${operation.kind === 'action' ? 'ação   ' : 'consulta'}  ${operation.label}  [${operation.conector}]`,
-        `  chave ${operation.key}; ${args}`
+        `  chave ${operation.key}; ${args}`,
+        ...noteLines(operation)
     ];
 }
 

@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { erpAction, erpList, erpQuery } from './commands/erp.js';
+import { erpAction, erpList, erpNote, erpQuery } from './commands/erp.js';
 import type { ErpOptions } from './commands/erp.js';
 import type { CliContext } from './context.js';
 
@@ -7,6 +7,19 @@ const TARGET: string = '<operação>';
 const TARGET_HELP: string = 'id (<conector>:<chave>) ou chave da operação (veja `nexo erp list`)';
 const ARGS: string = '--args <json|@arquivo>';
 const ARGS_HELP: string = 'argumentos da operação: um objeto JSON, ou @arquivo';
+
+function addNoteCommand(erp: Command, context: CliContext): void {
+    erp.command('note')
+        .description('Grava ou apaga a nota da empresa numa operação ou num campo dela: mostra o antes e o depois e pede o sim')
+        .argument(TARGET, TARGET_HELP)
+        .argument('[texto]', 'o texto da nota (até 500 caracteres)')
+        .option('--field <campo>', 'o argumento ou o campo de saída da operação; sem ele, a nota é da operação')
+        .option('--remove', 'apaga a nota')
+        .option('--confirm', 'aplica, depois do sim da pessoa')
+        .action(async (target: string, text: string | undefined, _options: ErpOptions, command: Command) => {
+            await erpNote(context, target, text, command.optsWithGlobals());
+        });
+}
 
 export function addErpCommands(program: Command, context: CliContext): void {
     const erp: Command = program
@@ -33,4 +46,5 @@ export function addErpCommands(program: Command, context: CliContext): void {
         .action(async (target: string, _options: ErpOptions, command: Command) => {
             await erpAction(context, target, command.optsWithGlobals());
         });
+    addNoteCommand(erp, context);
 }
