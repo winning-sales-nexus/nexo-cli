@@ -120,7 +120,7 @@ function failedSteps(steps: readonly RunStep[] | null): readonly string[] {
         );
 }
 
-function cut(lines: readonly string[], max: number, what: string): readonly string[] {
+export function cut(lines: readonly string[], max: number, what: string): readonly string[] {
     return lines.length <= max ? lines : [...lines.slice(0, max), `  … mais ${String(lines.length - max)} ${what} (veja com --json)`];
 }
 
