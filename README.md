@@ -310,6 +310,21 @@ Os modelos são os do app, nos dois canais. O e-mail é um documento de blocos c
 
 O token precisa de `automations:read` para ler, prever e estruturar, e de `automations:write` para criar, mudar e publicar (admin ou líder de vendas, com o módulo Automações no plano). Também atende por `nexo modelos`. A skill `nexo-automations` traz as diretrizes de estilo do e-mail.
 
+
+## Agentes de atendimento
+
+```
+nexo agents                       # o Agente SDR e o Agente CS, com o estado
+nexo agents show <sdr|cs>         # a configuração de um agente
+nexo agents set <sdr|cs> --on --cases after_hours,stalled_queue --yes
+nexo agents hours                 # o seu horário de reunião
+nexo agents hours --day seg-sex=09:00-12:00,14:00-18:00
+nexo agents hours --company       # volta ao horário da empresa
+nexo agents hours <vendedor>      # só lê o horário de outro vendedor
+```
+
+`set` pede perfil que edita os agentes (administrador) e `--on`, `--off`, `--cases`, `--book-meeting`, `--no-book-meeting`, `--meeting-minutes`, `--meeting-lead` ou `--name`. Toda mudança mostra o que muda e pede o sim (ou `--yes`). Cada vendedor muda o próprio horário de reunião; o de outra pessoa só se lê. Também atende por `nexo agentes`.
+
 ## Plano e cobrança
 
 ```sh

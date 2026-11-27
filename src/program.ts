@@ -12,6 +12,7 @@ import { addArtifactCommands, addDealCommands } from './program-artifacts.js';
 import { addTemplateCommands } from './program-templates.js';
 import { addBrainCommands } from './program-brain.js';
 import { addErpCommands } from './program-erp.js';
+import { addAgentCommands } from './program-agents.js';
 
 import { addDashboardCommands } from './program-dashboards.js';
 import type { McpOptions } from './commands/mcp.js';
@@ -219,5 +220,6 @@ export function buildProgram(context: CliContext): Command {
     addTemplateCommands(program, context);
     addBrainCommands(program, context);
     addErpCommands(program, context);
+    addAgentCommands(program, context);
     return program;
 }

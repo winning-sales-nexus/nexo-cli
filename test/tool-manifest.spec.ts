@@ -8,6 +8,7 @@ import { PassThrough, Readable } from 'node:stream';
 
 /** Grupos que também são comandos (têm ação própria além dos subcomandos). */
 const GROUPS_WITH_ACTION: readonly string[] = [
+    'nexo agents',
     'nexo documents templates',
     'nexo connect build',
     'nexo connect quarantine',
@@ -49,8 +50,8 @@ describe('COMMAND_TOOLS', () => {
         expect(Object.keys(COMMAND_TOOLS).filter((path) => !paths.has(path))).toEqual([]);
     });
 
-    it('covers the 122 commands and only uses known keys or a non-empty reason', () => {
-        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(122);
+    it('covers the 126 commands and only uses known keys or a non-empty reason', () => {
+        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(126);
         const known: ReadonlySet<string> = new Set(TOOL_KEYS);
         for (const [path, declaration] of Object.entries(COMMAND_TOOLS)) {
             if ('none' in declaration) {
