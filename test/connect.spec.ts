@@ -813,13 +813,31 @@ describe('build: the conversation with the AI of Connect', () => {
         expect(h.calls[0]).toMatchObject({ method: 'POST', path: `${BASE}/build`, body: { message: 'traga também a cidade' } });
     });
 
+    it('keeps the connector id in an initialized folder, so the next message goes to the same conversation', async () => {
+        const h: Harness = harness({
+            'POST /v1/connect/build': () => ({ connectorId: CONNECTOR, turnId: TURN }),
+            [`POST ${BASE}/build`]: () => ({ connectorId: CONNECTOR, turnId: TURN }),
+            [`GET ${BASE}/build`]: () => answered
+        });
+        const dir: string = join(h.root, 'clientes');
+        await run(h.context, ['connect', 'init', dir]);
+
+        expect(await run(h.context, ['connect', 'build', 'primeiro', dir])).toBe(0);
+        expect(await run(h.context, ['connect', 'build', 'segundo', dir])).toBe(0);
+        expect(await run(h.context, ['connect', 'build', 'show', dir])).toBe(0);
+
+        const posts: string[] = h.calls.filter((call) => call.method === 'POST').map((call) => call.path);
+        expect(posts).toEqual(['/v1/connect/build', `${BASE}/build`]);
+        expect(JSON.parse(readFileSync(join(dir, 'nexo-connector.json'), 'utf8'))).toMatchObject({ connectorId: CONNECTOR });
+    });
+
     it('with --no-wait only sends and points to build show', async () => {
         const h: Harness = harness({ 'POST /v1/connect/build': () => ({ connectorId: CONNECTOR, turnId: TURN }) });
 
         expect(await run(h.context, ['connect', 'build', 'ler os clientes do Omie', h.root, '--no-wait'])).toBe(0);
 
         expect(h.calls).toHaveLength(1);
-        expect(h.out()).toContain('nexo connect build show');
+        expect(h.out()).toContain(`nexo connect --connector ${CONNECTOR} build show`);
     });
 
     it('build show prints the whole conversation', async () => {

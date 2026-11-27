@@ -6,7 +6,7 @@ import type { Session } from '../config/session.js';
 import { CliError } from '../errors.js';
 import { EXIT_CODES } from '../exit-codes.types.js';
 import type { ApiResponse } from '../http/nexo-client.js';
-import { STATE_FILE, projectDirectory, readState } from '../connect/project.js';
+import { STATE_FILE, projectDirectory, readState, writeState } from '../connect/project.js';
 import type { ConnectorState } from '../connect/project.js';
 import { connectorIdOf } from './connect-runs.js';
 import type { ConnectRunOptions } from './connect-runs.js';
@@ -82,7 +82,11 @@ async function waitForAnswer(context: CliContext, session: Session, connectorId:
     let conversation: Conversation = await fetchConversation(context, session, connectorId);
     while (conversation.answering) {
         if (Date.now() > deadline) {
-            throw new CliError('A IA ainda está respondendo.', EXIT_CODES.failure, 'Acompanhe com `nexo connect build show`.');
+            throw new CliError(
+                'A IA ainda está respondendo.',
+                EXIT_CODES.failure,
+                `Acompanhe com \`nexo connect --connector ${connectorId} build show\`.`
+            );
         }
         await pause(wait.intervalMs);
         conversation = await fetchConversation(context, session, connectorId);
@@ -157,7 +161,10 @@ async function followTurn(
             printJson(context, started);
             return;
         }
-        printLine(context, `Conector ${started.connectorId}, vez ${started.turnId}. Acompanhe com \`nexo connect build show\`.`);
+        printLine(
+            context,
+            `Conector ${started.connectorId}, vez ${started.turnId}. Acompanhe com \`nexo connect --connector ${started.connectorId} build show\`.`
+        );
         return;
     }
     if (options.json !== true) {
@@ -191,6 +198,14 @@ function startBody(message: string, dir: string | undefined): Record<string, unk
     return { message, name: state.name, ...(state.systemId === null ? {} : { systemId: state.systemId }) };
 }
 
+/** A pasta já inicializada guarda o id do conector que a conversa abriu: a próxima mensagem cai na mesma conversa. */
+function rememberConnector(dir: string | undefined, connectorId: string): void {
+    const folder: string = projectDirectory(dir);
+    if (existsSync(join(folder, STATE_FILE))) {
+        writeState(folder, { ...readState(folder), connectorId });
+    }
+}
+
 export async function connectBuild(
     context: CliContext,
     message: string,
@@ -204,6 +219,9 @@ export async function connectBuild(
         connectorId === null
             ? await openTurn(context, session, { path: '/v1/connect/build', body: startBody(message, dir) })
             : await openTurn(context, session, { path: `/v1/connect/connectors/${connectorId}/build`, body: { message } });
+    if (connectorId === null) {
+        rememberConnector(dir, started.connectorId);
+    }
     await followTurn(context, session, started, dir, options, wait);
 }
 
