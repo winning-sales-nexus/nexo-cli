@@ -9,13 +9,15 @@ import {
     oauthShow,
     sftpAccept,
     sftpKeys,
-    webhookSecretSet,
+    webhookDeliveries,
+    webhookRotate,
     webhookShow
 } from './commands/connect-access.js';
-import type { AccessOptions } from './commands/connect-access.js';
+import type { AccessOptions, WebhookDeliveriesOptions } from './commands/connect-access.js';
 import { hostsApprove, hostsList } from './commands/connect-hosts.js';
 import type { HostsApproveOptions } from './commands/connect-hosts.js';
 import type { CliContext } from './context.js';
+import type { ConnectRunOptions } from './commands/connect-runs.js';
 
 const FOLDER_HELP: string = 'pasta do conector';
 const CONFIRM_HELP: string = 'aplica, depois do sim da pessoa';
@@ -44,21 +46,28 @@ function addHostsCommands(connect: Command, context: CliContext): void {
 function addWebhookCommands(connect: Command, context: CliContext): void {
     const webhook: Command = connect
         .command('webhook')
-        .description('O webhook do conector: a URL, como o outro sistema assina e se há segredo')
+        .description('O webhook do conector: o endereço (que é a credencial), a autenticação declarada e os segredos que faltam')
         .argument('[pasta]', FOLDER_HELP, '.')
         .action(async (dir: string, _options: AccessOptions, command: Command) => {
             await webhookShow(context, dir, command.optsWithGlobals());
         });
     webhook
-        .command('secret')
-        .description('O segredo com que o outro sistema assina o webhook')
-        .command('set')
-        .description('Define o segredo (o anterior deixa de valer na hora): digitado sem eco, por --stdin ou gerado aqui')
+        .command('deliveries')
+        .description('As últimas chamadas que o outro sistema fez ao webhook, da mais nova à mais antiga, com o desfecho e o motivo')
         .argument('[pasta]', FOLDER_HELP, '.')
-        .option('--stdin', 'lê o valor do stdin (para script)')
-        .option('--generate', 'gera 32 bytes em hexadecimal nesta máquina e mostra o valor uma vez')
-        .action(async (dir: string, _options: AccessOptions, command: Command) => {
-            await webhookSecretSet(context, dir, command.optsWithGlobals());
+        .option('--limit <n>', 'quantas entregas por página (1 a 100; padrão 25)')
+        .option('--before <id>', 'a próxima página: o id que a página anterior mostrou em "Há mais"')
+        .action(async (dir: string, _options: WebhookDeliveriesOptions, command: Command) => {
+            await webhookDeliveries(context, dir, command.optsWithGlobals());
+        });
+    webhook
+        .command('rotate')
+        .description('Troca o token do endereço: mostra o que muda e pede o sim; o endereço antigo para de valer na hora')
+        .argument('[pasta]', FOLDER_HELP, '.')
+        .option('--confirm <token>', 'aplica com o token da prévia, depois do sim da pessoa')
+        .option('-y, --yes', YES_HELP)
+        .action(async (dir: string, _options: ConnectRunOptions, command: Command) => {
+            await webhookRotate(context, dir, command.optsWithGlobals());
         });
 }
 

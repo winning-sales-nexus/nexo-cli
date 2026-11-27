@@ -53,11 +53,43 @@ export interface SecretSlot {
     readonly setAt: string | null;
 }
 
+/** Como o manifesto declara que a chamada é do outro sistema: o tipo, os cabeçalhos e os NOMES dos segredos, nunca um valor. */
+export interface WebhookAuth {
+    readonly type: 'header' | 'basic' | 'hmac';
+    readonly header?: string;
+    readonly secret: string;
+    readonly user?: string;
+    readonly algorithm?: string;
+    readonly encoding?: string;
+    readonly prefix?: string;
+    readonly signed?: string;
+    readonly timestampHeader?: string;
+    readonly toleranceSeconds?: number;
+}
+
 export interface Webhook {
     readonly url: string;
-    readonly secretSet: boolean;
-    readonly signatureHeader: string;
-    readonly timestampHeader: string;
+    /** A da versão publicada: a que confere as chamadas agora. */
+    readonly auth: WebhookAuth | null;
+    /** A da versão em edição: a que vale depois de publicar. */
+    readonly authInEdit: WebhookAuth | null;
+}
+
+const WEBHOOK_OUTCOMES: ReadonlySet<string> = new Set(['ran', 'waiting', 'refused', 'discarded']);
+
+export interface WebhookDelivery {
+    readonly receivedAt: string;
+    readonly contentType: string | null;
+    readonly sizeBytes: number;
+    readonly outcome: 'ran' | 'waiting' | 'refused' | 'discarded';
+    readonly reason: string | null;
+    readonly runId: string | null;
+    readonly runStatus: string | null;
+}
+
+export interface WebhookDeliveryList {
+    readonly deliveries: readonly WebhookDelivery[];
+    readonly next: string | null;
 }
 
 export interface OAuthStatus {
@@ -108,7 +140,35 @@ export function isSecretList(value: unknown): value is readonly SecretSlot[] {
 
 export function isWebhook(value: unknown): value is Webhook {
     const fields: Record<string, unknown> | null = fieldsOf(value);
-    return fields !== null && typeof fields.url === 'string' && typeof fields.secretSet === 'boolean';
+    return fields !== null && typeof fields.url === 'string' && isAuthOrNull(fields.auth) && isAuthOrNull(fields.authInEdit);
+}
+
+function isAuthOrNull(value: unknown): boolean {
+    if (value === null) {
+        return true;
+    }
+    const fields: Record<string, unknown> | null = fieldsOf(value);
+    return fields !== null && typeof fields.type === 'string' && typeof fields.secret === 'string';
+}
+
+export function isWebhookDeliveryList(value: unknown): value is WebhookDeliveryList {
+    const fields: Record<string, unknown> | null = fieldsOf(value);
+    return (
+        fields !== null &&
+        Array.isArray(fields.deliveries) &&
+        fields.deliveries.every((item: unknown) => isDelivery(item)) &&
+        (fields.next === null || typeof fields.next === 'string')
+    );
+}
+
+function isDelivery(item: unknown): boolean {
+    const delivery: Record<string, unknown> | null = fieldsOf(item);
+    return (
+        delivery !== null &&
+        typeof delivery.receivedAt === 'string' &&
+        typeof delivery.outcome === 'string' &&
+        WEBHOOK_OUTCOMES.has(delivery.outcome)
+    );
 }
 
 export function isOAuthStatus(value: unknown): value is OAuthStatus {
@@ -149,12 +209,83 @@ export function describeSecret(slot: SecretSlot): string {
     return `${slot.name.padEnd(28)} ${slot.filled ? `preenchido${slot.setAt === null ? '' : ` desde ${slot.setAt}`}` : 'faltando'}`;
 }
 
-export function describeWebhook(webhook: Webhook): readonly string[] {
-    return [
-        `URL: ${webhook.url} (POST com corpo JSON)`,
-        `Assinatura: o cabeçalho ${webhook.signatureHeader} leva sha256= e o HMAC-SHA256 de "<timestamp>.<corpo>" com o segredo; o cabeçalho ${webhook.timestampHeader} leva a hora da chamada, em segundos (5 minutos de tolerância).`,
-        webhook.secretSet ? 'Segredo: definido.' : 'Segredo: ainda não definido. Defina com `nexo connect webhook secret set --generate`.'
-    ];
+export const WEBHOOK_URL_WARNING: string =
+    'O endereço é a credencial do webhook: quem o tem pode chamá-lo. Não o cole em lugar público nem em chat; só no outro sistema.';
+
+const OUTCOME_NAMES: Readonly<Record<WebhookDelivery['outcome'], string>> = {
+    ran: 'rodou',
+    waiting: 'esperando a vez',
+    refused: 'recusada',
+    discarded: 'descartada'
+};
+
+const REASON_NAMES: Readonly<Record<string, string>> = {
+    missing: 'a chamada veio sem a autenticação declarada',
+    mismatch: 'a autenticação não confere com o segredo',
+    stale: 'a hora da chamada está fora da tolerância',
+    secret_missing: 'o segredo da autenticação não está preenchido no Nexo',
+    not_published: 'o conector não tem versão publicada',
+    no_webhook_trigger: 'a versão publicada não tem gatilho de webhook',
+    disabled: 'o conector está desligado',
+    paused: 'o conector está pausado',
+    unstorable: 'o corpo não pôde ser guardado'
+};
+
+/** Os nomes dos segredos que a autenticação usa, sem repetir. */
+export function authSecretNames(auth: WebhookAuth | null): readonly string[] {
+    return auth === null
+        ? []
+        : [...new Set([auth.user, auth.secret].filter((name: string | undefined): name is string => name !== undefined))];
+}
+
+function describeHmac(auth: WebhookAuth): string {
+    const timed: boolean = auth.signed === 'timestamp.body';
+    const prefix: string = auth.prefix === undefined || auth.prefix === '' ? '' : ` (com o prefixo ${auth.prefix})`;
+    const time: string = timed
+        ? `; o cabeçalho ${auth.timestampHeader ?? '?'} leva a hora, em segundos (${String(auth.toleranceSeconds ?? 300)} s de tolerância)`
+        : '';
+    const algorithm: string = (auth.algorithm ?? 'sha256').toUpperCase();
+    return `assinatura HMAC-${algorithm} (${auth.encoding ?? 'hex'}) de ${timed ? '"<hora>.<corpo>"' : 'o corpo'} com o segredo ${auth.secret}, no cabeçalho ${auth.header ?? '?'}${prefix}${time}`;
+}
+
+export function describeAuth(auth: WebhookAuth): string {
+    if (auth.type === 'header') {
+        return `o cabeçalho ${auth.header ?? '?'} leva o valor do segredo ${auth.secret}`;
+    }
+    if (auth.type === 'basic') {
+        return `HTTP Basic, com o usuário do segredo ${auth.user ?? '?'} e a senha do segredo ${auth.secret}`;
+    }
+    return describeHmac(auth);
+}
+
+/** `missing`: os nomes de segredo da autenticação que o Nexo ainda não tem preenchidos. */
+export function describeWebhook(webhook: Webhook, missing: readonly string[]): readonly string[] {
+    const lines: string[] = [`URL: ${webhook.url} (POST)`, WEBHOOK_URL_WARNING];
+    lines.push(
+        webhook.auth === null
+            ? 'Autenticação publicada: nenhuma (sem versão publicada, sem gatilho de webhook ou sem auth declarada); só o endereço prova a chamada.'
+            : `Autenticação publicada (a que confere as chamadas agora): ${describeAuth(webhook.auth)}.`
+    );
+    if (JSON.stringify(webhook.authInEdit) !== JSON.stringify(webhook.auth)) {
+        lines.push(
+            webhook.authInEdit === null
+                ? 'Na versão em edição: nenhuma autenticação (vale depois de publicar).'
+                : `Na versão em edição (vale depois de publicar): ${describeAuth(webhook.authInEdit)}.`
+        );
+    }
+    if (missing.length > 0) {
+        lines.push(`Falta preencher: ${missing.join(', ')}. Preencha com \`nexo connect secrets set <NOME>\`.`);
+    }
+    return lines;
+}
+
+export function describeDelivery(delivery: WebhookDelivery): string {
+    const reason: string | null = delivery.reason === null ? null : (REASON_NAMES[delivery.reason] ?? delivery.reason);
+    const run: string =
+        delivery.runId === null ? '' : ` execução ${delivery.runId}${delivery.runStatus === null ? '' : ` (${delivery.runStatus})`}`;
+    return `${delivery.receivedAt}  ${OUTCOME_NAMES[delivery.outcome].padEnd(15)} ${delivery.contentType ?? 'sem tipo'}, ${String(delivery.sizeBytes)} bytes${
+        reason === null ? '' : `; motivo: ${reason}`
+    }${run === '' ? '' : `;${run}`}`;
 }
 
 const APP_NAMES: Readonly<Record<OAuthStatus['app'], string>> = {
