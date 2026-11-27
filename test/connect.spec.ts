@@ -754,6 +754,35 @@ describe('result of a run: logs, output and quarantine', () => {
         expect(text).toContain('… mais 2');
     });
 
+    it('lists under "Passos com erro" only steps with an error code or a 4xx/5xx status, never a log', async () => {
+        const h: Harness = harness({
+            [`GET ${BASE}/runs/run-1`]: () =>
+                runOf('failed', {
+                    steps: [
+                        { kind: 'log', message: 'só um log' },
+                        { kind: 'http', target: 'GET /a', status: 200, errorCode: null, message: 'ok' },
+                        { kind: 'http', target: 'GET /b', status: 200, errorCode: 'connect.blocked_address', message: 'bloqueado' },
+                        { kind: 'http', target: 'GET /c', status: 404, message: 'não achou' }
+                    ]
+                })
+        });
+
+        await run(h.context, ['connect', '--connector', CONNECTOR, 'run', 'run-1']);
+
+        const text: string = h.out();
+        expect(text).toContain('Passos com erro:');
+        expect(text).toContain('connect.blocked_address: bloqueado');
+        expect(text).toContain('GET /c → 404: não achou');
+        expect(text).not.toContain('GET /a');
+        expect(text.slice(text.indexOf('Passos com erro:'), text.indexOf('Logs do script:'))).not.toContain('só um log');
+
+        const onlyLogs: Harness = harness({
+            [`GET ${BASE}/runs/run-1`]: () => runOf('succeeded', { steps: [{ kind: 'log', message: 'x' }] })
+        });
+        await run(onlyLogs.context, ['connect', '--connector', CONNECTOR, 'run', 'run-1']);
+        expect(onlyLogs.out()).not.toContain('Passos com erro');
+    });
+
     it('cuts a long output and long logs on the screen, but --json brings everything', async () => {
         const big: Harness = harness({
             [`GET ${BASE}/runs/run-1`]: () =>
