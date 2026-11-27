@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
+import { connectBuild } from '../src/commands/connect-build.js';
 import { connectRehearse } from '../src/commands/connect-runs.js';
 import { CredentialsStore } from '../src/config/credentials-store.js';
 import type { CliContext } from '../src/context.js';
@@ -753,5 +754,122 @@ describe('result of a run: logs, output and quarantine', () => {
         expect(await run(old.context, ['connect', '--connector', CONNECTOR, 'run', 'run-1'])).toBe(0);
         expect(old.out()).toContain('succeeded');
         expect(old.out()).not.toContain('Logs do script');
+    });
+});
+
+describe('build: the conversation with the AI of Connect', () => {
+    const BASE: string = `/v1/connect/connectors/${CONNECTOR}`;
+    const TURN: string = '019fd0a4-6b1e-7c2a-9d3f-5a8e2b7c4d99';
+    const answered: unknown = {
+        answering: false,
+        messages: [
+            { id: 'm1', author: 'person', kind: 'text', content: { text: 'ler os clientes do Omie' }, at: '2026-11-26T10:00:00.000Z' },
+            { id: 'm2', author: 'assistant', kind: 'source', content: {}, at: '2026-11-26T10:00:05.000Z' },
+            {
+                id: 'm3',
+                author: 'assistant',
+                kind: 'version',
+                content: { seq: 2, summary: 'lê os clientes' },
+                at: '2026-11-26T10:00:20.000Z'
+            },
+            { id: 'm4', author: 'assistant', kind: 'text', content: { text: 'Escrevi o conector.' }, at: '2026-11-26T10:00:21.000Z' }
+        ]
+    };
+
+    it('starts a connector outside a folder, warns about the AI allowance, waits and shows the answer', async () => {
+        let polls: number = 0;
+        const h: Harness = harness({
+            'POST /v1/connect/build': () => ({ connectorId: CONNECTOR, turnId: TURN }),
+            [`GET ${BASE}/build`]: () => {
+                polls += 1;
+                return polls < 2 ? { answering: true, messages: [] } : answered;
+            }
+        });
+
+        await connectBuild(h.context, 'ler os clientes do Omie', h.root, {}, { intervalMs: 1, timeoutMs: 5000 });
+
+        expect(h.calls[0]?.body).toEqual({ message: 'ler os clientes do Omie' });
+        expect(h.err()).toContain('franquia de IA');
+        expect(h.out()).toContain(`Conector ${CONNECTOR}, vez ${TURN}`);
+        expect(h.out()).toContain('IA: Escrevi o conector.');
+        expect(h.out()).toContain('escreveu a versão 2: lê os clientes');
+        expect(h.out()).toContain(`nexo connect pull ${CONNECTOR}`);
+    });
+
+    it('sends the message in the conversation of the connector of the folder', async () => {
+        const h: Harness = harness({
+            'POST /v1/connect/connectors/other/build': () => ({ connectorId: 'other', turnId: TURN }),
+            [`POST ${BASE}/build`]: () => ({ connectorId: CONNECTOR, turnId: TURN }),
+            [`GET ${BASE}/build`]: () => answered,
+            'POST /v1/connect/connectors': () => saved(1)
+        });
+        const dir: string = join(h.root, 'clientes');
+        await run(h.context, ['connect', 'init', dir]);
+        await run(h.context, ['connect', 'push', dir, '-m', 'primeira versão']);
+        h.calls.length = 0;
+
+        expect(await run(h.context, ['connect', 'build', 'traga também a cidade', dir])).toBe(0);
+
+        expect(h.calls[0]).toMatchObject({ method: 'POST', path: `${BASE}/build`, body: { message: 'traga também a cidade' } });
+    });
+
+    it('keeps the connector id in an initialized folder, so the next message goes to the same conversation', async () => {
+        const h: Harness = harness({
+            'POST /v1/connect/build': () => ({ connectorId: CONNECTOR, turnId: TURN }),
+            [`POST ${BASE}/build`]: () => ({ connectorId: CONNECTOR, turnId: TURN }),
+            [`GET ${BASE}/build`]: () => answered
+        });
+        const dir: string = join(h.root, 'clientes');
+        await run(h.context, ['connect', 'init', dir]);
+
+        expect(await run(h.context, ['connect', 'build', 'primeiro', dir])).toBe(0);
+        expect(await run(h.context, ['connect', 'build', 'segundo', dir])).toBe(0);
+        expect(await run(h.context, ['connect', 'build', 'show', dir])).toBe(0);
+
+        const posts: string[] = h.calls.filter((call) => call.method === 'POST').map((call) => call.path);
+        expect(posts).toEqual(['/v1/connect/build', `${BASE}/build`]);
+        expect(JSON.parse(readFileSync(join(dir, 'nexo-connector.json'), 'utf8'))).toMatchObject({ connectorId: CONNECTOR });
+    });
+
+    it('with --no-wait only sends and points to build show', async () => {
+        const h: Harness = harness({ 'POST /v1/connect/build': () => ({ connectorId: CONNECTOR, turnId: TURN }) });
+
+        expect(await run(h.context, ['connect', 'build', 'ler os clientes do Omie', h.root, '--no-wait'])).toBe(0);
+
+        expect(h.calls).toHaveLength(1);
+        expect(h.out()).toContain(`nexo connect --connector ${CONNECTOR} build show`);
+    });
+
+    it('build show prints the whole conversation', async () => {
+        const h: Harness = harness({ [`GET ${BASE}/build`]: () => answered });
+
+        expect(await run(h.context, ['connect', '--connector', CONNECTOR, 'build', 'show'])).toBe(0);
+
+        expect(h.out()).toContain('Você: ler os clientes do Omie');
+        expect(h.out()).toContain('IA: leu uma fonte');
+        expect(h.out()).toContain('IA: Escrevi o conector.');
+        expect(h.err()).toBe('');
+    });
+
+    it('build fix asks for the fix of a run, waits and shows the answer', async () => {
+        const h: Harness = harness({
+            [`POST ${BASE}/runs/run-1/fix`]: () => ({ connectorId: CONNECTOR, turnId: TURN }),
+            [`GET ${BASE}/build`]: () => answered
+        });
+
+        expect(await run(h.context, ['connect', '--connector', CONNECTOR, 'build', 'fix', 'run-1', '-m', 'olhe o CNPJ'])).toBe(0);
+
+        expect(h.calls[0]?.body).toEqual({ message: 'olhe o CNPJ' });
+        expect(h.err()).toContain('franquia de IA');
+        expect(h.out()).toContain('IA: Escrevi o conector.');
+    });
+
+    it('stops with the build show hint when the AI takes longer than the limit', async () => {
+        const h: Harness = harness({
+            'POST /v1/connect/build': () => ({ connectorId: CONNECTOR, turnId: TURN }),
+            [`GET ${BASE}/build`]: () => ({ answering: true, messages: [] })
+        });
+
+        await expect(connectBuild(h.context, 'x', h.root, {}, { intervalMs: 1, timeoutMs: 20 })).rejects.toThrow('ainda está respondendo');
     });
 });

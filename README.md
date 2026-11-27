@@ -122,6 +122,18 @@ nexo connect write-hosts revoke api.erp.example.com.br                # revoga
 
 Cada comando que muda algo mostra a prévia e pede o sim num terminal; `-y` aplica logo depois de mostrar. Fora de um terminal, a CLI mostra a prévia e o comando que aplica: `reprocess`, `writes confirm` e `write-hosts` com `--confirm <token>`, que vale uma vez; `fix` e `discard` (o `/v1` não tem prévia para eles, a prévia é montada pela CLI) com `--confirm`, sem token. Em `fix`, `--set campo=valor` mexe num campo nativo e `--set properties.chave=valor` numa propriedade; `true` e `false` viram booleano e o resto é texto (para outro tipo, use `--file`). Um campo fora do manifesto, ou um host que não é dele, volta como a recusa do Nexo, em português. Todos aceitam `--json`.
 
+### A conversa com a IA do Connect
+
+```sh
+nexo connect build "ler os clientes do Omie"              # fora de uma pasta de conector: começa um conector novo
+nexo connect build "traga também a cidade" clientes-erp   # numa pasta com conector: manda a mensagem na conversa dele
+nexo connect build show clientes-erp                      # a conversa inteira: suas mensagens, as da IA e o que ela fez
+nexo connect build fix <execução> clientes-erp            # pede a correção de uma execução que falhou
+nexo connect build "..." --no-wait                        # só manda; acompanhe com build show
+```
+
+É a mesma conversa da tela do conector. `build` e `build fix` avisam numa linha (no stderr) que gastam a franquia de IA da empresa, mandam a mensagem e esperam a IA responder (até 10 minutos; passou disso, a CLI sai com código 1 e aponta `build show`). Mostram o id do conector e a vez, a resposta da IA, as versões que ela escreveu e a dica de `nexo connect pull <id> <pasta>` para trazer o código. Uma mensagem enquanto a IA ainda responde a anterior volta `connect.build_turn_in_progress`. `build fix` leva a execução inteira à IA (`-m` acrescenta um pedido) e só vale para uma execução que já terminou. Publicar a correção e reprocessar continuam com você. Todos aceitam `--json`.
+
 ## Operações de ERP: `nexo erp`
 
 As consultas e as ações que um conector declara no manifesto (ler o estoque, incluir um pedido), para quem vende ou para um agente em nome dela. Vale a mesma regra de acesso do MCP: só aparece o que o seu perfil alcança.
