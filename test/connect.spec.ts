@@ -1253,7 +1253,7 @@ describe('nexo connect agents', () => {
     });
 });
 
-describe('nexo connect: access (hosts, secrets and webhook)', () => {
+describe('nexo connect: access (hosts, secrets, webhook, OAuth, SFTP and e-mail)', () => {
     const BASE: string = `/v1/connect/connectors/${CONNECTOR}`;
     const OPTION: string[] = ['--connector', CONNECTOR];
     const SCREEN: string = `${LINK}?foco=hosts`;
@@ -1399,6 +1399,166 @@ describe('nexo connect: access (hosts, secrets and webhook)', () => {
         const refused: Harness = harness({});
         expect(await run(refused.context, ['connect', 'webhook', 'secret', 'set', '--generate', '--json', ...OPTION])).toBe(2);
         expect(refused.calls).toEqual([]);
+    });
+
+    it('oauth client set asks for the yes, takes the secret from stdin and never prints it, not even with --json', async () => {
+        const routes: Record<string, Route> = {
+            [`PUT ${BASE}/oauth/client`]: () => ({ required: true, app: 'own', status: 'unauthorized', clientId: 'app-1' })
+        };
+        const refused: Harness = harness(routes, 'segredo-do-app\n');
+        expect(await run(refused.context, ['connect', 'oauth', 'client', 'set', '--client-id', 'app-1', '--stdin', ...OPTION])).toBe(0);
+        expect(refused.calls).toEqual([]);
+        expect(refused.err()).toContain('--confirm');
+        expect(refused.err() + refused.out()).not.toContain('segredo-do-app');
+
+        const h: Harness = harness(routes, 'segredo-do-app\n');
+        expect(await run(h.context, ['connect', 'oauth', 'client', 'set', '--client-id', 'app-1', '--stdin', '-y', ...OPTION])).toBe(0);
+        expect(h.calls[0]?.body).toEqual({ clientId: 'app-1', clientSecret: 'segredo-do-app' });
+        expect(h.out()).toContain('derruba as autorizações');
+        expect(h.err() + h.out()).not.toContain('segredo-do-app');
+
+        const json: Harness = harness(routes, 'segredo-do-app\n');
+        expect(
+            await run(json.context, ['connect', 'oauth', 'client', 'set', '--client-id', 'app-1', '--stdin', '-y', '--json', ...OPTION])
+        ).toBe(0);
+        expect(json.err() + json.out()).not.toContain('segredo-do-app');
+    });
+
+    it('oauth client remove shows the warning and only removes after the yes', async () => {
+        const routes: Record<string, Route> = {
+            [`DELETE ${BASE}/oauth/client`]: () => ({ required: true, app: 'nexo', status: 'unauthorized', clientId: null })
+        };
+        const refused: Harness = harness(routes);
+        await run(refused.context, ['connect', 'oauth', 'client', 'remove', ...OPTION]);
+        expect(refused.out()).toContain('derruba as autorizações');
+        expect(refused.calls).toEqual([]);
+
+        const h: Harness = harness(routes);
+        expect(await run(h.context, ['connect', 'oauth', 'client', 'remove', '--confirm', ...OPTION])).toBe(0);
+        expect(h.calls.map((call: Call) => call.method)).toEqual(['DELETE']);
+    });
+
+    it('oauth shows the state; oauth authorize opens the page and ends when the state turns authorized', async () => {
+        const state = (extra: Record<string, unknown>): unknown => ({
+            required: true,
+            app: 'nexo',
+            systemName: 'Bling',
+            clientId: null,
+            status: 'unauthorized',
+            authorizedAt: null,
+            expiresAt: null,
+            revokedReason: null,
+            ...extra
+        });
+        let reads: number = 0;
+        const h: Harness = harness({
+            [`GET ${BASE}/oauth`]: () => {
+                reads += 1;
+                return reads < 3
+                    ? state({})
+                    : state({ status: 'authorized', authorizedAt: '2026-11-27T12:00:00.000Z', expiresAt: '2026-11-27T18:00:00.000Z' });
+            },
+            [`POST ${BASE}/oauth/authorize`]: () => ({
+                authorizeUrl: 'https://bling.com.br/autorizar?x=1',
+                expiresAt: '2026-11-27T12:10:00.000Z'
+            })
+        });
+        const { context, opened } = opening(h);
+
+        expect(await run(context, ['connect', 'oauth', 'authorize', ...OPTION])).toBe(0);
+
+        expect(opened).toEqual(['https://bling.com.br/autorizar?x=1']);
+        expect(h.err()).toContain('página do Nexo');
+        expect(h.out()).toContain('Autorizado');
+
+        const shown: Harness = harness({ [`GET ${BASE}/oauth`]: () => state({}) });
+        expect(await run(shown.context, ['connect', 'oauth', ...OPTION])).toBe(0);
+        expect(shown.out()).toContain('não autorizado');
+    });
+
+    it('oauth authorize without an app opens the screen on the OAuth step', async () => {
+        const h: Harness = harness({
+            [`GET ${BASE}/oauth`]: () => ({ required: true, app: 'none', status: 'unauthorized', authorizedAt: null }),
+            [`POST ${BASE}/oauth/authorize`]: () => json(409, { title: 'Esse sistema ainda não tem OAuth configurado.', status: 409 }),
+            [`GET ${BASE}`]: () => detail([], [])
+        });
+        const { context, opened } = opening(h);
+
+        expect(await run(context, ['connect', 'oauth', 'authorize', ...OPTION])).not.toBe(0);
+
+        expect(opened).toEqual([`${LINK}?foco=oauth`]);
+    });
+
+    it('sftp keys lists the fingerprints and sftp accept only writes after the yes', async () => {
+        const routes: Record<string, Route> = {
+            [`GET ${BASE}/sftp-host-keys`]: () => [
+                { host: 'sftp.cliente.com.br', port: 22, fingerprint: 'SHA256:abc', pinnedAt: '2026-11-01T10:00:00.000Z' }
+            ],
+            [`POST ${BASE}/sftp-host-keys/accept`]: () => ({
+                host: 'sftp.cliente.com.br',
+                port: 22,
+                fingerprint: 'SHA256:abc',
+                pinnedAt: '2026-11-01T10:00:00.000Z'
+            })
+        };
+        const listed: Harness = harness(routes);
+        expect(await run(listed.context, ['connect', 'sftp', 'keys', ...OPTION])).toBe(0);
+        expect(listed.out()).toContain('SHA256:abc');
+
+        const refused: Harness = harness(routes);
+        await run(refused.context, ['connect', 'sftp', 'accept', 'sftp.cliente.com.br', ...OPTION]);
+        expect(refused.out()).toContain('SHA256:abc');
+        expect(refused.calls.filter((call: Call) => call.method === 'POST')).toEqual([]);
+
+        const h: Harness = harness(routes);
+        expect(await run(h.context, ['connect', 'sftp', 'accept', 'sftp.cliente.com.br', '-y', ...OPTION])).toBe(0);
+        expect(h.calls.at(-1)).toMatchObject({ method: 'POST', body: { host: 'sftp.cliente.com.br', port: 22 } });
+
+        const missing: Harness = harness(routes);
+        expect(await run(missing.context, ['connect', 'sftp', 'accept', 'outro.com', '-y', ...OPTION])).toBe(2);
+    });
+
+    it('email shows the address, renew only writes after the yes, and files lists the ones left out with the reason', async () => {
+        const routes: Record<string, Route> = {
+            [`GET ${BASE}/email`]: () => ({ address: 'antigo@in.nexo.com.br', senders: ['@cliente.com.br'] }),
+            [`POST ${BASE}/email`]: () => ({ address: 'novo@in.nexo.com.br', senders: ['@cliente.com.br'] }),
+            [`GET ${BASE}/email/files`]: () => [
+                {
+                    id: 'f1',
+                    name: 'vendas.xlsx',
+                    sizeBytes: 100,
+                    receivedAt: '2026-11-26T10:00:00.000Z',
+                    status: 'received',
+                    ignoredReason: null
+                },
+                {
+                    id: 'f2',
+                    name: 'foto.png',
+                    sizeBytes: 50,
+                    receivedAt: '2026-11-26T11:00:00.000Z',
+                    status: 'ignored',
+                    ignoredReason: 'not_spreadsheet'
+                }
+            ]
+        };
+        const shown: Harness = harness(routes);
+        expect(await run(shown.context, ['connect', 'email', ...OPTION])).toBe(0);
+        expect(shown.out()).toContain('antigo@in.nexo.com.br');
+        expect(shown.out()).toContain('@cliente.com.br');
+
+        const refused: Harness = harness(routes);
+        await run(refused.context, ['connect', 'email', 'renew', ...OPTION]);
+        expect(refused.out()).toContain('para de valer');
+        expect(refused.calls.filter((call: Call) => call.method === 'POST')).toEqual([]);
+
+        const h: Harness = harness(routes);
+        expect(await run(h.context, ['connect', 'email', 'renew', '-y', ...OPTION])).toBe(0);
+        expect(h.out()).toContain('novo@in.nexo.com.br');
+
+        const files: Harness = harness(routes);
+        expect(await run(files.context, ['connect', 'email', 'files', ...OPTION])).toBe(0);
+        expect(files.out()).toContain('vendas.xlsx');
+        expect(files.out()).toContain('deixado de fora: não é planilha');
     });
 });
 

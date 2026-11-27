@@ -134,7 +134,7 @@ nexo connect write-hosts revoke api.erp.example.com.br                # revoga
 
 Cada comando que muda algo mostra a prévia e pede o sim num terminal; `-y` aplica logo depois de mostrar. Fora de um terminal, a CLI mostra a prévia e o comando que aplica: `reprocess`, `writes confirm` e `write-hosts` com `--confirm <token>`, que vale uma vez; `fix` e `discard` (o `/v1` não tem prévia para eles, a prévia é montada pela CLI) com `--confirm`, sem token. Em `fix`, `--set campo=valor` mexe num campo nativo e `--set properties.chave=valor` numa propriedade; `true` e `false` viram booleano e o resto é texto (para outro tipo, use `--file`). Um campo fora do manifesto, ou um host que não é dele, volta como a recusa do Nexo, em português. Todos aceitam `--json`.
 
-### Acesso do conector: hosts, segredos e webhook
+### Acesso do conector: hosts, segredos, OAuth, SFTP e e-mail
 
 ```sh
 nexo connect hosts                                  # os hosts aprovados e os que esperam o sim de uma pessoa
@@ -142,11 +142,22 @@ nexo connect hosts approve                          # abre a tela do conector no
 nexo connect secrets list                           # cada segredo: preenchido ou faltando, e desde quando (nunca o valor)
 nexo connect webhook                                # a URL, como o outro sistema assina e se há segredo
 nexo connect webhook secret set --generate          # gera 32 bytes em hexadecimal aqui e mostra o valor uma vez (ou digite sem eco, ou --stdin)
+nexo connect oauth                                  # o app, o estado e até quando o token vale
+nexo connect oauth authorize                        # abre a página do outro sistema e espera a volta (até 10 minutos)
+nexo connect oauth client set --client-id <id>      # o app OAuth da empresa; o client secret é digitado sem eco ou vem por --stdin; pede o sim
+nexo connect oauth client remove                    # volta ao app do Nexo; pede o sim
+nexo connect sftp keys                              # a chave guardada de cada servidor, com a impressão digital
+nexo connect sftp accept sftp.cliente.com.br --port 22   # mostra a impressão digital, pede o sim e apaga a chave antiga
+nexo connect email                                  # o endereço e quem pode mandar para ele
+nexo connect email renew                            # o anterior para de valer; pede o sim
+nexo connect email files                            # os arquivos recebidos e os deixados de fora, com o motivo
 ```
 
 **Aprovar host é da pessoa, na tela.** O token do `nexo login` nunca recebe `connectors:hosts`, e por isso a CLI não aprova nada sozinha: `hosts approve` mostra os hosts (cada um passa a receber as chamadas do conector com os segredos dele), abre a tela do conector já nos hosts, a pessoa aprova lá com a sessão dela, e a CLI só espera o host aparecer entre os aprovados e diz quais foram. Não precisa mais criar uma chave pessoal para isso; uma chave pessoal com `connectors:hosts` continua valendo e usa a prévia e o aplicar do `/v1` (`--confirm <token>` ou `-y`). Passou dos 10 minutos, a CLI sai com código 1. Num ambiente que a CLI não conhece, ela mostra o link e não abre o navegador.
 
-**Nenhum valor secreto sai na tela nem no `--json`.** `secrets list` diz só se está preenchido. O segredo do `webhook secret set` é digitado sem eco ou vem por `--stdin`; `--generate` mostra o valor gerado uma vez, para você levar ao outro sistema (ele não dá acesso ao Nexo), e por isso não vai com `--json`. Trocar o segredo faz o anterior deixar de valer na hora. Todos aceitam `--json`.
+**Nenhum valor secreto sai na tela nem no `--json`.** `secrets list` diz só se está preenchido. O client secret do `oauth client set` e o segredo do `webhook secret set` são digitados sem eco ou vêm por `--stdin`; `--generate` mostra o valor gerado uma vez, para você levar ao outro sistema (ele não dá acesso ao Nexo), e por isso não vai com `--json`. `oauth client set` e `remove` avisam que as autorizações do app anterior caem; `sftp accept` e `email renew` mostram o que muda. Os quatro pedem o sim num terminal (`-y`, ou `--confirm` fora de um terminal, só depois do sim da pessoa).
+
+`oauth authorize` não conclui sem o navegador: a volta do outro sistema passa pela página do Nexo, no navegador em que a pessoa está logada. A CLI abre a página, espera o estado virar autorizado e diz "Autorizado". Sem app configurado para o sistema, ela abre a tela do conector no OAuth, onde a empresa traz o app dela. Todos aceitam `--json`.
 
 ### Agentes locais
 
