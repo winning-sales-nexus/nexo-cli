@@ -56,7 +56,7 @@ export function describeVersion(version: VersionSummary, marks: { readonly head:
     const restored: string = version.restoredFromSeq === null ? '' : ` da v${String(version.restoredFromSeq)}`;
     return [
         `v${String(version.seq).padEnd(3)} ${version.createdAt.slice(0, 16).replace('T', ' ')}  ${origin}${restored}${author}`,
-        `${version.summary ?? '(sem resumo)'}`,
+        version.summary ?? '(sem resumo)',
         flags.length === 0 ? '' : `[${flags.join(', ')}]`
     ]
         .filter((part: string) => part !== '')

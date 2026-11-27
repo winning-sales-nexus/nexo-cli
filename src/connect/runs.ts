@@ -125,7 +125,7 @@ function cut(lines: readonly string[], max: number, what: string): readonly stri
 }
 
 function compact(value: unknown): string {
-    return JSON.stringify(value) ?? '';
+    return JSON.stringify(value);
 }
 
 function timeOf(at: string | null | undefined): string {
@@ -170,7 +170,7 @@ function quarantineLines(planned: Run['plannedQuarantine']): readonly string[] {
     ];
 }
 
-export function describeRun(run: Run, options: { readonly quiet?: boolean } = {}): readonly string[] {
+function headLines(run: Run): readonly string[] {
     const lines: string[] = [`Execução ${run.id}: ${run.status}${run.mode === 'dry_run' ? ' (ensaio)' : ''}`];
     if (run.failureReason !== null) {
         lines.push(`Motivo: ${run.failureReason}`);
@@ -178,20 +178,26 @@ export function describeRun(run: Run, options: { readonly quiet?: boolean } = {}
     if (run.counters !== null && Object.keys(run.counters).length > 0) {
         lines.push(`Contadores: ${JSON.stringify(run.counters)}`);
     }
-    lines.push(
-        ...plannedLines('Escreveria no Nexo:', run.plannedNexoWrites),
-        ...plannedLines('Escreveria no outro sistema:', run.plannedWrites)
-    );
+    return lines;
+}
+
+function errorLines(run: Run): readonly string[] {
     const failed: readonly string[] = failedSteps(run.steps);
-    if (failed.length > 0) {
-        lines.push('Passos com erro:', ...failed);
-    }
-    if (run.error !== null) {
-        lines.push(
-            `Erro: ${run.error.name ?? 'Error'}: ${run.error.message ?? ''}`,
-            ...(run.error.stack === null ? [] : [run.error.stack])
-        );
-    }
+    return [
+        ...(failed.length > 0 ? ['Passos com erro:', ...failed] : []),
+        ...(run.error === null
+            ? []
+            : [`Erro: ${run.error.name ?? 'Error'}: ${run.error.message ?? ''}`, ...(run.error.stack === null ? [] : [run.error.stack])])
+    ];
+}
+
+export function describeRun(run: Run, options: { readonly quiet?: boolean } = {}): readonly string[] {
+    const lines: string[] = [
+        ...headLines(run),
+        ...plannedLines('Escreveria no Nexo:', run.plannedNexoWrites),
+        ...plannedLines('Escreveria no outro sistema:', run.plannedWrites),
+        ...errorLines(run)
+    ];
     if (options.quiet !== true) {
         lines.push(...logLines(run.steps), ...outputLines(run.output), ...quarantineLines(run.plannedQuarantine));
     }
