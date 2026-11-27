@@ -10,7 +10,8 @@ import { NexoApiError } from '../http/problem.js';
 import type { ApiResponse } from '../http/nexo-client.js';
 import { SDK_FILE, ensureEmpty, projectDirectory, readFiles, readState, writeFiles, writeState } from '../connect/project.js';
 import type { ConnectorFiles, ConnectorState } from '../connect/project.js';
-import { TEMPLATE_CODE, TEMPLATE_TSCONFIG, templateManifest } from '../connect/template.js';
+import { companyTimeZone, scheduleLine } from '../connect/schedule.js';
+import { TEMPLATE_CODE, TEMPLATE_README, TEMPLATE_TSCONFIG, templateManifest } from '../connect/template.js';
 
 export interface ConnectFileOptions extends GlobalOptions {
     readonly name?: string;
@@ -62,6 +63,7 @@ export async function connectInit(context: CliContext, dir: string, options: Con
     const system: SystemRow | null = options.system === undefined ? null : await systemNamed(context, options, options.system);
     mkdirSync(directory, { recursive: true });
     writeFiles(directory, { code: TEMPLATE_CODE, manifest: templateManifest() });
+    writeFileSync(join(directory, 'README.md'), TEMPLATE_README);
     copySdk(directory);
     const name: string = options.name ?? system?.name ?? 'Novo conector';
     writeState(directory, { connectorId: null, name, systemId: system?.id ?? null, baseSeq: null });
@@ -144,6 +146,9 @@ export interface ConnectorView {
         readonly headSeq: number;
         readonly publishedSeq: number | null;
         readonly status: string;
+        readonly description?: string | null;
+        readonly schedule?: string | null;
+        readonly nextRunAt?: string | null;
     };
     readonly missingSecrets: readonly string[];
     readonly pendingHosts: readonly string[];
@@ -191,7 +196,8 @@ export async function connectStatus(context: CliContext, dir: string | undefined
         printLine(context, `"${state.name}" ainda não foi enviado ao Nexo. Suba com \`nexo connect push -m "primeira versão"\`.`);
         return;
     }
-    const view: ConnectorView = await fetchConnector(context, sessionOf(context, options), state.connectorId);
+    const session: Session = sessionOf(context, options);
+    const view: ConnectorView = await fetchConnector(context, session, state.connectorId);
     if (options.json === true) {
         printJson(context, { local: state, remote: view });
         return;
@@ -208,5 +214,10 @@ export async function connectStatus(context: CliContext, dir: string | undefined
         context,
         `Segredos faltando: ${view.missingSecrets.join(', ') || 'nenhum'}. Hosts esperando: ${view.pendingHosts.join(', ') || 'nenhum'}.`
     );
+    const zone: string | null = typeof view.connector.nextRunAt === 'string' ? await companyTimeZone(context, session) : null;
+    const agenda: string | null = scheduleLine(view.connector, zone);
+    if (agenda !== null) {
+        printLine(context, agenda);
+    }
     printLine(context, `Tela: ${view.link}`);
 }

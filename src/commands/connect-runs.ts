@@ -8,8 +8,11 @@ import { readAll, readSecret } from '../input/read-input.js';
 import { requestChange } from '../connect/changes.js';
 import type { ChangeKind } from '../connect/changes.types.js';
 import { readArgs } from '../connect/operation-args.js';
-import { projectDirectory, readState } from '../connect/project.js';
+import { projectDirectory, readState, writeState } from '../connect/project.js';
 import type { ConnectorState } from '../connect/project.js';
+import { companyTimeZone, formatNextRun, hasNextRun } from '../connect/schedule.js';
+import type { ScheduleFields } from '../connect/schedule.js';
+import { fetchConnector } from './connect-files.js';
 import { DEFAULT_WAIT, fetchRun, printRun, runIsClean, waitForRun } from '../connect/runs.js';
 import type { Run, WaitOptions } from '../connect/runs.js';
 
@@ -24,6 +27,7 @@ export interface ConnectRunOptions extends GlobalOptions {
     readonly operation?: string;
     readonly args?: string;
     readonly quiet?: boolean;
+    readonly description?: string;
 }
 
 export interface Rehearsal {
@@ -182,23 +186,68 @@ export async function connectSystems(context: CliContext, options: ConnectRunOpt
 }
 
 export async function connectList(context: CliContext, options: ConnectRunOptions): Promise<void> {
-    const response: ApiResponse = await clientOf(context, sessionOf(context, options)).request({
+    const session: Session = sessionOf(context, options);
+    const response: ApiResponse = await clientOf(context, session).request({
         method: 'GET',
         path: '/v1/connect/connectors'
     });
-    const rows: readonly { id: string; name: string; status: string; headSeq: number; publishedSeq: number | null }[] = Array.isArray(
-        response.body
-    )
-        ? response.body
-        : [];
+    const rows: readonly (ScheduleFields & { id: string; name: string; status: string; headSeq: number; publishedSeq: number | null })[] =
+        Array.isArray(response.body) ? response.body : [];
     if (options.json === true) {
         printJson(context, rows);
         return;
     }
+    const zone: string = hasNextRun(rows) ? await companyTimeZone(context, session) : 'UTC';
     for (const row of rows) {
+        const next: string = typeof row.nextRunAt === 'string' ? formatNextRun(row.nextRunAt, zone) : '-';
         printLine(
             context,
-            `${row.id}  ${row.status.padEnd(8)} v${String(row.headSeq)} (publicada ${row.publishedSeq === null ? '-' : String(row.publishedSeq)})  ${row.name}`
+            `${row.id}  ${row.status.padEnd(8)} v${String(row.headSeq)} (publicada ${row.publishedSeq === null ? '-' : String(row.publishedSeq)})  próxima ${next.padEnd(11)}  ${row.name}`
         );
     }
+}
+
+export async function connectRename(context: CliContext, name: string, dir: string | undefined, options: ConnectRunOptions): Promise<void> {
+    const newName: string = name.trim();
+    if (newName === '') {
+        throw usageError('Diga o nome novo do conector.', 'Use `nexo connect rename "<nome>"`.');
+    }
+    const connectorId: string = connectorIdOf(options, dir);
+    const session: Session = sessionOf(context, options);
+    const before: string = (await fetchConnector(context, session, connectorId)).connector.name;
+    const response: ApiResponse = await clientOf(context, session).request({
+        method: 'PATCH',
+        path: `/v1/connect/connectors/${connectorId}`,
+        body: { name: newName, ...(options.description === undefined ? {} : { description: options.description }) }
+    });
+    if (options.connector === undefined) {
+        const directory: string = projectDirectory(dir);
+        writeState(directory, { ...readState(directory), name: newName });
+    }
+    if (options.json === true) {
+        printJson(context, response.body);
+        return;
+    }
+    printLine(context, `Nome: "${before}" -> "${(response.body as { name?: string }).name ?? newName}".`);
+    if (options.description !== undefined) {
+        printLine(context, options.description === '' ? 'Descrição apagada.' : 'Descrição mudada.');
+    }
+}
+
+export async function connectDelete(context: CliContext, dir: string | undefined, options: ConnectRunOptions): Promise<void> {
+    const connectorId: string = connectorIdOf(options, dir);
+    const session: Session = sessionOf(context, options);
+    await requestChange(context, session, {
+        connectorId,
+        path: 'delete',
+        applyAs: { method: 'DELETE', path: '' },
+        command: 'nexo connect delete',
+        ...(options.confirm === undefined && options.json !== true
+            ? { typeToConfirm: (await fetchConnector(context, session, connectorId)).connector.name }
+            : {}),
+        summarize: () => ['Conector apagado, sem volta. A pasta local continua no disco: apague você, se quiser.'],
+        confirm: options.confirm,
+        yes: false,
+        json: options.json === true
+    });
 }

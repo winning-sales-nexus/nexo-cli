@@ -18,6 +18,10 @@ export interface ChangeRequest {
     readonly confirm: string | undefined;
     readonly yes: boolean;
     readonly json: boolean;
+    /** Aplicação por outro verbo e caminho (apagar é `DELETE` no conector, sem `/<path>`). */
+    readonly applyAs?: { readonly method: 'DELETE'; readonly path: string };
+    /** Texto que a pessoa digita para valer o sim; com ele, `-y` não basta e fora de um terminal só o `--confirm <token>`. */
+    readonly typeToConfirm?: string;
 }
 
 interface Preview {
@@ -48,8 +52,8 @@ export async function ask(context: CliContext, question: string): Promise<boolea
 
 async function apply(context: CliContext, session: Session, request: ChangeRequest, token: string): Promise<void> {
     const response: ApiResponse = await clientOf(context, session).request({
-        method: 'POST',
-        path: `/v1/connect/connectors/${request.connectorId}/${request.path}`,
+        method: request.applyAs?.method ?? 'POST',
+        path: `/v1/connect/connectors/${request.connectorId}${request.applyAs === undefined ? `/${request.path}` : request.applyAs.path}`,
         body: { ...request.body, confirmationToken: token }
     });
     if (request.json) {
@@ -69,7 +73,32 @@ export function showPreview(context: CliContext, preview: Pick<Preview, 'title' 
     }
 }
 
+async function typedName(context: CliContext, expected: string): Promise<boolean> {
+    const reader: Interface = createInterface({ input: context.stdin, output: context.stderr, terminal: true });
+    try {
+        const answer: string = await new Promise<string>((resolve: (text: string) => void) => {
+            reader.question(`Para apagar, digite o nome do conector (${expected}): `, resolve);
+        });
+        return answer.trim() === expected;
+    } finally {
+        reader.close();
+    }
+}
+
 async function decide(context: CliContext, session: Session, request: ChangeRequest, preview: Preview): Promise<void> {
+    if (request.typeToConfirm !== undefined) {
+        if (context.stdin.isTTY === true && (await typedName(context, request.typeToConfirm))) {
+            await apply(context, session, request, preview.confirmation.token);
+            return;
+        }
+        if (context.stdin.isTTY === true) {
+            printNotice(context, 'O nome não confere. Nada mudou.');
+            return;
+        }
+        printNotice(context, 'Mostre isto à pessoa. Depois do sim dela, aplique uma vez (-y sozinho não basta):');
+        printNotice(context, `  ${request.command} --confirm ${preview.confirmation.token}`);
+        return;
+    }
     if (request.yes || (context.stdin.isTTY === true && (await ask(context, 'Confirma? (s/N) ')))) {
         await apply(context, session, request, preview.confirmation.token);
         return;

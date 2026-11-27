@@ -89,6 +89,18 @@ O conector vive numa pasta do seu repositório: `connector.ts`, `manifest.json`,
 
 Publicar, ligar e pausar mostram a prévia e pedem o sim. Fora de um terminal (numa IA ou num script), a CLI mostra a prévia e o comando para aplicar com `--confirm <token>`, que vale uma vez. O valor de um segredo só é digitado por uma pessoa num terminal (ou por `--stdin`, num script) e nunca volta pela API.
 
+### Renomear, apagar e a agenda
+
+```sh
+nexo connect rename "Clientes do Omie" clientes-erp   # mostra o nome antigo e o novo; --description <texto> muda a descrição
+nexo connect delete clientes-erp                      # prévia do Nexo; digite o nome do conector para apagar
+nexo connect delete clientes-erp --confirm <token>    # num script: o token da prévia (-y não existe aqui)
+```
+
+`delete` apaga o conector sem volta e só vale para um conector pausado ou em rascunho; um conector ligado é recusado com a dica de `nexo connect pause`. A pasta local continua no disco.
+
+O gatilho `cron` do manifesto tem duas formas: `{ "type": "cron", "everyMinutes": 60 }` e, em horário fixo no fuso da empresa, `{ "type": "cron", "at": "22:00" }` ou uma lista, `{ "type": "cron", "at": ["08:00", "18:00"], "days": ["mon", "fri"] }`. `nexo connect init` grava um `README.md` na pasta com as duas. A agenda muda no manifesto, com `push` e `publish`. `status` mostra a linha "Agenda" (a agenda e a próxima execução no fuso da empresa, ou "pausado", ou "sem agenda") e `list` a coluna "próxima".
+
 ### Versões, execuções e o resultado do ensaio
 
 ```sh
