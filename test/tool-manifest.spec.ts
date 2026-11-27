@@ -43,6 +43,11 @@ describe('COMMAND_TOOLS', () => {
         expect(missing).toEqual([]);
     });
 
+    it('maps webhook deliveries to its own tool key, known to the mirror', () => {
+        expect(COMMAND_TOOLS['nexo connect webhook deliveries']).toEqual({ key: 'connector_webhook_deliveries' });
+        expect(TOOL_KEYS).toContain('connector_webhook_deliveries');
+    });
+
     it('has no entry for a command that no longer exists', () => {
         const paths: Set<string> = new Set(invocable(tree));
 

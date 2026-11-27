@@ -48,7 +48,6 @@ import type { ConnectRunOptions } from './connect-runs.js';
 export interface AccessOptions extends Omit<ConnectRunOptions, 'confirm'> {
     /** O sim local (sem token): as rotas de acesso não têm prévia no `/v1`. */
     readonly confirm?: boolean;
-    readonly generate?: boolean;
     readonly clientId?: string;
     readonly port?: string;
 }
@@ -100,11 +99,12 @@ async function missingSecrets(context: CliContext, target: Target, webhook: Webh
 export async function webhookShow(context: CliContext, dir: string | undefined, options: AccessOptions): Promise<void> {
     const target: Target = targetOf(context, dir, options);
     const webhook: Webhook = await read(context, target, 'webhook', isWebhook, 'Webhook');
+    const missing: readonly string[] = await missingSecrets(context, target, webhook);
     if (options.json === true) {
-        printJson(context, webhook);
+        printJson(context, { ...webhook, missingSecrets: missing, urlIsCredential: true });
         return;
     }
-    for (const line of describeWebhook(webhook, await missingSecrets(context, target, webhook))) {
+    for (const line of describeWebhook(webhook, missing)) {
         printLine(context, line);
     }
 }
@@ -151,6 +151,9 @@ export async function webhookDeliveries(context: CliContext, dir: string | undef
 
 /** Troca o token do endereço: prévia do `/v1`, o sim (ou `--yes`) e só então aplica. O endereço antigo para na hora. */
 export async function webhookRotate(context: CliContext, dir: string | undefined, options: ConnectRunOptions): Promise<void> {
+    if (options.confirm !== undefined && options.confirm.trim() === '') {
+        throw usageError('--confirm pede o token da prévia; o valor veio vazio. Nada foi trocado.');
+    }
     await requestChange(context, sessionOf(context, options), {
         connectorId: connectorIdOf(options, dir),
         path: 'webhook/token',

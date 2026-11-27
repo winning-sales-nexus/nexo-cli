@@ -75,13 +75,11 @@ export interface Webhook {
     readonly authInEdit: WebhookAuth | null;
 }
 
-const WEBHOOK_OUTCOMES: ReadonlySet<string> = new Set(['ran', 'waiting', 'refused', 'discarded']);
-
 export interface WebhookDelivery {
     readonly receivedAt: string;
     readonly contentType: string | null;
     readonly sizeBytes: number;
-    readonly outcome: 'ran' | 'waiting' | 'refused' | 'discarded';
+    readonly outcome: string;
     readonly reason: string | null;
     readonly runId: string | null;
     readonly runStatus: string | null;
@@ -163,12 +161,7 @@ export function isWebhookDeliveryList(value: unknown): value is WebhookDeliveryL
 
 function isDelivery(item: unknown): boolean {
     const delivery: Record<string, unknown> | null = fieldsOf(item);
-    return (
-        delivery !== null &&
-        typeof delivery.receivedAt === 'string' &&
-        typeof delivery.outcome === 'string' &&
-        WEBHOOK_OUTCOMES.has(delivery.outcome)
-    );
+    return delivery !== null && typeof delivery.receivedAt === 'string' && typeof delivery.outcome === 'string';
 }
 
 export function isOAuthStatus(value: unknown): value is OAuthStatus {
@@ -212,7 +205,7 @@ export function describeSecret(slot: SecretSlot): string {
 export const WEBHOOK_URL_WARNING: string =
     'O endereço é a credencial do webhook: quem o tem pode chamá-lo. Não o cole em lugar público nem em chat; só no outro sistema.';
 
-const OUTCOME_NAMES: Readonly<Record<WebhookDelivery['outcome'], string>> = {
+const OUTCOME_NAMES: Readonly<Record<string, string>> = {
     ran: 'rodou',
     waiting: 'esperando a vez',
     refused: 'recusada',
@@ -283,7 +276,7 @@ export function describeDelivery(delivery: WebhookDelivery): string {
     const reason: string | null = delivery.reason === null ? null : (REASON_NAMES[delivery.reason] ?? delivery.reason);
     const run: string =
         delivery.runId === null ? '' : ` execução ${delivery.runId}${delivery.runStatus === null ? '' : ` (${delivery.runStatus})`}`;
-    return `${delivery.receivedAt}  ${OUTCOME_NAMES[delivery.outcome].padEnd(15)} ${delivery.contentType ?? 'sem tipo'}, ${String(delivery.sizeBytes)} bytes${
+    return `${delivery.receivedAt}  ${(OUTCOME_NAMES[delivery.outcome] ?? delivery.outcome).padEnd(15)} ${delivery.contentType ?? 'sem tipo'}, ${String(delivery.sizeBytes)} bytes${
         reason === null ? '' : `; motivo: ${reason}`
     }${run === '' ? '' : `;${run}`}`;
 }

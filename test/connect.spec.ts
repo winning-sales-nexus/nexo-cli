@@ -1493,9 +1493,22 @@ describe('nexo connect: access (hosts, secrets, webhook, OAuth, SFTP and e-mail)
         expect(h.out()).toContain('Falta preencher: HOOK_KEY, OTHER');
         expect(h.calls.filter((call: Call) => call.method !== 'GET')).toEqual([]);
 
+        const asJson: Harness = harness({
+            [`GET ${BASE}/webhook`]: () => ({ url: URL_OF_HOOK, auth: HMAC, authInEdit: HMAC }),
+            [`GET ${BASE}/secrets`]: () => [{ name: 'HOOK_KEY', filled: false, setAt: null }]
+        });
+        expect(await run(asJson.context, ['connect', 'webhook', '--json', ...OPTION])).toBe(0);
+        expect(JSON.parse(asJson.out())).toMatchObject({ missingSecrets: ['HOOK_KEY'], urlIsCredential: true });
+
         const raw: Harness = harness({ [`GET ${BASE}/webhook`]: () => ({ url: URL_OF_HOOK, auth: null, authInEdit: null }) });
         expect(await run(raw.context, ['connect', 'webhook', '--json', ...OPTION])).toBe(0);
-        expect(JSON.parse(raw.out())).toEqual({ url: URL_OF_HOOK, auth: null, authInEdit: null });
+        expect(JSON.parse(raw.out())).toEqual({
+            url: URL_OF_HOOK,
+            auth: null,
+            authInEdit: null,
+            missingSecrets: [],
+            urlIsCredential: true
+        });
         expect(raw.calls).toHaveLength(1);
     });
 
@@ -1536,6 +1549,25 @@ describe('nexo connect: access (hosts, secrets, webhook, OAuth, SFTP and e-mail)
         const raw: Harness = harness({ [`GET ${BASE}/webhook/deliveries`]: () => page });
         expect(await run(raw.context, ['connect', 'webhook', 'deliveries', '--json', ...OPTION])).toBe(0);
         expect(JSON.parse(raw.out())).toEqual(page);
+
+        const odd: Harness = harness({
+            [`GET ${BASE}/webhook/deliveries`]: () => ({
+                deliveries: [
+                    {
+                        receivedAt: '2026-11-27T10:00:00.000Z',
+                        contentType: null,
+                        sizeBytes: 1,
+                        outcome: 'novo_desfecho',
+                        reason: null,
+                        runId: null,
+                        runStatus: null
+                    }
+                ],
+                next: null
+            })
+        });
+        expect(await run(odd.context, ['connect', 'webhook', 'deliveries', ...OPTION])).toBe(0);
+        expect(odd.out()).toContain('novo_desfecho');
 
         const bad: Harness = harness({});
         expect(await run(bad.context, ['connect', 'webhook', 'deliveries', '--limit', '500', ...OPTION])).toBe(2);
@@ -1613,6 +1645,13 @@ describe('nexo connect: access (hosts, secrets, webhook, OAuth, SFTP and e-mail)
             expect(JSON.parse(h.out())).toEqual(renewed);
             expect(h.err()).toContain('O endereço antigo para de valer');
             expect(writes(h)).toHaveLength(1);
+        });
+
+        it('--confirm with an empty value is refused locally, with no call', async () => {
+            const h: Harness = harness(routes());
+
+            expect(await run(h.context, ['connect', 'webhook', 'rotate', '--confirm', '', ...OPTION])).toBe(2);
+            expect(h.calls).toEqual([]);
         });
 
         it('the old webhook secret set command is gone', async () => {
