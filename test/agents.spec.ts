@@ -23,7 +23,13 @@ interface Harness {
     readonly err: () => string;
 }
 
-function harness(routes: Readonly<Record<string, { status?: number; body: unknown }>>): Harness {
+function stdinOf(answer: string | undefined): Readable {
+    const stdin: Readable = Readable.from([answer === undefined ? '' : `${answer}\n`]);
+    Object.assign(stdin, { isTTY: answer !== undefined });
+    return stdin;
+}
+
+function harness(routes: Readonly<Record<string, { status?: number; body: unknown }>>, answer?: string): Harness {
     const calls: Call[] = [];
     const stdout: PassThrough = new PassThrough();
     const stderr: PassThrough = new PassThrough();
@@ -47,7 +53,7 @@ function harness(routes: Readonly<Record<string, { status?: number; body: unknow
     const context: CliContext = {
         store: new CredentialsStore(mkdtempSync(join(tmpdir(), 'nexo-agents-'))),
         env: { NEXO_TOKEN: `nexo_pat_${'d'.repeat(38)}` },
-        stdin: Readable.from(['']),
+        stdin: stdinOf(answer),
         stdout,
         stderr,
         fetchFn,
@@ -162,7 +168,8 @@ describe('nexo agents hours', () => {
         expect(h.out()).toContain('o da empresa');
         expect(h.out()).toContain('seg: 09:00-18:00');
         expect(await run(h.context, ['agents', 'hours', 'u-1'])).toBe(0);
-        expect(h.out()).toContain('o seu próprio');
+        expect(h.out()).toContain('Horário de reunião do vendedor u-1 (o próprio dele)');
+        expect(h.out()).not.toContain('o seu próprio');
     });
 
     it('changes your own with --day, after the preview and the yes', async () => {
@@ -211,5 +218,96 @@ describe('nexo agents hours', () => {
         expect(await run(h.context, ['agents', 'hours', 'u-1', '--company'])).not.toBe(0);
         expect(h.err()).toContain('Cada vendedor muda o próprio horário de reunião');
         expect(h.calls).toEqual([]);
+    });
+});
+
+describe('nexo agents: --json, validation and the no', () => {
+    function only(out: string): Record<string, unknown> {
+        return JSON.parse(out) as Record<string, unknown>;
+    }
+
+    it('keeps the stdout one valid JSON on every path of set', async () => {
+        const preview: Harness = harness(SET_ROUTES);
+        expect(await run(preview.context, ['agents', 'set', 'sdr', '--off', '--json'])).toBe(0);
+        expect(only(preview.out())).toEqual({ changes: PREVIEW.changes, saved: false });
+        expect(preview.calls.map((entry: Call) => entry.method)).toEqual(['GET', 'POST']);
+
+        const saved: Harness = harness(SET_ROUTES);
+        expect(await run(saved.context, ['agents', 'set', 'sdr', '--on', '--json', '--yes'])).toBe(0);
+        expect(only(saved.out())).toMatchObject({ saved: true, changes: PREVIEW.changes, result: { enabled: true } });
+
+        const same: Harness = harness({
+            ...SET_ROUTES,
+            'POST /v1/admin/attendance-agents/sdr/preview': { body: { changes: [], confirmation: { token: 't' } } }
+        });
+        expect(await run(same.context, ['agents', 'set', 'sdr', '--on', '--json'])).toBe(0);
+        expect(only(same.out())).toEqual({ changes: [], saved: false });
+    });
+
+    it('keeps the stdout one valid JSON on hours too', async () => {
+        const routes: Record<string, { status?: number; body: unknown }> = {
+            'POST /v1/me/meeting-hours/preview': { body: { before: HOURS, after: HOURS, ...PREVIEW } },
+            'PUT /v1/me/meeting-hours': { body: HOURS }
+        };
+        const preview: Harness = harness(routes);
+        expect(await run(preview.context, ['agents', 'hours', '--company', '--json'])).toBe(0);
+        expect(only(preview.out())).toEqual({ changes: PREVIEW.changes, saved: false });
+
+        const saved: Harness = harness(routes);
+        expect(await run(saved.context, ['agents', 'hours', '--company', '--json', '--yes'])).toBe(0);
+        expect(only(saved.out())).toMatchObject({ saved: true, result: HOURS });
+    });
+
+    it('does not save when the person answers no on a terminal, and saves on yes', async () => {
+        const no: Harness = harness(SET_ROUTES, 'n');
+        expect(await run(no.context, ['agents', 'set', 'sdr', '--on'])).toBe(0);
+        expect(no.calls.map((entry: Call) => entry.method)).toEqual(['GET', 'POST']);
+        expect(no.err()).toContain('Nada foi salvo.');
+
+        const yes: Harness = harness(SET_ROUTES, 's');
+        expect(await run(yes.context, ['agents', 'set', 'sdr', '--on'])).toBe(0);
+        expect(yes.calls.map((entry: Call) => entry.method)).toEqual(['GET', 'POST', 'PUT']);
+    });
+
+    it('refuses a malformed --day with exit 2 and no call', async () => {
+        const bad: string[] = [
+            'seg-qua-dom=09:00-12:00',
+            'seg-qua=09:00-12:00-13:00',
+            'seg=09:00-12:00=zzz',
+            'seg=09:00',
+            'seg=',
+            'xx=09:00-12:00',
+            'seg=9:00-12:00'
+        ];
+        for (const day of bad) {
+            const h: Harness = harness({});
+            expect(await run(h.context, ['agents', 'hours', '--day', day, '--yes']), day).toBe(2);
+            expect(h.calls, day).toEqual([]);
+        }
+    });
+
+    it('accepts sáb with the accent', async () => {
+        const h: Harness = harness({
+            'POST /v1/me/meeting-hours/preview': { body: { before: HOURS, after: HOURS, ...PREVIEW } },
+            'PUT /v1/me/meeting-hours': { body: HOURS }
+        });
+
+        expect(await run(h.context, ['agents', 'hours', '--day', 'sáb=09:00-12:00', '--yes'])).toBe(0);
+        expect(h.calls[0]?.body).toEqual({ days: [{ weekday: 6, ranges: [{ start: '09:00', end: '12:00' }] }] });
+    });
+
+    it('refuses contradictions and empty numbers with exit 2 before any call', async () => {
+        const cases: string[][] = [
+            ['--on', '--off'],
+            ['--book-meeting', '--no-book-meeting'],
+            ['--no-book-meeting', '--book-meeting'],
+            ['--on', '--meeting-minutes', ''],
+            ['--on', '--meeting-lead', '']
+        ];
+        for (const flags of cases) {
+            const h: Harness = harness(SET_ROUTES);
+            expect(await run(h.context, ['agents', 'set', 'sdr', ...flags]), flags.join(' ')).toBe(2);
+            expect(h.calls, flags.join(' ')).toEqual([]);
+        }
     });
 });

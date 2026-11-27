@@ -137,24 +137,24 @@ function casesOf(raw: string): readonly string[] {
 
 function numberOf(raw: string, flag: string): number {
     const value: number = Number(raw);
-    if (!Number.isInteger(value)) {
+    if (raw.trim() === '' || !Number.isInteger(value)) {
         throw usageError(`${flag} pede um número de minutos (recebi "${raw}").`);
     }
     return value;
 }
 
-function nextSettings(current: AgentView, options: AgentsOptions): AgentSettings {
+/** Every contradiction and malformed value is refused here, before any call to the API. */
+function overridesOf(options: AgentsOptions): Partial<AgentSettings> {
     if (options.on === true && options.off === true) {
         throw usageError('Escolha --on ou --off, não os dois.');
     }
     return {
-        name: options.name ?? current.name,
-        enabled: options.on === true ? true : options.off === true ? false : current.enabled,
-        cases: options.cases === undefined ? current.cases : casesOf(options.cases),
-        bookMeeting: options.bookMeeting ?? current.bookMeeting,
-        meetingMinutes:
-            options.meetingMinutes === undefined ? current.meetingMinutes : numberOf(options.meetingMinutes, '--meeting-minutes'),
-        meetingLeadMinutes: options.meetingLead === undefined ? current.meetingLeadMinutes : numberOf(options.meetingLead, '--meeting-lead')
+        ...(options.name === undefined ? {} : { name: options.name }),
+        ...(options.on === true || options.off === true ? { enabled: options.on === true } : {}),
+        ...(options.cases === undefined ? {} : { cases: casesOf(options.cases) }),
+        ...(options.bookMeeting === undefined ? {} : { bookMeeting: options.bookMeeting }),
+        ...(options.meetingMinutes === undefined ? {} : { meetingMinutes: numberOf(options.meetingMinutes, '--meeting-minutes') }),
+        ...(options.meetingLead === undefined ? {} : { meetingLeadMinutes: numberOf(options.meetingLead, '--meeting-lead') })
     };
 }
 
@@ -167,15 +167,18 @@ function noChangeFlags(options: AgentsOptions): boolean {
 /** Shows what changes and asks for the yes; returns the token to save, or null when nothing is to be saved. */
 async function decide(context: CliContext, preview: Preview, options: GlobalOptions & { readonly yes?: boolean }): Promise<string | null> {
     if (preview.changes.length === 0) {
-        printLine(context, 'Já está assim; nada a mudar.');
+        if (options.json !== true) {
+            printLine(context, 'Já está assim; nada a mudar.');
+        }
         return null;
     }
-    printLine(context, 'O que muda:');
-    preview.changes.forEach((change: string) => {
-        printLine(context, `  - ${change}`);
-    });
+    if (options.json !== true) {
+        printLine(context, 'O que muda:');
+        preview.changes.forEach((change: string) => {
+            printLine(context, `  - ${change}`);
+        });
+    }
     if (options.json === true && options.yes !== true) {
-        printJson(context, preview);
         return null;
     }
     if (!(await confirmed(context, options.yes, 'Salvar?'))) {
@@ -185,6 +188,11 @@ async function decide(context: CliContext, preview: Preview, options: GlobalOpti
     return preview.confirmation.token;
 }
 
+/** With --json the stdout is one JSON: the changes, whether it saved, and the saved result. */
+function printOutcome(context: CliContext, preview: Preview, saved: unknown): void {
+    printJson(context, { changes: preview.changes, saved: saved !== null, ...(saved === null ? {} : { result: saved }) });
+}
+
 export async function agentsSet(context: CliContext, rawRole: string, options: AgentsOptions): Promise<void> {
     const role: Role = roleOf(rawRole);
     if (noChangeFlags(options)) {
@@ -192,20 +200,32 @@ export async function agentsSet(context: CliContext, rawRole: string, options: A
             'Diga o que mudar: --on, --off, --cases, --book-meeting, --no-book-meeting, --meeting-minutes, --meeting-lead ou --name.'
         );
     }
+    const overrides: Partial<AgentSettings> = overridesOf(options);
     const path: string = `/v1/admin/attendance-agents/${role}`;
-    const body: AgentSettings = nextSettings((await call(context, options, 'GET', path)) as AgentView, options);
+    const body: AgentSettings = { ...pickSettings((await call(context, options, 'GET', path)) as AgentView), ...overrides };
     const preview: Preview = (await call(context, options, 'POST', `${path}/preview`, body)) as Preview;
     const token: string | null = await decide(context, preview, options);
-    if (token === null) {
-        return;
-    }
-    const saved: AgentView = (await call(context, options, 'PUT', path, { ...body, confirmationToken: token })) as AgentView;
+    const saved: AgentView | null =
+        token === null ? null : ((await call(context, options, 'PUT', path, { ...body, confirmationToken: token })) as AgentView);
     if (options.json === true) {
-        printJson(context, saved);
+        printOutcome(context, preview, saved);
         return;
     }
-    printLine(context, 'Salvo.');
-    showAgent(context, saved);
+    if (saved !== null) {
+        printLine(context, 'Salvo.');
+        showAgent(context, saved);
+    }
+}
+
+function pickSettings(view: AgentView): AgentSettings {
+    return {
+        name: view.name,
+        enabled: view.enabled,
+        cases: view.cases,
+        bookMeeting: view.bookMeeting,
+        meetingMinutes: view.meetingMinutes,
+        meetingLeadMinutes: view.meetingLeadMinutes
+    };
 }
 
 function parseClock(raw: string, day: string): string {
@@ -215,40 +235,51 @@ function parseClock(raw: string, day: string): string {
     return raw;
 }
 
-function weekdaysOf(raw: string): readonly number[] {
-    const [from, to]: string[] = raw.split('-').map((entry: string): string => entry.trim().toLowerCase());
-    const start: number = WEEKDAYS.indexOf(from ?? '');
-    const end: number = to === undefined ? start : WEEKDAYS.indexOf(to);
-    if (start < 0 || end < start) {
-        throw usageError(`Dia "${raw}" não vale: use ${WEEKDAYS.join(', ')} ou uma sequência como seg-sex.`);
+function dayName(raw: string): string {
+    return raw.trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+}
+
+function weekdaysOf(raw: string, entry: string): readonly number[] {
+    const names: string[] = raw.split('-').map(dayName);
+    const start: number = WEEKDAYS.indexOf(names[0] ?? '');
+    const end: number = names.length === 1 ? start : WEEKDAYS.indexOf(names[1] ?? '');
+    if (names.length > 2 || start < 0 || end < start) {
+        throw usageError(`Dia "${raw}" em "${entry}" não vale: use ${WEEKDAYS.join(', ')} ou uma sequência como seg-sex.`);
     }
     return Array.from({ length: end - start + 1 }, (_: unknown, index: number): number => start + index + 1);
+}
+
+function rangeOf(raw: string, entry: string): Range {
+    const clocks: string[] = raw.split('-').map((clock: string): string => clock.trim());
+    if (clocks.length !== 2) {
+        throw usageError(`Faixa "${raw}" em "${entry}" não vale: use HH:mm-HH:mm, como 09:00-12:00.`);
+    }
+    return { start: parseClock(clocks[0] ?? '', entry), end: parseClock(clocks[1] ?? '', entry) };
 }
 
 function daysOf(entries: readonly string[]): readonly Day[] {
     const days: Map<number, Range[]> = new Map();
     for (const entry of entries) {
-        const [dayPart, rangesPart]: string[] = entry.split('=');
-        if (dayPart === undefined || rangesPart === undefined || rangesPart.trim() === '') {
+        const parts: string[] = entry.split('=');
+        if (parts.length !== 2) {
             throw usageError(`"${entry}" não vale: use --day seg-sex=09:00-12:00,14:00-18:00.`);
         }
-        const ranges: Range[] = rangesPart.split(',').map((range: string): Range => {
-            const [start, end]: string[] = range.split('-').map((clock: string): string => clock.trim());
-            return { start: parseClock(start ?? '', entry), end: parseClock(end ?? '', entry) };
-        });
-        weekdaysOf(dayPart).forEach((weekday: number) => {
+        const ranges: Range[] = (parts[1] ?? '').split(',').map((range: string): Range => rangeOf(range, entry));
+        weekdaysOf(parts[0] ?? '', entry).forEach((weekday: number) => {
             days.set(weekday, [...(days.get(weekday) ?? []), ...ranges]);
         });
     }
     return [...days.entries()].sort(([a], [b]) => a - b).map(([weekday, ranges]): Day => ({ weekday, ranges }));
 }
 
-function hoursText(view: HoursView): string[] {
+function hoursText(view: HoursView, seller?: string): string[] {
     const lines: string[] = view.days.map(
         (day: Day): string =>
             `  ${WEEKDAYS[day.weekday - 1] ?? String(day.weekday)}: ${day.ranges.map((range: Range): string => `${range.start}-${range.end}`).join(', ')}`
     );
-    return [`Horário de reunião (${view.source === 'user' ? 'o seu próprio' : 'o da empresa'}):`, ...lines];
+    const whose: string = seller === undefined ? 'o seu próprio' : 'o próprio dele';
+    const owner: string = seller === undefined ? '' : ` do vendedor ${seller}`;
+    return [`Horário de reunião${owner} (${view.source === 'user' ? whose : 'o da empresa'}):`, ...lines];
 }
 
 async function showHours(context: CliContext, seller: string | undefined, options: AgentsOptions): Promise<void> {
@@ -258,7 +289,7 @@ async function showHours(context: CliContext, seller: string | undefined, option
         printJson(context, view);
         return;
     }
-    hoursText(view).forEach((line: string) => {
+    hoursText(view, seller).forEach((line: string) => {
         printLine(context, line);
     });
 }
@@ -267,21 +298,20 @@ async function changeHours(context: CliContext, options: AgentsOptions): Promise
     const body: { readonly days: readonly Day[] | null } = { days: options.company === true ? null : daysOf(options.day ?? []) };
     const preview: HoursPreview = (await call(context, options, 'POST', '/v1/me/meeting-hours/preview', body)) as HoursPreview;
     const token: string | null = await decide(context, preview, options);
-    if (token === null) {
-        return;
-    }
-    const saved: HoursView = (await call(context, options, 'PUT', '/v1/me/meeting-hours', {
-        ...body,
-        confirmationToken: token
-    })) as HoursView;
+    const saved: HoursView | null =
+        token === null
+            ? null
+            : ((await call(context, options, 'PUT', '/v1/me/meeting-hours', { ...body, confirmationToken: token })) as HoursView);
     if (options.json === true) {
-        printJson(context, saved);
+        printOutcome(context, preview, saved);
         return;
     }
-    printLine(context, 'Salvo.');
-    hoursText(saved).forEach((line: string) => {
-        printLine(context, line);
-    });
+    if (saved !== null) {
+        printLine(context, 'Salvo.');
+        hoursText(saved).forEach((line: string) => {
+            printLine(context, line);
+        });
+    }
 }
 
 function checkHoursFlags(seller: string | undefined, options: AgentsOptions): void {

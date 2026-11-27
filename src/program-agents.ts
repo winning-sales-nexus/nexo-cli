@@ -2,6 +2,7 @@ import type { Command } from 'commander';
 import { agentsHours, agentsList, agentsSet, agentsShow } from './commands/agents.js';
 import type { AgentsOptions } from './commands/agents.js';
 import type { CliContext } from './context.js';
+import { usageError } from './errors.js';
 
 function collect(value: string, previous: readonly string[] | undefined): readonly string[] {
     return [...(previous ?? []), value];
@@ -29,6 +30,7 @@ function addShowAndSet(agents: Command, context: CliContext): void {
         .option('--name <nome>', 'nome do agente nas conversas (até 30 caracteres)')
         .option('-y, --yes', 'salva logo depois de mostrar o que muda')
         .action(async (role: string, _options: AgentsOptions, command: Command) => {
+            refuseBothBookFlags(command);
             await agentsSet(context, role, command.optsWithGlobals());
         });
 }
@@ -50,6 +52,18 @@ function addHours(agents: Command, context: CliContext): void {
         .action(async (seller: string | undefined, _options: AgentsOptions, command: Command) => {
             await agentsHours(context, seller, command.optsWithGlobals());
         });
+}
+
+/** Commander keeps only the last of --book-meeting and --no-book-meeting, so the contradiction is read from the arguments. */
+function refuseBothBookFlags(command: Command): void {
+    let root: Command = command;
+    while (root.parent !== null) {
+        root = root.parent;
+    }
+    const args: readonly string[] = (root as Command & { readonly rawArgs: readonly string[] }).rawArgs;
+    if (args.includes('--book-meeting') && args.includes('--no-book-meeting')) {
+        throw usageError('Escolha --book-meeting ou --no-book-meeting, não os dois.');
+    }
 }
 
 export function addAgentCommands(program: Command, context: CliContext): void {
