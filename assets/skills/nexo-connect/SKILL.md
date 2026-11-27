@@ -39,6 +39,8 @@ Um **conector** é um programa pequeno em TypeScript mais um **manifesto** JSON 
 - Escrever no outro sistema exige `externalWrites` no manifesto e a confirmação da primeira escrita.
 - Ids externos levam o sistema junto (`omie:pedido:123`): dois sistemas podem ter o mesmo id.
 
+- Quem só usa as operações de ERP de um conector já publicado (consultar estoque, incluir pedido) não precisa montar nada: `nexo erp list`, `nexo erp query` e `nexo erp action`. Declarar e ensaiar a operação é `nexo connect rehearse --operation`.
+
 ## Onde saber mais
 
 `nexo docs show <página>`: `api-do-nexo-connect`, `primeiros-passos-o-seu-primeiro-conector`, `conceitos`, `referencia-do-manifesto`, `referencia-do-sdk-ctx`, `ensaios-e-execucoes`, `gatilhos-agendamento-webhook-evento-do-nexo`, `escrita-no-outro-sistema`, `segredos-oauth-sftp-e-mail-drive-e-agentes-locais`, `agente-local-instalacao`, `codigos-de-erro`.

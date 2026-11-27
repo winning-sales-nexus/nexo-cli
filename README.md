@@ -122,6 +122,20 @@ nexo connect write-hosts revoke api.erp.example.com.br                # revoga
 
 Cada comando que muda algo mostra a prévia e pede o sim num terminal; `-y` aplica logo depois de mostrar. Fora de um terminal, a CLI mostra a prévia e o comando que aplica: `reprocess`, `writes confirm` e `write-hosts` com `--confirm <token>`, que vale uma vez; `fix` e `discard` (o `/v1` não tem prévia para eles, a prévia é montada pela CLI) com `--confirm`, sem token. Em `fix`, `--set campo=valor` mexe num campo nativo e `--set properties.chave=valor` numa propriedade; `true` e `false` viram booleano e o resto é texto (para outro tipo, use `--file`). Um campo fora do manifesto, ou um host que não é dele, volta como a recusa do Nexo, em português. Todos aceitam `--json`.
 
+## Operações de ERP: `nexo erp`
+
+As consultas e as ações que um conector declara no manifesto (ler o estoque, incluir um pedido), para quem vende ou para um agente em nome dela. Vale a mesma regra de acesso do MCP: só aparece o que o seu perfil alcança.
+
+```sh
+nexo erp list                                                    # as operações: id, chave, tipo, conector, argumentos, guia e notas
+nexo erp list estoque                                            # filtra por palavras
+nexo erp query estoque_por_sku --args '{"sku":"CAD-001"}'        # roda uma consulta (--args aceita @arquivo)
+nexo erp action incluir_pedido --args @pedido.json               # prévia do que seria gravado no outro sistema e o sim
+nexo erp action incluir_pedido --args @pedido.json --confirm <token>
+```
+
+`<operação>` é o id (`<conector>:<chave>`) ou a chave; a chave é resolvida pela lista, e se existir em mais de um conector a CLI pede o id. `--args` é um objeto JSON e é recusado antes de chamar o Nexo se não for. Uma consulta mostra o resultado cortado em 20 linhas (`--json` traz tudo). Uma ação mostra a prévia e só aplica depois do sim num terminal; fora dele, mostra a prévia e o comando com `--confirm <token>` (vale 10 minutos e grava uma vez, com os mesmos `--args`). Não existe `-y` aqui: gravar no sistema do cliente pede o sim da pessoa. O mesmo token de novo devolve a resposta da primeira vez, avisando que nada foi gravado de novo. Erros: operação não encontrada (aponta `nexo erp list`), empresa sem o Nexo Connect no plano, e ERP fora do ar (diz que é o outro sistema, não o Nexo).
+
 ## As automações
 
 ```sh
