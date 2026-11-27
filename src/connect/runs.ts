@@ -14,11 +14,29 @@ export interface PlannedCall {
 }
 
 export interface RunStep {
+    readonly at?: string | null;
     readonly kind: string;
     readonly target: string | null;
     readonly status: number | null;
     readonly errorCode: string | null;
     readonly message: string | null;
+    /** O `data` de um log do script (`ctx.log`). */
+    readonly data?: unknown;
+}
+
+export interface PlannedQuarantineItem {
+    readonly object: string;
+    readonly externalId: string | null;
+    readonly code: string;
+    readonly reason: string;
+    readonly values: Record<string, unknown>;
+    readonly properties?: Record<string, unknown>;
+}
+
+/** Uma resposta antiga não traz `output` nem `plannedQuarantine`: os dois são opcionais. */
+export interface PlannedQuarantine {
+    readonly total: number;
+    readonly items: readonly PlannedQuarantineItem[];
 }
 
 export interface Run {
@@ -31,7 +49,13 @@ export interface Run {
     readonly plannedWrites: readonly PlannedCall[] | null;
     readonly steps: readonly RunStep[] | null;
     readonly error: { readonly name: string | null; readonly message: string | null; readonly stack: string | null } | null;
+    readonly output?: Record<string, unknown> | null;
+    readonly plannedQuarantine?: PlannedQuarantine | null;
 }
+
+/** O que se corta na tela; o `--json` traz tudo. */
+export const MAX_OUTPUT_LINES: number = 20;
+export const MAX_QUARANTINE_ITEMS: number = 10;
 
 export interface WaitOptions {
     readonly intervalMs: number;
@@ -69,7 +93,7 @@ export async function waitForRun(
     let run: Run = await fetchRun(context, session, ids.connectorId, ids.runId);
     while (run.status === 'running') {
         if (Date.now() > deadline) {
-            throw new CliError('O ensaio ainda está rodando.', EXIT_CODES.failure, `Acompanhe com \`nexo connect run ${ids.runId}\`.`);
+            throw new CliError('A execução ainda está rodando.', EXIT_CODES.failure, `Acompanhe com \`nexo connect run ${ids.runId}\`.`);
         }
         await pause(wait.intervalMs);
         run = await fetchRun(context, session, ids.connectorId, ids.runId);
@@ -96,7 +120,57 @@ function failedSteps(steps: readonly RunStep[] | null): readonly string[] {
         );
 }
 
-export function describeRun(run: Run): readonly string[] {
+function cut(lines: readonly string[], max: number, what: string): readonly string[] {
+    return lines.length <= max ? lines : [...lines.slice(0, max), `  … mais ${String(lines.length - max)} ${what} (veja com --json)`];
+}
+
+function compact(value: unknown): string {
+    return JSON.stringify(value) ?? '';
+}
+
+function timeOf(at: string | null | undefined): string {
+    return at === undefined || at === null ? '' : `${at.slice(11, 19)} `;
+}
+
+function logLines(steps: readonly RunStep[] | null): readonly string[] {
+    const logs: readonly RunStep[] = (steps ?? []).filter((step: RunStep) => step.kind === 'log');
+    if (logs.length === 0) {
+        return [];
+    }
+    const lines: readonly string[] = logs.map((log: RunStep) =>
+        `  ${timeOf(log.at)}${log.message ?? ''}${log.data === undefined || log.data === null ? '' : ` ${compact(log.data)}`}`.trimEnd()
+    );
+    return ['Logs do script:', ...cut(lines, MAX_OUTPUT_LINES, 'logs')];
+}
+
+function outputLines(output: Run['output']): readonly string[] {
+    if (output === undefined || output === null || Object.keys(output).length === 0) {
+        return [];
+    }
+    const lines: readonly string[] = JSON.stringify(output, null, 2)
+        .split('\n')
+        .map((line: string) => `  ${line}`);
+    return ['Resultado da operação:', ...cut(lines, MAX_OUTPUT_LINES, 'linhas')];
+}
+
+function quarantineLines(planned: Run['plannedQuarantine']): readonly string[] {
+    if (planned === undefined || planned === null || (planned.total === 0 && planned.items.length === 0)) {
+        return [];
+    }
+    const shown: readonly PlannedQuarantineItem[] = planned.items.slice(0, MAX_QUARANTINE_ITEMS);
+    const lines: readonly string[] = shown.map(
+        (item: PlannedQuarantineItem) =>
+            `  ${item.object} ${item.externalId ?? '-'}: ${item.reason} (${item.code}) ${compact({ ...item.values, ...(item.properties === undefined ? {} : { properties: item.properties }) })}`
+    );
+    const total: number = Math.max(planned.total, planned.items.length);
+    return [
+        `Iriam para a quarentena (${String(total)}):`,
+        ...lines,
+        ...(total > shown.length ? [`  … mais ${String(total - shown.length)} (veja com --json)`] : [])
+    ];
+}
+
+export function describeRun(run: Run, options: { readonly quiet?: boolean } = {}): readonly string[] {
     const lines: string[] = [`Execução ${run.id}: ${run.status}${run.mode === 'dry_run' ? ' (ensaio)' : ''}`];
     if (run.failureReason !== null) {
         lines.push(`Motivo: ${run.failureReason}`);
@@ -118,11 +192,14 @@ export function describeRun(run: Run): readonly string[] {
             ...(run.error.stack === null ? [] : [run.error.stack])
         );
     }
+    if (options.quiet !== true) {
+        lines.push(...logLines(run.steps), ...outputLines(run.output), ...quarantineLines(run.plannedQuarantine));
+    }
     return lines;
 }
 
-export function printRun(context: CliContext, run: Run): void {
-    for (const line of describeRun(run)) {
+export function printRun(context: CliContext, run: Run, options: { readonly quiet?: boolean } = {}): void {
+    for (const line of describeRun(run, options)) {
         printLine(context, line);
     }
 }
