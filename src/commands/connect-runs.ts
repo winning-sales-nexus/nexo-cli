@@ -7,6 +7,7 @@ import type { ApiResponse } from '../http/nexo-client.js';
 import { readAll, readSecret } from '../input/read-input.js';
 import { requestChange } from '../connect/changes.js';
 import type { ChangeKind } from '../connect/changes.types.js';
+import { readArgs } from '../connect/operation-args.js';
 import { projectDirectory, readState } from '../connect/project.js';
 import type { ConnectorState } from '../connect/project.js';
 import { DEFAULT_WAIT, fetchRun, printRun, runIsClean, waitForRun } from '../connect/runs.js';
@@ -20,9 +21,12 @@ export interface ConnectRunOptions extends GlobalOptions {
     readonly yes?: boolean;
     readonly stdin?: boolean;
     readonly category?: string;
+    readonly operation?: string;
+    readonly args?: string;
+    readonly quiet?: boolean;
 }
 
-interface Rehearsal {
+export interface Rehearsal {
     readonly runId: string;
     readonly link: string;
 }
@@ -38,12 +42,12 @@ export function connectorIdOf(options: Pick<ConnectRunOptions, 'connector'>, dir
     return state.connectorId;
 }
 
-function reportRehearsal(context: CliContext, run: Run, rehearsal: Rehearsal, json: boolean): void {
-    if (json) {
+export function reportRehearsal(context: CliContext, run: Run, rehearsal: Rehearsal, options: ConnectRunOptions): void {
+    if (options.json === true) {
         printJson(context, run);
         return;
     }
-    printRun(context, run);
+    printRun(context, run, { quiet: options.quiet === true });
     printLine(context, `Tela: ${rehearsal.link}`);
 }
 
@@ -53,12 +57,20 @@ export async function connectRehearse(
     options: ConnectRunOptions,
     wait: WaitOptions = DEFAULT_WAIT
 ): Promise<void> {
+    if (options.args !== undefined && options.operation === undefined) {
+        throw usageError('--args vai com --operation.', 'Diga qual operação do manifesto ensaiar: --operation <chave>.');
+    }
+    const args: Record<string, unknown> | undefined = options.args === undefined ? undefined : readArgs(options.args);
     const connectorId: string = connectorIdOf(options, dir);
     const session: Session = sessionOf(context, options);
     const response: ApiResponse = await clientOf(context, session).request({
         method: 'POST',
         path: `/v1/connect/connectors/${connectorId}/rehearsals`,
-        body: { scope: options.full === true ? 'full' : 'sample' }
+        body: {
+            scope: options.full === true ? 'full' : 'sample',
+            ...(options.operation === undefined ? {} : { operation: options.operation }),
+            ...(args === undefined ? {} : { args })
+        }
     });
     const rehearsal: Rehearsal = response.body as Rehearsal;
     if (options.wait === false) {
@@ -66,7 +78,7 @@ export async function connectRehearse(
         return;
     }
     const run: Run = await waitForRun(context, session, { connectorId, runId: rehearsal.runId }, wait);
-    reportRehearsal(context, run, rehearsal, options.json === true);
+    reportRehearsal(context, run, rehearsal, options);
     if (!runIsClean(run)) {
         throw new CliError(
             'O ensaio não passou limpo.',
@@ -82,7 +94,7 @@ export async function connectRun(context: CliContext, runId: string, dir: string
         printJson(context, run);
         return;
     }
-    printRun(context, run);
+    printRun(context, run, { quiet: options.quiet === true });
 }
 
 export async function connectRuns(context: CliContext, dir: string | undefined, options: ConnectRunOptions): Promise<void> {

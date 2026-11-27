@@ -89,6 +89,23 @@ O conector vive numa pasta do seu repositório: `connector.ts`, `manifest.json`,
 
 Publicar, ligar e pausar mostram a prévia e pedem o sim. Fora de um terminal (numa IA ou num script), a CLI mostra a prévia e o comando para aplicar com `--confirm <token>`, que vale uma vez. O valor de um segredo só é digitado por uma pessoa num terminal (ou por `--stdin`, num script) e nunca volta pela API.
 
+### Versões, execuções e o resultado do ensaio
+
+```sh
+nexo connect versions clientes-erp                       # número, resumo, origem, quem e quando, ensaio limpo; marca a publicada e a em edição
+nexo connect diff 1 3 clientes-erp                       # o que mudou no código e no manifesto (sem <para>, até a em edição)
+nexo connect restore 1 clientes-erp                      # mostra a versão, pede o sim (ou -y) e reescreve connector.ts e manifest.json
+nexo connect rehearse --operation pedidos --args '{"dias":3}'   # ensaia uma operação; --args aceita @arquivo.json
+nexo connect run-now clientes-erp                        # roda a versão publicada ao vivo: mostra, pede o sim (ou -y) e espera
+nexo connect initial-load clientes-erp                   # a carga inicial, ao vivo; --no-wait só abre a execução
+nexo connect undo <execução> clientes-erp                # prévia do Nexo; aplica depois do sim
+nexo connect run <execução> --quiet                      # só o resumo
+```
+
+`restore` grava a versão antiga como uma versão nova, em edição (o que está publicado não muda) e reescreve a pasta. Se a pasta tem mudanças que não subiram, recusa sem chamar o Nexo, a não ser com `--force`. `run-now` e `initial-load` gravam no Nexo de verdade: mostram qual versão roda e que o `undo` leva de volta, e só abrem a execução depois do sim (`-y`, ou `--confirm` fora de um terminal). Um conector pausado responde `connect.not_enabled` e o comando sai com código diferente de zero.
+
+`rehearse` e `run <id>` mostram, depois do resumo: os **logs do script** (hora, mensagem e `data` em JSON compacto), o **resultado da operação** (`output`) e **"Iriam para a quarentena (N)"** (objeto, chave, motivo e valores). Na tela os logs e o resultado são cortados em 20 linhas e a quarentena em 10 registros; `--json` traz tudo, sem corte, e `--quiet` só o resumo. Uma resposta antiga, sem esses campos, não quebra o comando.
+
 ### Registros retidos: quarentena e escritas no outro sistema
 
 ```sh

@@ -11,6 +11,10 @@ import {
     connectSystems
 } from './commands/connect-runs.js';
 import type { ConnectRunOptions } from './commands/connect-runs.js';
+import { connectExecute, connectUndo } from './commands/connect-execute.js';
+import type { ExecuteOptions } from './commands/connect-execute.js';
+import { connectDiff, connectRestore, connectVersions } from './commands/connect-versions.js';
+import type { VersionOptions } from './commands/connect-versions.js';
 import {
     quarantineDiscard,
     quarantineFix,
@@ -24,6 +28,8 @@ import type { RetainedOptions } from './commands/connect-retained.js';
 import { CHANGES } from './connect/changes.types.js';
 import type { ChangeKind } from './connect/changes.types.js';
 import type { CliContext } from './context.js';
+
+const YES_HELP: string = 'aplica logo depois de mostrar a prévia';
 
 const CHANGE_DESCRIPTIONS: Readonly<Record<ChangeKind, string>> = {
     publish: 'Publica a versão em edição (prévia, e o sim de uma pessoa)',
@@ -77,6 +83,9 @@ function addRunCommands(connect: Command, context: CliContext): void {
         .argument('[pasta]', 'pasta do conector', '.')
         .option('--full', 'ensaio completo, no lugar da amostra')
         .option('--no-wait', 'só começa o ensaio, sem esperar')
+        .option('--operation <chave>', 'ensaia esta operação do manifesto (com --args)')
+        .option('--args <json|@arquivo>', 'argumentos da operação: um objeto JSON, ou @arquivo')
+        .option('-q, --quiet', 'só o resumo, sem logs, resultado nem quarentena')
         .action(async (dir: string, _options: ConnectRunOptions, command: Command) => {
             await connectRehearse(context, dir, command.optsWithGlobals());
         });
@@ -89,11 +98,74 @@ function addRunCommands(connect: Command, context: CliContext): void {
         });
     connect
         .command('run')
-        .description('Uma execução, com o que escreveria, os passos com erro e o stack')
+        .description(
+            'Uma execução: o que escreveria, os passos com erro, o stack, os logs do script, o resultado e o que iria para a quarentena'
+        )
         .argument('<execução>', 'id da execução')
         .argument('[pasta]', 'pasta do conector', '.')
+        .option('-q, --quiet', 'só o resumo, sem logs, resultado nem quarentena')
         .action(async (runId: string, dir: string, _options: ConnectRunOptions, command: Command) => {
             await connectRun(context, runId, dir, command.optsWithGlobals());
+        });
+}
+
+function addVersionCommands(connect: Command, context: CliContext): void {
+    connect
+        .command('versions')
+        .description('As versões do conector: resumo, origem, quem escreveu, quando e se tem ensaio limpo')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .action(async (dir: string, _options: VersionOptions, command: Command) => {
+            await connectVersions(context, dir, command.optsWithGlobals());
+        });
+    connect
+        .command('diff')
+        .description('O que mudou no código e no manifesto entre duas versões (sem <para>, até a em edição)')
+        .argument('<de>', 'versão mais antiga')
+        .argument('[para]', 'versão mais nova (padrão: a em edição)')
+        .argument('[pasta]', 'pasta do conector')
+        .action(async (from: string, to: string | undefined, dir: string | undefined, _options: VersionOptions, command: Command) => {
+            await connectDiff(context, from, to, dir, command.optsWithGlobals());
+        });
+    connect
+        .command('restore')
+        .description('Volta a uma versão: o Nexo guarda como versão nova em edição e a pasta é reescrita (mostra e pede o sim)')
+        .argument('<versão>', 'número da versão (veja `nexo connect versions`)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('--confirm', 'aplica, depois do sim da pessoa')
+        .option('-y, --yes', YES_HELP)
+        .option('--force', 'descarta mudanças da pasta que não foram para o Nexo')
+        .action(async (seq: string, dir: string, _options: VersionOptions, command: Command) => {
+            await connectRestore(context, seq, dir, command.optsWithGlobals());
+        });
+}
+
+function addExecuteCommands(connect: Command, context: CliContext): void {
+    for (const kind of ['run-now', 'initial-load'] as const) {
+        connect
+            .command(kind)
+            .description(
+                kind === 'run-now'
+                    ? 'Roda a versão publicada agora, ao vivo: grava no Nexo e o desfazer leva de volta (mostra e pede o sim)'
+                    : 'Faz a carga inicial, ao vivo: lê a origem inteira e grava no Nexo (mostra e pede o sim)'
+            )
+            .argument('[pasta]', 'pasta do conector', '.')
+            .option('--confirm', 'aplica, depois do sim da pessoa')
+            .option('-y, --yes', YES_HELP)
+            .option('--no-wait', 'só abre a execução, sem esperar')
+            .option('-q, --quiet', 'só o resumo, sem logs, resultado nem quarentena')
+            .action(async (dir: string, _options: ExecuteOptions, command: Command) => {
+                await connectExecute(context, kind, dir, command.optsWithGlobals());
+            });
+    }
+    connect
+        .command('undo')
+        .description('Desfaz uma execução: mostra a prévia do Nexo e aplica depois do sim')
+        .argument('<execução>', 'id da execução (veja `nexo connect runs`)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .option('--confirm <token>', 'aplica com o token da prévia, depois do sim da pessoa')
+        .option('-y, --yes', YES_HELP)
+        .action(async (runId: string, dir: string, _options: ExecuteOptions, command: Command) => {
+            await connectUndo(context, runId, dir, command.optsWithGlobals());
         });
 }
 
@@ -128,7 +200,6 @@ function collect(value: string, previous: readonly string[]): readonly string[] 
 
 const TOKEN_OPTION: string = '--confirm <token>';
 const TOKEN_HELP: string = 'aplica com o token da prévia, depois do sim da pessoa';
-const YES_HELP: string = 'aplica logo depois de mostrar a prévia';
 
 function addQuarantineCommands(connect: Command, context: CliContext): void {
     const quarantine: Command = connect
@@ -237,6 +308,8 @@ export function addConnectCommands(program: Command, context: CliContext): void 
     addFileCommands(connect, context);
     addSyncCommands(connect, context);
     addRunCommands(connect, context);
+    addVersionCommands(connect, context);
+    addExecuteCommands(connect, context);
     addChangeCommands(connect, context);
     addQuarantineCommands(connect, context);
     addWriteCommands(connect, context);

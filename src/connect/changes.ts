@@ -111,6 +111,8 @@ export interface LocalChange {
     readonly yes: boolean;
     readonly json: boolean;
     readonly apply: () => Promise<ApiResponse>;
+    /** Como contar o resultado depois de aplicar; sem isto, `Feito.`. */
+    readonly report?: (body: unknown) => void;
 }
 
 /** Mudança sem prévia no `/v1`: a prévia é montada aqui e o sim é local (`--confirm` sem token). */
@@ -129,7 +131,11 @@ export async function requestLocalChange(context: CliContext, change: LocalChang
             printJson(context, response.body);
             return;
         }
-        printLine(context, 'Feito.');
+        if (change.report === undefined) {
+            printLine(context, 'Feito.');
+        } else {
+            change.report(response.body);
+        }
         return;
     }
     if (context.stdin.isTTY === true) {
