@@ -238,7 +238,7 @@ function describeHmac(auth: WebhookAuth): string {
         ? `; o cabeçalho ${auth.timestampHeader ?? '?'} leva a hora, em segundos (${String(auth.toleranceSeconds ?? 300)} s de tolerância)`
         : '';
     const algorithm: string = (auth.algorithm ?? 'sha256').toUpperCase();
-    return `assinatura HMAC-${algorithm} (${auth.encoding ?? 'hex'}) de ${timed ? '"<hora>.<corpo>"' : 'o corpo'} com o segredo ${auth.secret}, no cabeçalho ${auth.header ?? '?'}${prefix}${time}`;
+    return `assinatura HMAC-${algorithm} (${auth.encoding ?? 'hex'}) ${timed ? 'de "<hora>.<corpo>"' : 'do corpo'} com o segredo ${auth.secret}, no cabeçalho ${auth.header ?? '?'}${prefix}${time}`;
 }
 
 export function describeAuth(auth: WebhookAuth): string {
@@ -256,13 +256,13 @@ export function describeWebhook(webhook: Webhook, missing: readonly string[]): r
     const lines: string[] = [`URL: ${webhook.url} (POST)`, WEBHOOK_URL_WARNING];
     lines.push(
         webhook.auth === null
-            ? 'Autenticação publicada: nenhuma (sem versão publicada, sem gatilho de webhook ou sem auth declarada); só o endereço prova a chamada.'
-            : `Autenticação publicada (a que confere as chamadas agora): ${describeAuth(webhook.auth)}.`
+            ? 'Autenticação publicada: nenhuma `auth` declarada. Com versão publicada e gatilho de webhook, a autenticação é o token do endereço (/webhooks/connect/<token>): o Nexo não exige assinatura, e quem tem o endereço pode chamar. Sem versão publicada ou sem gatilho de webhook, a chamada é descartada e nada roda. Para exigir também um cabeçalho, HTTP Basic ou HMAC, declare `auth` no manifesto e publique.'
+            : `Autenticação publicada (a que confere as chamadas agora, além do token do endereço): ${describeAuth(webhook.auth)}.`
     );
     if (JSON.stringify(webhook.authInEdit) !== JSON.stringify(webhook.auth)) {
         lines.push(
             webhook.authInEdit === null
-                ? 'Na versão em edição: nenhuma autenticação (vale depois de publicar).'
+                ? 'Na versão em edição: nenhuma `auth` declarada; só o token do endereço (vale depois de publicar).'
                 : `Na versão em edição (vale depois de publicar): ${describeAuth(webhook.authInEdit)}.`
         );
     }
