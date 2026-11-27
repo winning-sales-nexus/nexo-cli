@@ -43,10 +43,15 @@ function isLoopback(hostname: string): boolean {
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 }
 
-/** O endereço do app do ambiente da API (o que o `nexo login` e os comandos que abrem uma tela usam); desconhecido cai no padrão. */
-export function appUrlOf(apiUrl: string): string {
+/** O app do ambiente da API, ou `null` quando a API não é de nenhum ambiente conhecido (localhost, staging). */
+export function knownAppUrl(apiUrl: string): string | null {
     const known: NexoEnvironment | undefined = Object.values(ENVIRONMENTS).find(
         (environment: NexoEnvironment) => environment.apiUrl === apiUrl
     );
-    return (known ?? DEFAULT_ENVIRONMENT).appUrl;
+    return known?.appUrl ?? null;
+}
+
+/** O endereço do app para o `nexo login`; um ambiente desconhecido cai no de produção. */
+export function appUrlOf(apiUrl: string): string {
+    return knownAppUrl(apiUrl) ?? DEFAULT_ENVIRONMENT.appUrl;
 }

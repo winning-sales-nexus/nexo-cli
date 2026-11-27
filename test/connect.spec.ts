@@ -1140,14 +1140,23 @@ describe('nexo connect agents', () => {
         expect(shown.out()).toContain('sql db.local (sqlserver/erp)');
     });
 
-    it('pair opens the tab, never asks for a code and ends when a new agent shows up', async () => {
+    it('pair opens the tab, never asks for a code and ends on an active agent that was not in the list before', async () => {
         let polls: number = 0;
+        const old: string = '2020-01-01T00:00:00.000Z';
         const h: Harness = harness({
             [`GET ${AGENTS}`]: () => {
                 polls += 1;
-                return polls < 2
-                    ? [agentOf()]
-                    : [agentOf(), agentOf({ id: 'novo', name: 'SRV-FILIAL', pairedAt: new Date(Date.now() + 60_000).toISOString() })];
+                if (polls === 1) {
+                    return [agentOf()];
+                }
+                if (polls === 2) {
+                    return [agentOf(), agentOf({ id: 'revogado', name: 'SRV-REVOGADO', status: 'revoked', pairedAt: old })];
+                }
+                return [
+                    agentOf(),
+                    agentOf({ id: 'revogado', status: 'revoked' }),
+                    agentOf({ id: 'novo', name: 'SRV-FILIAL', pairedAt: old })
+                ];
             }
         });
         const { context, opened } = withOpener(h);
@@ -1156,24 +1165,15 @@ describe('nexo connect agents', () => {
 
         expect(opened).toEqual([PAGE]);
         expect(h.calls.some((call: Call) => call.path.includes('pairing-codes'))).toBe(false);
-        expect(polls).toBe(2);
+        expect(polls).toBe(3);
         expect(h.out()).toContain('SRV-FILIAL');
         expect(h.out()).not.toContain('SRV-MATRIZ');
+        expect(h.out()).not.toContain('SRV-REVOGADO');
     });
 
-    it('pair --no-wait only opens the tab', async () => {
-        const h: Harness = harness({});
-        const { context, opened } = withOpener(h);
-
-        expect(await run(context, ['connect', 'agents', 'pair', '--no-wait'])).toBe(0);
-
-        expect(opened).toEqual([PAGE]);
-        expect(h.calls).toEqual([]);
-    });
-
-    it('pair gives up after the wait, by the fake clock', async () => {
-        const h: Harness = harness({ [`GET ${AGENTS}`]: () => [agentOf()] });
-        let clock: number = Date.parse('2026-11-27T12:00:00.000Z');
+    it('pair does not count an agent that already existed, whatever the clocks say', async () => {
+        const h: Harness = harness({ [`GET ${AGENTS}`]: () => [agentOf({ pairedAt: '2099-01-01T00:00:00.000Z' })] });
+        let clock: number = 0;
         const context: CliContext = {
             ...h.context,
             openUrl: () => Promise.resolve(true),
@@ -1184,7 +1184,30 @@ describe('nexo connect agents', () => {
         };
 
         await expect(agentPair(context, {}, { intervalMs: 1000, timeoutMs: 3000, now: () => clock })).rejects.toThrow('Nenhum agente novo');
-        expect(h.calls).toHaveLength(4);
+        expect(h.calls).toHaveLength(5);
+    });
+
+    it('pair does not open the browser for an API of no known environment, and refuses --code with --json', async () => {
+        const h: Harness = harness({});
+        const { context, opened } = withOpener(h);
+        const local: CliContext = { ...context, env: { NEXO_TOKEN: TOKEN, NEXO_API_URL: 'http://localhost:3000' } };
+
+        expect(await run(local, ['connect', 'agents', 'pair', '--no-wait'])).toBe(0);
+        expect(opened).toEqual([]);
+        expect(h.err()).toContain('Não conheço o app');
+
+        expect(await run(h.context, ['connect', 'agents', 'pair', '--code', '--json'])).toBe(2);
+        expect(h.calls).toEqual([]);
+    });
+
+    it('pair --no-wait only opens the tab', async () => {
+        const h: Harness = harness({});
+        const { context, opened } = withOpener(h);
+
+        expect(await run(context, ['connect', 'agents', 'pair', '--no-wait'])).toBe(0);
+
+        expect(opened).toEqual([PAGE]);
+        expect(h.calls).toEqual([]);
     });
 
     it('pair --code asks for the code and, without the scope, points to the tab', async () => {

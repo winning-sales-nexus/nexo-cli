@@ -110,10 +110,10 @@ export function revokePreview(agent: Agent): { readonly title: string; readonly 
     };
 }
 
-/** O agente pareado depois de `since` (o mais novo), ou `null`. */
-export function pairedSince(agents: readonly Agent[], since: number): Agent | null {
+/** O agente ativo que não estava na lista de antes do pedido (o mais novo), sem depender de relógio; ou `null`. */
+export function newlyPaired(agents: readonly Agent[], known: ReadonlySet<string>): Agent | null {
     const paired: readonly Agent[] = agents
-        .filter((agent: Agent) => agent.status === 'active' && Date.parse(agent.pairedAt) > since)
+        .filter((agent: Agent) => agent.status === 'active' && !known.has(agent.id))
         .sort((a: Agent, b: Agent) => b.pairedAt.localeCompare(a.pairedAt));
     return paired[0] ?? null;
 }

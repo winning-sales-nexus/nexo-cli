@@ -1,9 +1,9 @@
-import { appUrlOf, AGENT_PAIRING_PAGE } from '../config/environments.js';
+import { AGENT_PAIRING_PAGE, knownAppUrl } from '../config/environments.js';
 import type { Session } from '../config/session.js';
 import { clientOf, printJson, printLine, printNotice, sessionOf } from '../context.js';
 import type { CliContext } from '../context.js';
 import { requestLocalChange } from '../connect/changes.js';
-import { describeAgent, describeAgentRow, isAgent, isAgentList, isPairingCode, pairedSince, revokePreview } from '../connect/agents.js';
+import { describeAgent, describeAgentRow, isAgent, isAgentList, isPairingCode, newlyPaired, revokePreview } from '../connect/agents.js';
 import type { Agent, PairingCode } from '../connect/agents.js';
 import { CliError, usageError } from '../errors.js';
 import { EXIT_CODES } from '../exit-codes.types.js';
@@ -95,11 +95,11 @@ async function createCode(context: CliContext, session: Session, options: AgentO
     }
 }
 
-async function waitForPaired(context: CliContext, session: Session, since: number, wait: PairWait): Promise<Agent> {
+async function waitForPaired(context: CliContext, session: Session, known: ReadonlySet<string>, wait: PairWait): Promise<Agent> {
     const now: () => number = wait.now ?? Date.now;
     const deadline: number = now() + wait.timeoutMs;
     for (;;) {
-        const paired: Agent | null = pairedSince(await fetchAgents(context, session), since);
+        const paired: Agent | null = newlyPaired(await fetchAgents(context, session), known);
         if (paired !== null) {
             return paired;
         }
@@ -114,33 +114,46 @@ async function waitForPaired(context: CliContext, session: Session, since: numbe
     }
 }
 
-async function announcePairing(context: CliContext, session: Session, options: AgentOptions, url: string): Promise<void> {
+const PAIRING_HINT: string =
+    'Gere o código lá, com a sua sessão, e use-o na instalação do agente na máquina da empresa. O código não passa pela CLI.';
+
+async function announcePairing(context: CliContext, session: Session, options: AgentOptions): Promise<void> {
     if (options.code === true) {
         const code: PairingCode = await createCode(context, session, options);
         printLine(context, `Código de pareamento: ${code.code} (vale uma vez, até ${code.expiresAt})`);
         printLine(context, 'Use-o na instalação do agente, na máquina da empresa.');
         return;
     }
+    const app: string | null = knownAppUrl(session.apiUrl);
+    if (app === null) {
+        printNotice(context, `Não conheço o app do ambiente ${session.apiUrl}, então não abri o navegador.`);
+        printNotice(context, `Abra no app desse ambiente o caminho ${AGENT_PAIRING_PAGE}`);
+        printNotice(context, PAIRING_HINT);
+        return;
+    }
+    const url: string = `${app}${AGENT_PAIRING_PAGE}`;
     const opened: boolean = await context.openUrl(url);
     printNotice(context, opened ? 'Abri a aba Agente local no navegador.' : 'Abra a aba Agente local no navegador:');
     printNotice(context, opened ? `Se não abriu, use: ${url}` : url);
-    printNotice(
-        context,
-        'Gere o código lá, com a sua sessão, e use-o na instalação do agente na máquina da empresa. O código não passa pela CLI.'
-    );
+    printNotice(context, PAIRING_HINT);
 }
 
 export async function agentPair(context: CliContext, options: AgentOptions, wait: PairWait = PAIR_WAIT): Promise<void> {
+    if (options.code === true && options.json === true) {
+        throw usageError(
+            '--code não vai com --json: o código sairia no meio do JSON e iria parar no log de quem chama.',
+            'Rode `pair --code` sem --json.'
+        );
+    }
     const session: Session = sessionOf(context, options);
-    const now: () => number = wait.now ?? Date.now;
-    const since: number = now();
-    const url: string = `${appUrlOf(session.apiUrl)}${AGENT_PAIRING_PAGE}`;
-    await announcePairing(context, session, options, url);
-    if (options.wait === false) {
+    const known: ReadonlySet<string> | null =
+        options.wait === false ? null : new Set((await fetchAgents(context, session)).map((agent: Agent) => agent.id));
+    await announcePairing(context, session, options);
+    if (known === null) {
         return;
     }
     printNotice(context, 'Esperando um agente novo ser pareado (até 10 minutos)…');
-    const agent: Agent = await waitForPaired(context, session, since, wait);
+    const agent: Agent = await waitForPaired(context, session, known, wait);
     if (options.json === true) {
         printJson(context, agent);
         return;
