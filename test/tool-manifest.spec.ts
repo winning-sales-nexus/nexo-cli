@@ -11,7 +11,8 @@ const GROUPS_WITH_ACTION: readonly string[] = [
     'nexo documents templates',
     'nexo connect build',
     'nexo connect quarantine',
-    'nexo connect writes'
+    'nexo connect writes',
+    'nexo connect agents'
 ];
 
 function invocable(entry: CommandEntry): string[] {
@@ -44,8 +45,8 @@ describe('COMMAND_TOOLS', () => {
         expect(Object.keys(COMMAND_TOOLS).filter((path) => !paths.has(path))).toEqual([]);
     });
 
-    it('covers the 103 commands and only uses known keys or a non-empty reason', () => {
-        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(103);
+    it('covers the 107 commands and only uses known keys or a non-empty reason', () => {
+        expect(Object.keys(COMMAND_TOOLS)).toHaveLength(107);
         const known: ReadonlySet<string> = new Set(TOOL_KEYS);
         for (const [path, declaration] of Object.entries(COMMAND_TOOLS)) {
             if ('none' in declaration) {

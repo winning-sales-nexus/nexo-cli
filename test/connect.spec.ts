@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
+import { agentPair } from '../src/commands/connect-agents.js';
 import { connectBuild } from '../src/commands/connect-build.js';
 import { connectRehearse } from '../src/commands/connect-runs.js';
 import { CredentialsStore } from '../src/config/credentials-store.js';
@@ -1075,5 +1076,155 @@ describe('connector lifecycle: rename, delete and the schedule', () => {
         const readme: string = readFileSync(join(dir, 'README.md'), 'utf8');
         expect(readme).toContain('"everyMinutes": 60');
         expect(readme).toContain('"at": ["08:00", "18:00"]');
+    });
+});
+
+describe('nexo connect agents', () => {
+    const AGENT_ID: string = '019fd0a4-0000-7000-8000-00000000a001';
+    const AGENTS: string = '/v1/connect/agents';
+    const PAGE: string = 'https://app.nexo.winningsales.com.br/settings/connections/connectors?tab=agent&foco=parear';
+
+    function agentOf(extra: Record<string, unknown> = {}): Record<string, unknown> {
+        return {
+            id: AGENT_ID,
+            name: 'SRV-MATRIZ',
+            status: 'active',
+            connected: true,
+            agentVersion: '1.4.2',
+            contractVersion: 1,
+            os: 'windows',
+            arch: 'x64',
+            hostname: 'srv-matriz',
+            reach: [
+                { kind: 'http', host: '10.0.0.5', port: 8080 },
+                { kind: 'sql', host: 'db.local', engine: 'sqlserver', database: 'erp' }
+            ],
+            lastSeenAt: '2026-11-27T10:00:00.000Z',
+            connectedAt: '2026-11-27T09:00:00.000Z',
+            disconnectedAt: null,
+            pairedAt: '2026-11-01T10:00:00.000Z',
+            revokedAt: null,
+            connectors: [{ id: CONNECTOR, name: 'Clientes do ERP', status: 'enabled' }],
+            ...extra
+        };
+    }
+
+    function withOpener(h: Harness): { context: CliContext; opened: string[] } {
+        const opened: string[] = [];
+        return {
+            opened,
+            context: {
+                ...h.context,
+                sleep: () => Promise.resolve(),
+                openUrl: (url: string) => {
+                    opened.push(url);
+                    return Promise.resolve(true);
+                }
+            }
+        };
+    }
+
+    it('lists the agents with connection, version, last contact and connectors, and shows one with its reach', async () => {
+        const h: Harness = harness({ [`GET ${AGENTS}`]: () => [agentOf()], [`GET ${AGENTS}/${AGENT_ID}`]: () => agentOf() });
+
+        expect(await run(h.context, ['connect', 'agents'])).toBe(0);
+        expect(h.out()).toContain(AGENT_ID);
+        expect(h.out()).toContain('conectado');
+        expect(h.out()).toContain('v1.4.2');
+        expect(h.out()).toContain('2026-11-27T10:00:00.000Z');
+        expect(h.out()).toContain('Clientes do ERP');
+
+        const shown: Harness = harness({ [`GET ${AGENTS}/${AGENT_ID}`]: () => agentOf() });
+        expect(await run(shown.context, ['connect', 'agents', 'show', AGENT_ID])).toBe(0);
+        expect(shown.out()).toContain('http 10.0.0.5:8080');
+        expect(shown.out()).toContain('sql db.local (sqlserver/erp)');
+    });
+
+    it('pair opens the tab, never asks for a code and ends when a new agent shows up', async () => {
+        let polls: number = 0;
+        const h: Harness = harness({
+            [`GET ${AGENTS}`]: () => {
+                polls += 1;
+                return polls < 2
+                    ? [agentOf()]
+                    : [agentOf(), agentOf({ id: 'novo', name: 'SRV-FILIAL', pairedAt: new Date(Date.now() + 60_000).toISOString() })];
+            }
+        });
+        const { context, opened } = withOpener(h);
+
+        expect(await run(context, ['connect', 'agents', 'pair'])).toBe(0);
+
+        expect(opened).toEqual([PAGE]);
+        expect(h.calls.some((call: Call) => call.path.includes('pairing-codes'))).toBe(false);
+        expect(polls).toBe(2);
+        expect(h.out()).toContain('SRV-FILIAL');
+        expect(h.out()).not.toContain('SRV-MATRIZ');
+    });
+
+    it('pair --no-wait only opens the tab', async () => {
+        const h: Harness = harness({});
+        const { context, opened } = withOpener(h);
+
+        expect(await run(context, ['connect', 'agents', 'pair', '--no-wait'])).toBe(0);
+
+        expect(opened).toEqual([PAGE]);
+        expect(h.calls).toEqual([]);
+    });
+
+    it('pair gives up after the wait, by the fake clock', async () => {
+        const h: Harness = harness({ [`GET ${AGENTS}`]: () => [agentOf()] });
+        let clock: number = Date.parse('2026-11-27T12:00:00.000Z');
+        const context: CliContext = {
+            ...h.context,
+            openUrl: () => Promise.resolve(true),
+            sleep: (ms: number) => {
+                clock += ms;
+                return Promise.resolve();
+            }
+        };
+
+        await expect(agentPair(context, {}, { intervalMs: 1000, timeoutMs: 3000, now: () => clock })).rejects.toThrow('Nenhum agente novo');
+        expect(h.calls).toHaveLength(4);
+    });
+
+    it('pair --code asks for the code and, without the scope, points to the tab', async () => {
+        const created: Harness = harness({
+            [`POST ${AGENTS}/pairing-codes`]: () =>
+                json(201, { code: 'ABCD-1234', expiresAt: '2026-11-27T12:00:00.000Z', name: 'SRV-NOVO', pairUrl: 'https://x' })
+        });
+        expect(await run(created.context, ['connect', 'agents', 'pair', '--code', '--name', 'SRV-NOVO', '--no-wait'])).toBe(0);
+        expect(created.calls[0]?.body).toEqual({ name: 'SRV-NOVO' });
+        expect(created.out()).toContain('ABCD-1234');
+
+        const refused: Harness = harness({
+            [`POST ${AGENTS}/pairing-codes`]: () => json(403, { title: 'Falta o escopo connectors:hosts', status: 403 })
+        });
+        expect(await run(refused.context, ['connect', 'agents', 'pair', '--code', '--no-wait'])).toBe(4);
+        expect(refused.err()).toContain('sem --code');
+    });
+
+    it('revoke lists the machine and the dependents and only revokes after the yes', async () => {
+        const routes: Record<string, Route> = {
+            [`GET ${AGENTS}/${AGENT_ID}`]: () => agentOf(),
+            [`POST ${AGENTS}/${AGENT_ID}/revoke`]: () => agentOf({ status: 'revoked' })
+        };
+        const refused: Harness = harness(routes);
+        await run(refused.context, ['connect', 'agents', 'revoke', AGENT_ID]);
+        expect(refused.out()).toContain('srv-matriz');
+        expect(refused.out()).toContain('Clientes do ERP');
+        expect(refused.out()).toContain('sem volta');
+        expect(refused.calls.filter((call: Call) => call.method === 'POST')).toEqual([]);
+
+        const h: Harness = harness(routes);
+        expect(await run(h.context, ['connect', 'agents', 'revoke', AGENT_ID, '-y'])).toBe(0);
+        expect(h.calls.at(-1)).toMatchObject({ method: 'POST', path: `${AGENTS}/${AGENT_ID}/revoke` });
+        expect(h.out()).toContain('revogado');
+    });
+
+    it('revoke refuses an agent that is already revoked', async () => {
+        const h: Harness = harness({ [`GET ${AGENTS}/${AGENT_ID}`]: () => agentOf({ status: 'revoked' }) });
+
+        expect(await run(h.context, ['connect', 'agents', 'revoke', AGENT_ID, '-y'])).toBe(2);
+        expect(h.calls.filter((call: Call) => call.method === 'POST')).toEqual([]);
     });
 });

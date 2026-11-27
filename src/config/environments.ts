@@ -16,6 +16,7 @@ export const DEFAULT_ENVIRONMENT: NexoEnvironment = {
 };
 
 export const TOKENS_PAGE: string = '/settings/api-tokens';
+export const AGENT_PAIRING_PAGE: string = '/settings/connections/connectors?tab=agent&foco=parear';
 
 export function environmentNamed(name: string): NexoEnvironment {
     const environment: NexoEnvironment | undefined = ENVIRONMENTS[name];
@@ -40,4 +41,12 @@ export function normalizedApiUrl(raw: string): string {
 
 function isLoopback(hostname: string): boolean {
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+}
+
+/** O endereço do app do ambiente da API (o que o `nexo login` e os comandos que abrem uma tela usam); desconhecido cai no padrão. */
+export function appUrlOf(apiUrl: string): string {
+    const known: NexoEnvironment | undefined = Object.values(ENVIRONMENTS).find(
+        (environment: NexoEnvironment) => environment.apiUrl === apiUrl
+    );
+    return (known ?? DEFAULT_ENVIRONMENT).appUrl;
 }

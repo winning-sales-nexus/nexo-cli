@@ -13,6 +13,8 @@ import {
     connectSystems
 } from './commands/connect-runs.js';
 import type { ConnectRunOptions } from './commands/connect-runs.js';
+import { agentPair, agentRevoke, agentShow, agentsList } from './commands/connect-agents.js';
+import type { AgentOptions } from './commands/connect-agents.js';
 import { connectBuild, connectBuildFix, connectBuildShow } from './commands/connect-build.js';
 import type { BuildOptions } from './commands/connect-build.js';
 import { connectExecute, connectUndo } from './commands/connect-execute.js';
@@ -344,6 +346,44 @@ function addLifecycleCommands(connect: Command, context: CliContext): void {
         });
 }
 
+function addAgentCommands(connect: Command, context: CliContext): void {
+    const agents: Command = connect
+        .command('agents')
+        .description('Os agentes locais da empresa: o id, se está conectado, a versão, o último contato e os conectores que passam por ele')
+        .action(async (_options: AgentOptions, command: Command) => {
+            await agentsList(context, command.optsWithGlobals());
+        });
+    agents
+        .command('show')
+        .description('Mostra um agente e o que a lista local dele alcança')
+        .argument('<agente>', 'id do agente (veja `nexo connect agents`)')
+        .action(async (id: string, _options: AgentOptions, command: Command) => {
+            await agentShow(context, id, command.optsWithGlobals());
+        });
+    addAgentPairRevoke(agents, context);
+}
+
+function addAgentPairRevoke(agents: Command, context: CliContext): void {
+    agents
+        .command('pair')
+        .description('Abre a aba Agente local, onde a pessoa gera o código, e espera um agente novo ser pareado (até 10 minutos)')
+        .option('--code', 'gera o código e o mostra aqui (só com uma chave pessoal com o escopo connectors:hosts)')
+        .option('--name <nome>', 'o nome que o agente recebe, com --code')
+        .option('--no-wait', 'só abre a aba, sem esperar o agente')
+        .action(async (_options: AgentOptions, command: Command) => {
+            await agentPair(context, command.optsWithGlobals());
+        });
+    agents
+        .command('revoke')
+        .description('Revoga o agente: o túnel é cortado sem volta (mostra a máquina e os conectores dele e pede o sim)')
+        .argument('<agente>', 'id do agente (veja `nexo connect agents`)')
+        .option('--confirm', 'aplica, depois do sim da pessoa')
+        .option('-y, --yes', YES_HELP)
+        .action(async (id: string, _options: AgentOptions, command: Command) => {
+            await agentRevoke(context, id, command.optsWithGlobals());
+        });
+}
+
 export function addConnectCommands(program: Command, context: CliContext): void {
     const connect: Command = program
         .command('connect')
@@ -372,4 +412,5 @@ export function addConnectCommands(program: Command, context: CliContext): void 
     addBuildCommands(connect, context);
     addQuarantineCommands(connect, context);
     addWriteCommands(connect, context);
+    addAgentCommands(connect, context);
 }

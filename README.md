@@ -134,6 +134,20 @@ nexo connect write-hosts revoke api.erp.example.com.br                # revoga
 
 Cada comando que muda algo mostra a prévia e pede o sim num terminal; `-y` aplica logo depois de mostrar. Fora de um terminal, a CLI mostra a prévia e o comando que aplica: `reprocess`, `writes confirm` e `write-hosts` com `--confirm <token>`, que vale uma vez; `fix` e `discard` (o `/v1` não tem prévia para eles, a prévia é montada pela CLI) com `--confirm`, sem token. Em `fix`, `--set campo=valor` mexe num campo nativo e `--set properties.chave=valor` numa propriedade; `true` e `false` viram booleano e o resto é texto (para outro tipo, use `--file`). Um campo fora do manifesto, ou um host que não é dele, volta como a recusa do Nexo, em português. Todos aceitam `--json`.
 
+### Agentes locais
+
+O **agente local** é o programa instalado na rede da empresa que leva as chamadas até um ERP sem porta aberta. Os comandos são da empresa, não de uma pasta de conector.
+
+```sh
+nexo connect agents                      # id, conectado ou não, versão, último contato e os conectores de cada agente
+nexo connect agents show <agente>        # um agente e o que a lista local dele alcança
+nexo connect agents pair                 # abre a aba Agente local e espera até 10 minutos por um agente novo; --no-wait só abre
+nexo connect agents pair --code          # com uma chave pessoal com connectors:hosts: gera o código e o mostra aqui (--name <nome>)
+nexo connect agents revoke <agente>      # mostra a máquina e os conectores que dependem dela; o túnel é cortado sem volta; pede o sim (ou -y)
+```
+
+`pair` não gera o código por conta própria: com o token do `nexo login`, a pessoa gera o código na aba, com a sessão dela, e o usa na instalação do agente; a CLI só confere se um agente novo da empresa foi pareado depois do pedido e o mostra. A rota que gera o código pede `connectors:hosts`, então `--code` só funciona com uma chave pessoal que tenha esse escopo (senão a CLI sai com código 4 e aponta a aba). `revoke` não tem volta: para ter um agente de novo, instale outro com um código novo; fora de um terminal, aplique com `--confirm` só depois do sim da pessoa. Todos aceitam `--json`.
+
 ### A conversa com a IA do Connect
 
 ```sh
