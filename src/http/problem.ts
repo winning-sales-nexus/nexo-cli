@@ -73,13 +73,21 @@ const HINT_BY_TYPE: Readonly<Record<string, string | null>> = {
         'O texto foi recusado (ordem ao assistente, número da empresa ou skill repetida): reescreva o item como um jeito de fazer.',
     'brain.skill_without_usage_condition': 'Falta dizer quando usar: ajuste o objetivo e o momento.',
     'connect.erp_operation_not_found': 'Veja as operações que você alcança com `nexo erp list`.',
-    'plans.product_not_contracted': 'A empresa não tem o Nexo Connect no plano: peça a quem administra o Nexo para contratar.',
     'connect.operation_failed': 'O erro veio do outro sistema (o ERP), não do Nexo. Quem cuida do conector lê a execução citada e corrige.',
     'connect.operation_timeout': 'O outro sistema (o ERP) não respondeu a tempo; o Nexo está de pé. Tente de novo mais tarde.',
     'agents.template_required': 'Diga o modelo da versão nova com --template <id>.'
 };
 
+function planHint(problem: Problem): string {
+    const product: unknown = problem.meta?.product;
+    const what: string = typeof product === 'string' && product !== '' ? product : 'este produto';
+    return `A empresa não tem ${what} no plano: peça a quem administra o Nexo para contratar.`;
+}
+
 function hintOf(problem: Problem): string | null {
+    if (problem.type === 'plans.product_not_contracted') {
+        return planHint(problem);
+    }
     const typed: string | null | undefined = HINT_BY_TYPE[problem.type];
     return typed === undefined ? (HINT_BY_STATUS[problem.status] ?? listedIn(problem.meta)) : typed;
 }
