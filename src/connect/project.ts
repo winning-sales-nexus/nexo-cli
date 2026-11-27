@@ -13,6 +13,8 @@ export interface ConnectorState {
     readonly name: string;
     readonly systemId: string | null;
     readonly baseSeq: number | null;
+    /** Resumo do código e do manifesto como a CLI os deixou na pasta (pull, push, restore): `restore` compara sem chamar o /v1. */
+    readonly baseDigest?: string;
 }
 
 export interface ConnectorFiles {

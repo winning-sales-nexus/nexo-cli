@@ -130,6 +130,37 @@ describe('nexo connect init and push', () => {
         expect(JSON.parse(readFileSync(join(dir, 'nexo-connector.json'), 'utf8'))).toMatchObject({ baseSeq: 2 });
     });
 
+    it('shows the manifest problems the /v1 lists in meta.issues when a push is refused', async () => {
+        const h: Harness = harness({ 'POST /v1/connect/connectors': () => saved(1) });
+        const dir: string = join(h.root, 'c');
+        await run(h.context, ['connect', 'init', dir]);
+        const refusing: CliContext = {
+            ...h.context,
+            fetchFn: () =>
+                Promise.resolve(
+                    new Response(
+                        JSON.stringify({
+                            title: 'Não foi possível concluir',
+                            detail: 'O manifesto do conector tem problemas.',
+                            status: 400,
+                            meta: {
+                                issues: [
+                                    'triggers.0.at: use everyMinutes ou at, nunca os dois',
+                                    { path: 'operations.x.args.0.key', message: 'use camelCase' }
+                                ]
+                            }
+                        }),
+                        { status: 400, headers: { 'content-type': 'application/problem+json' } }
+                    )
+                )
+        };
+
+        expect(await run(refusing, ['connect', 'push', dir, '-m', 'x'])).not.toBe(0);
+
+        expect(h.err()).toContain('triggers.0.at: use everyMinutes ou at, nunca os dois');
+        expect(h.err()).toContain('operations.x.args.0.key: use camelCase');
+    });
+
     it('refuses to init over a folder with files', async () => {
         const h: Harness = harness({});
         writeFileSync(join(h.root, 'x.txt'), 'x');
@@ -162,7 +193,8 @@ describe('nexo connect pull', () => {
             connectorId: CONNECTOR,
             name: 'Pedidos',
             systemId: null,
-            baseSeq: 4
+            baseSeq: 4,
+            baseDigest: expect.stringMatching(/^[0-9a-f]{64}$/) as string
         });
     });
 });
@@ -388,6 +420,7 @@ describe('retained records: quarantine, held writes and write hosts', () => {
         });
 
         await run(h.context, ['connect', '--connector', CONNECTOR, 'quarantine', 'reprocess']);
+        expect(h.calls[0]).toEqual({ method: 'POST', path: `${BASE}/quarantine/reprocess/preview`, body: {} });
         expect(h.err()).toContain('nexo connect quarantine reprocess --confirm v1.rep');
         expect(withoutWrites(h)).toEqual([]);
 
@@ -556,7 +589,7 @@ describe('versions: versions, diff and restore', () => {
         expect(await run(h.context, ['connect', 'restore', '1', dir, '-y'])).not.toBe(0);
 
         expect(h.err()).toContain('mudanças que não foram para o Nexo');
-        expect(h.calls.filter((call) => call.method === 'POST')).toEqual([]);
+        expect(h.calls).toEqual([]);
         expect(readFileSync(join(dir, 'connector.ts'), 'utf8')).toBe('mexi aqui\n');
 
         expect(await run(h.context, ['connect', 'restore', '1', dir, '-y', '--force'])).toBe(0);

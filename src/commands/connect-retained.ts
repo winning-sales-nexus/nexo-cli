@@ -118,6 +118,7 @@ export async function quarantineReprocess(context: CliContext, dir: string | und
     await requestChange(context, sessionOf(context, options), {
         connectorId: connectorIdOf(options, dir),
         path: 'quarantine/reprocess',
+        body: {},
         command: 'nexo connect quarantine reprocess',
         summarize: reprocessSummary,
         confirm: tokenOf(options),

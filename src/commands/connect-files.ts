@@ -10,6 +10,7 @@ import { NexoApiError } from '../http/problem.js';
 import type { ApiResponse } from '../http/nexo-client.js';
 import { SDK_FILE, ensureEmpty, projectDirectory, readFiles, readState, writeFiles, writeState } from '../connect/project.js';
 import type { ConnectorFiles, ConnectorState } from '../connect/project.js';
+import { filesDigest } from '../connect/versions.js';
 import { companyTimeZone, scheduleLine } from '../connect/schedule.js';
 import { TEMPLATE_CODE, TEMPLATE_README, TEMPLATE_TSCONFIG, templateManifest } from '../connect/template.js';
 
@@ -132,8 +133,9 @@ export async function connectPush(context: CliContext, dir: string | undefined, 
     if (summary === '') {
         throw new CliError('Diga o que mudou nesta versão.', EXIT_CODES.usage, 'Use -m "o que mudou".');
     }
-    const saved: SavedVersion = await saveVersion(context, sessionOf(context, options), state, { ...readFiles(directory), summary });
-    writeState(directory, { ...state, connectorId: saved.connectorId, baseSeq: saved.version.seq });
+    const files: ConnectorFiles = readFiles(directory);
+    const saved: SavedVersion = await saveVersion(context, sessionOf(context, options), state, { ...files, summary });
+    writeState(directory, { ...state, connectorId: saved.connectorId, baseSeq: saved.version.seq, baseDigest: filesDigest(files) });
     if (options.json === true) {
         printJson(context, saved);
         return;
@@ -188,7 +190,13 @@ export async function connectPull(
     const files: { code: string; manifest: Record<string, unknown> } = version.body as { code: string; manifest: Record<string, unknown> };
     writeFiles(directory, { code: files.code, manifest: files.manifest });
     copySdk(directory);
-    writeState(directory, { connectorId, name: view.connector.name, systemId: view.connector.systemId, baseSeq: view.connector.headSeq });
+    writeState(directory, {
+        connectorId,
+        name: view.connector.name,
+        systemId: view.connector.systemId,
+        baseSeq: view.connector.headSeq,
+        baseDigest: filesDigest(files)
+    });
     printLine(context, `Versão ${String(seq)} de "${view.connector.name}" em ${directory}.`);
 }
 
