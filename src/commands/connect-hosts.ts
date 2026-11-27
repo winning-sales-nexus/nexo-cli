@@ -1,15 +1,18 @@
 import { knownAppUrl } from '../config/environments.js';
 import type { Session } from '../config/session.js';
-import { printJson, printLine, printNotice, sessionOf } from '../context.js';
+import { clientOf, printJson, printLine, printNotice, sessionOf } from '../context.js';
 import type { CliContext } from '../context.js';
 import { DEFAULT_PATIENCE, pollUntil, timedOut } from '../connect/access.js';
 import type { Patience } from '../connect/access.js';
-import { requestChange } from '../connect/changes.js';
+import { showPreview } from '../connect/changes.js';
 import { STATE_FILE } from '../connect/project.js';
 import { CliError, usageError } from '../errors.js';
 import { EXIT_CODES } from '../exit-codes.types.js';
+import type { ApiResponse } from '../http/nexo-client.js';
 import { pause } from '../documents/journey-api.js';
 import { existsSync } from 'node:fs';
+import { createInterface } from 'node:readline';
+import type { Interface } from 'node:readline';
 import { join } from 'node:path';
 import { fetchConnector } from './connect-files.js';
 import type { ConnectorView } from './connect-files.js';
@@ -63,9 +66,7 @@ export async function hostsList(context: CliContext, dir: string | undefined, op
     }
 }
 
-export interface HostsApproveOptions extends ConnectRunOptions {
-    readonly confirm?: string;
-}
+export type HostsApproveOptions = ConnectRunOptions;
 
 /** Os argumentos são hosts; o último vira a pasta se for uma pasta de conector. */
 function splitArguments(args: readonly string[]): { readonly hosts: readonly string[]; readonly dir: string | undefined } {
@@ -76,9 +77,13 @@ function splitArguments(args: readonly string[]): { readonly hosts: readonly str
     return { hosts: args, dir: undefined };
 }
 
-/** Só uma chave pessoal pode pedir a aprovação ao `/v1`; um token do `nexo login` nunca (nenhum recebe `connectors:hosts`). */
-function isPersonalKey(session: Session): boolean {
-    return session.source === 'env' || session.stored?.kind === 'pat';
+/**
+ * Só uma chave pessoal (`nexo_pat_`), com uma pessoa no terminal, pede a aprovação ao `/v1`; qualquer outro token segue
+ * como o do `nexo login` (nenhum recebe `connectors:hosts`) e vai pela tela. Sem terminal, também vai pela tela:
+ * nenhum comando que um agente rode aprova host.
+ */
+function approvesWithKey(context: CliContext, session: Session): boolean {
+    return session.token.startsWith('nexo_pat_') && context.stdin.isTTY === true;
 }
 
 function hostsToApprove(wanted: readonly string[], state: HostsState): readonly string[] {
@@ -95,6 +100,56 @@ function hostsToApprove(wanted: readonly string[], state: HostsState): readonly 
     return (wanted.length === 0 ? state.pending : wanted).filter((host: string) => !approved.has(host));
 }
 
+async function typedApproval(context: CliContext, hosts: readonly string[]): Promise<boolean> {
+    const reader: Interface = createInterface({ input: context.stdin, output: context.stderr, terminal: true });
+    try {
+        const answer: string = await new Promise<string>((resolve: (text: string) => void) => {
+            reader.question(`Para aprovar, digite "aprovar"${hosts.length === 1 ? ` ou o host (${hosts[0] ?? ''})` : ''}: `, resolve);
+        });
+        const typed: string = answer.trim().toLowerCase();
+        return typed === 'aprovar' || (hosts.length === 1 && typed === hosts[0]?.toLowerCase());
+    } finally {
+        reader.close();
+    }
+}
+
+async function previewApproval(
+    context: CliContext,
+    session: Session,
+    base: string,
+    hosts: readonly string[]
+): Promise<ApprovalPreview | null> {
+    try {
+        const response: ApiResponse = await clientOf(context, session).request({
+            method: 'POST',
+            path: `${base}/hosts/approve/preview`,
+            body: { hosts }
+        });
+        if (!isApprovalPreview(response.body)) {
+            throw new Error('Prévia em formato inesperado.');
+        }
+        return response.body;
+    } catch (error: unknown) {
+        if (error instanceof CliError && error.exitCode === EXIT_CODES.forbidden) {
+            printNotice(context, 'Esta chave não tem o escopo connectors:hosts; a aprovação vai pela tela.');
+            return null;
+        }
+        throw error;
+    }
+}
+
+interface ApprovalPreview {
+    readonly title: string;
+    readonly changes: readonly string[];
+    readonly confirmation: { readonly token: string };
+}
+
+function isApprovalPreview(value: unknown): value is ApprovalPreview {
+    const fields: Partial<Record<keyof ApprovalPreview, unknown>> | null = typeof value === 'object' ? value : null;
+    return fields !== null && typeof fields.title === 'string' && Array.isArray(fields.changes) && typeof fields.confirmation === 'object';
+}
+
+/** Chave pessoal com o escopo, numa pessoa no terminal: prévia do `/v1` e a pessoa digita para aplicar. `false`: sem o escopo, vai pela tela. */
 async function approveWithKey(
     context: CliContext,
     session: Session,
@@ -102,24 +157,27 @@ async function approveWithKey(
     hosts: readonly string[],
     options: HostsApproveOptions
 ): Promise<boolean> {
-    try {
-        await requestChange(context, session, {
-            connectorId,
-            path: 'hosts/approve',
-            body: { hosts },
-            command: `nexo connect hosts approve ${hosts.join(' ')}`,
-            confirm: options.confirm,
-            yes: options.yes === true,
-            json: options.json === true
-        });
-        return true;
-    } catch (error: unknown) {
-        if (error instanceof CliError && error.exitCode === EXIT_CODES.forbidden) {
-            printNotice(context, 'Esta chave não tem o escopo connectors:hosts; a aprovação vai pela tela.');
-            return false;
-        }
-        throw error;
+    const base: string = `/v1/connect/connectors/${connectorId}`;
+    const preview: ApprovalPreview | null = await previewApproval(context, session, base, hosts);
+    if (preview === null) {
+        return false;
     }
+    showPreview(context, preview);
+    if (!(await typedApproval(context, hosts))) {
+        printNotice(context, 'Nada mudou.');
+        return true;
+    }
+    const response: ApiResponse = await clientOf(context, session).request({
+        method: 'POST',
+        path: `${base}/hosts/approve`,
+        body: { hosts, confirmationToken: preview.confirmation.token }
+    });
+    if (options.json === true) {
+        printJson(context, response.body);
+        return true;
+    }
+    printLine(context, `Aprovados: ${hosts.join(', ')}.`);
+    return true;
 }
 
 function announce(context: CliContext, targets: readonly string[]): void {
@@ -167,10 +225,10 @@ export async function hostsApprove(
         printLine(context, 'Nenhum host esperando o sim.');
         return;
     }
-    if (isPersonalKey(session) && (await approveWithKey(context, session, connectorId, targets, options))) {
+    announce(context, targets);
+    if (approvesWithKey(context, session) && (await approveWithKey(context, session, connectorId, targets, options))) {
         return;
     }
-    announce(context, targets);
     await openOrShow(context, session, screenLink(view, 'hosts'), 'a tela do conector, nos hosts');
     if (options.wait === false) {
         return;
