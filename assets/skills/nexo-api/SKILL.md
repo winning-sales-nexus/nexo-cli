@@ -21,6 +21,7 @@ nexo api context-notes --input nota.json --json
 ```
 
 - `-f` é texto, `-F` entende número, booleano, null e JSON; com campos e sem `-X`, o método é POST.
+- Dados que vivem no ERP do cliente (estoque, preço, pedido) não estão em `/v1/deals`: use `nexo erp list` para achar a operação do conector, `nexo erp query <operação> --args '{...}'` para ler e `nexo erp action <operação> --args '{...}'` para gravar (prévia, o sim da pessoa e só então `--confirm <token>`, uma vez).
 - Use `--json` e leia a saída como JSON. O schema exato de cada rota está em `https://mcp-nexo.winningsales.com.br/v1/openapi.json`; não invente campo.
 - Erros chegam como `application/problem+json`: `type` estável (decida por ele), `detail` em português (mostre à pessoa) e `requestId` (cite ao pedir ajuda). Código de saída: 3 sem login ou token inválido, 4 sem permissão, 5 não encontrado, 6 limite.
 
