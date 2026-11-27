@@ -5,7 +5,7 @@ import { usageError } from '../errors.js';
 import type { ApiResponse } from '../http/nexo-client.js';
 import { ask } from '../connect/changes.js';
 import { readArgs } from '../connect/operation-args.js';
-import { appliedOf, catalogOf, operationLines, outputLines, previewOf, queryOf, writeLines } from '../erp/operations.js';
+import { appliedOf, catalogLines, catalogOf, outputLines, previewOf, queryOf, writeLines } from '../erp/operations.js';
 import type { ErpApplied, ErpCatalog, ErpOperation, ErpPreview, ErpQueryAnswer } from '../erp/operations.js';
 
 export interface ErpOptions extends GlobalOptions {
@@ -54,7 +54,7 @@ export async function erpList(context: CliContext, search: string | undefined, o
         printLine(context, result.aviso ?? 'Nenhuma operação de ERP para você.');
         return;
     }
-    for (const line of result.operacoes.flatMap(operationLines)) {
+    for (const line of catalogLines(result)) {
         printLine(context, line);
     }
     if (result.total > result.mostrando) {
