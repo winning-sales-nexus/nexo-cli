@@ -256,7 +256,7 @@ export function describeWebhook(webhook: Webhook, missing: readonly string[]): r
     const lines: string[] = [`URL: ${webhook.url} (POST)`, WEBHOOK_URL_WARNING];
     lines.push(
         webhook.auth === null
-            ? 'Autenticação publicada: o token do endereço. Não há `auth` declarada na versão publicada (ou ainda não há versão publicada com gatilho de webhook), e o Nexo não assina a chamada: quem tem o endereço (/webhooks/connect/<token>) a prova. Para exigir também um cabeçalho, HTTP Basic ou HMAC, declare `auth` no manifesto e publique.'
+            ? 'Autenticação publicada: nenhuma `auth` declarada. Com versão publicada e gatilho de webhook, a autenticação é o token do endereço (/webhooks/connect/<token>): o Nexo não exige assinatura, e quem tem o endereço pode chamar. Sem versão publicada ou sem gatilho de webhook, a chamada é descartada e nada roda. Para exigir também um cabeçalho, HTTP Basic ou HMAC, declare `auth` no manifesto e publique.'
             : `Autenticação publicada (a que confere as chamadas agora, além do token do endereço): ${describeAuth(webhook.auth)}.`
     );
     if (JSON.stringify(webhook.authInEdit) !== JSON.stringify(webhook.auth)) {

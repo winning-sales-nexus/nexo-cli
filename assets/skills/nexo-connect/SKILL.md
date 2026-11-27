@@ -5,7 +5,7 @@ description: Como escrever, ensaiar, publicar e ligar um conector do Nexo Connec
 
 # Nexo Connect
 
-Um **conector** é um programa pequeno em TypeScript mais um **manifesto** JSON que diz no que ele pode mexer. O Nexo roda o conector por agendamento, webhook (o outro sistema chama o endereço `/webhooks/connect/<token>`; o token do endereço é a credencial, sem assinatura do Nexo, e `auth` no manifesto é opcional) ou evento do Nexo, e toda escrita dele no Nexo tem auditoria e desfazer. A chave precisa de `connectors:write`; aprovar host pede `connectors:hosts`.
+Um **conector** é um programa pequeno em TypeScript mais um **manifesto** JSON que diz no que ele pode mexer. O Nexo roda o conector por agendamento, webhook (o outro sistema chama o endereço `/webhooks/connect/<token>`; o token do endereço é a credencial, sem exigir assinatura do Nexo, e `auth` no manifesto é opcional) ou evento do Nexo, e toda escrita dele no Nexo tem auditoria e desfazer. A chave precisa de `connectors:write`; aprovar host pede `connectors:hosts`.
 
 ## As cinco regras (as mesmas da IA do Nexo)
 

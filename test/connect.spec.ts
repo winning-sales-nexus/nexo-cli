@@ -1514,8 +1514,9 @@ describe('nexo connect: access (hosts, secrets, webhook, OAuth, SFTP and e-mail)
 
         const bare: Harness = harness({ [`GET ${BASE}/webhook`]: () => ({ url: URL_OF_HOOK, auth: null, authInEdit: null }) });
         expect(await run(bare.context, ['connect', 'webhook', ...OPTION])).toBe(0);
-        expect(bare.out()).toContain('Autenticação publicada: o token do endereço');
-        expect(bare.out()).toContain('o Nexo não assina a chamada');
+        expect(bare.out()).toContain('a autenticação é o token do endereço');
+        expect(bare.out()).toContain('o Nexo não exige assinatura');
+        expect(bare.out()).toContain('a chamada é descartada e nada roda');
     });
 
     it('webhook deliveries lists the outcomes with the reason and pages with --before', async () => {
