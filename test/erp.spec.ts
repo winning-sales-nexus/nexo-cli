@@ -162,13 +162,13 @@ describe('nexo erp query', () => {
 
     it('resolves a key to the id through the listing', async () => {
         const h: Harness = harness({
-            [LIST_SEARCH('estoque_por_sku')]: () => operations,
+            [LIST_SEARCH('estoque+por+sku')]: () => operations,
             [QUERY]: () => ({ id: QUERY_ID, saida: { saldo: 7 }, emCache: true })
         });
 
         expect(await run(h.context, ['erp', 'query', 'estoque_por_sku', '--args', '{}'])).toBe(0);
         expect(h.calls.map((call) => call.path)).toEqual([
-            '/v1/erp/operations?search=estoque_por_sku',
+            '/v1/erp/operations?search=estoque+por+sku',
             `/v1/erp/operations/${CONNECTOR}%3Aestoque_por_sku/query`
         ]);
         expect(h.out()).toContain('da memória do conector');
@@ -234,6 +234,14 @@ describe('nexo erp action', () => {
         expect(await run(h.context, ['erp', 'action', ACTION_ID, '--confirm', 'tok.1'])).toBe(0);
         expect(h.out()).toContain('já tinha sido aplicada');
         expect(h.out()).not.toContain('Feito.');
+    });
+
+    it('tells a repeated token with --json too, on stderr, and keeps the body on stdout', async () => {
+        const h: Harness = harness({ [APPLY]: () => applied(true) });
+
+        expect(await run(h.context, ['erp', 'action', ACTION_ID, '--confirm', 'tok.1', '--json'])).toBe(0);
+        expect(h.err()).toContain('nada foi gravado de novo');
+        expect(JSON.parse(h.out())).toEqual(applied(true));
     });
 
     it('asks on a terminal: a yes applies with the token of the preview, a no changes nothing', async () => {
@@ -331,7 +339,7 @@ describe('nexo erp note', () => {
 
     it('writes with --confirm, with the field, and resolves a key', async () => {
         const h: Harness = harness({
-            [LIST_SEARCH('estoque_por_sku')]: () => operations,
+            [LIST_SEARCH('estoque+por+sku')]: () => operations,
             [`GET ${NOTES}`]: () => listed(),
             [`PUT ${NOTES}`]: () => noteOf('sku', 'Em maiúsculas.')
         });

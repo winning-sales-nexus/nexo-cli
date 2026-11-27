@@ -15,6 +15,8 @@ export interface ErpOptions extends GlobalOptions {
     readonly remove?: boolean;
 }
 
+const REPEATED_MESSAGE: string = 'Esta confirmação já tinha sido aplicada: nada foi gravado de novo. Esta é a resposta da primeira vez.';
+
 const NOT_FOUND_HINT: string = 'Veja as operações que você alcança com `nexo erp list`.';
 
 async function catalog(context: CliContext, session: Session, search: string | undefined): Promise<ErpCatalog> {
@@ -26,12 +28,12 @@ async function catalog(context: CliContext, session: Session, search: string | u
     return catalogOf(response);
 }
 
-/** O id (`<conector>:<chave>`) vai direto; uma chave solta é resolvida pela lista. */
+/** O id (`<conector>:<chave>`) vai direto; uma chave solta é resolvida pela lista. A busca da API lê o `_` da chave como espaço: `consultar_cliente` sem isso não casa. */
 export async function resolveOperation(context: CliContext, session: Session, target: string): Promise<string> {
     if (target.includes(':')) {
         return target;
     }
-    const found: readonly ErpOperation[] = (await catalog(context, session, target)).operacoes.filter(
+    const found: readonly ErpOperation[] = (await catalog(context, session, target.replaceAll('_', ' '))).operacoes.filter(
         (operation: ErpOperation) => operation.key === target
     );
     if (found.length === 0) {
@@ -126,17 +128,15 @@ async function applyAction(
         path: `/v1/erp/operations/${encodeURIComponent(request.id)}/apply`,
         body: { args: request.args, confirmationToken: request.token }
     });
+    const applied: ErpApplied = appliedOf(response);
     if (request.json) {
+        if (applied.repetida) {
+            printNotice(context, REPEATED_MESSAGE);
+        }
         printJson(context, response.body);
         return;
     }
-    const applied: ErpApplied = appliedOf(response);
-    printLine(
-        context,
-        applied.repetida
-            ? 'Esta confirmação já tinha sido aplicada: nada foi gravado de novo. Esta é a resposta da primeira vez.'
-            : 'Feito.'
-    );
+    printLine(context, applied.repetida ? REPEATED_MESSAGE : 'Feito.');
     printLine(context, `Situação: ${applied.situacao}`);
     for (const line of outputLines(applied.saida)) {
         printLine(context, line);
