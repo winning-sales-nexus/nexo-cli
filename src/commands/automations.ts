@@ -460,15 +460,13 @@ function listensToUpdates(document: Record<string, unknown>): boolean {
     return Array.isArray(nodes) && nodes.some((node: unknown) => (node as { kind?: unknown }).kind === 'entidade.alterada');
 }
 
-/** Em --json o stdout é só o JSON da publicação (que leva os avisos); o texto vai ao stderr. */
-function showWarnings(context: CliContext, warnings: readonly FlowProblem[], json: boolean): void {
+function showWarnings(context: CliContext, warnings: readonly FlowProblem[]): void {
     if (warnings.length === 0) {
         return;
     }
-    const print: (context: CliContext, text: string) => void = json ? printNotice : printLine;
-    print(context, `${String(warnings.length)} aviso(s) antes de publicar:`);
-    describeProblems(warnings).forEach((line: string) => {
-        print(context, line);
+    printLine(context, `${String(warnings.length)} aviso(s) antes de publicar:`);
+    warnings.forEach((warning: FlowProblem) => {
+        printLine(context, `  ${warning.key === null ? 'regra' : `passo ${warning.key}`}: ${warning.reason}`);
     });
 }
 
@@ -481,12 +479,11 @@ function showPublishPreview(
     detail: FlowDetail,
     working: WorkingVersion,
     local: AutomationSettings | null,
-    live: Record<string, unknown> | null,
-    json: boolean
+    live: Record<string, unknown> | null
 ): void {
     printLine(context, `Publicar "${detail.flow.name}". ${publishHeadline(detail.flow.publishedSeq)}`);
     showContent(context, live, working.document);
-    showWarnings(context, working.warnings ?? [], json);
+    showWarnings(context, working.warnings ?? []);
     if (listensToUpdates(working.document)) {
         printLine(
             context,
@@ -521,14 +518,8 @@ export async function automationsPublish(context: CliContext, dir: string | unde
     const detail: FlowDetail = (await call(context, session, 'GET', `/${flowId}`)) as FlowDetail;
     const working: WorkingVersion = workingOrRefuse(context, detail);
     const local: AutomationSettings | null = options.automation === undefined ? readAutomation(projectDirectory(dir)) : null;
-    showPublishPreview(
-        context,
-        detail,
-        working,
-        local,
-        await liveDocument(context, session, flowId, detail.flow.publishedSeq),
-        options.json === true
-    );
+    const live: Record<string, unknown> | null = await liveDocument(context, session, flowId, detail.flow.publishedSeq);
+    showPublishPreview(options.json === true ? { ...context, stdout: context.stderr } : context, detail, working, local, live);
     if (!(await confirmed(context, options))) {
         return;
     }

@@ -213,7 +213,7 @@ describe('nexo automations publish', () => {
         expect(h.calls[2]?.body).toEqual({ versionId: 'ver-1', cancelLiveRuns: true });
     });
 
-    const WARNING: Record<string, unknown> = { key: null, code: 'flows.sends_messages', reason: 'Esta regra envia mensagens sozinha.' };
+    const WARNING: Record<string, unknown> = { key: null, code: 'flows.provider_rejected', reason: 'Esta regra envia mensagens sozinha.' };
     const withWarnings = (warnings: unknown[]): unknown => ({
         flow: { ...FLOW_ROW, publishedSeq: 2 },
         working: { ...working(), warnings },
@@ -229,7 +229,8 @@ describe('nexo automations publish', () => {
         expect(await run(h.context, ['automations', '--automation', FLOW, 'publish'])).toBe(0);
 
         expect(h.out()).toContain('1 aviso(s) antes de publicar');
-        expect(h.out()).toContain('regra: Esta regra envia mensagens sozinha. [flows.sends_messages]');
+        expect(h.out()).toContain('  regra: Esta regra envia mensagens sozinha.');
+        expect(h.out()).not.toContain('[flows.');
         expect(h.calls.map((call) => call.method)).toEqual(['GET', 'GET']);
     });
 
@@ -253,10 +254,9 @@ describe('nexo automations publish', () => {
 
         expect(await run(h.context, ['automations', '--automation', FLOW, 'publish', '--yes', '--json'])).toBe(0);
 
-        const lastBrace: number = h.out().lastIndexOf('\n{');
-        const parsed: { warnings: unknown[] } = JSON.parse(h.out().slice(lastBrace === -1 ? 0 : lastBrace + 1)) as { warnings: unknown[] };
+        const parsed: { warnings: unknown[] } = JSON.parse(h.out()) as { warnings: unknown[] };
         expect(parsed.warnings).toEqual([WARNING]);
-        expect(h.out()).not.toContain('aviso(s)');
+        expect(h.err()).toContain('Publicar');
         expect(h.err()).toContain('Esta regra envia mensagens sozinha.');
     });
 
