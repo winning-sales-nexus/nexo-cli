@@ -186,7 +186,7 @@ describe('nexo erp query', () => {
     });
 
     it('tells an unknown key apart, with the hint to list', async () => {
-        const h: Harness = harness({ [LIST_SEARCH('nada')]: () => ({ total: 0, mostrando: 0, operacoes: [] }) });
+        const h: Harness = harness({ [LIST]: () => ({ total: 0, mostrando: 0, operacoes: [] }) });
 
         expect(await run(h.context, ['erp', 'query', 'nada'])).not.toBe(0);
         expect(h.err()).toContain('Não achei a operação nada');
