@@ -7,7 +7,7 @@ import type { ApiResponse } from '../http/nexo-client.js';
 import { requestLocalChange } from '../connect/changes.js';
 import { projectDirectory, readFiles, readState, writeFiles, writeState } from '../connect/project.js';
 import type { ConnectorFiles, ConnectorState } from '../connect/project.js';
-import { describeVersion, isVersionDiff, isVersionFiles, isVersionList, sameFiles } from '../connect/versions.js';
+import { describeVersion, isVersionDiff, isVersionFiles, isVersionList, sameFiles, filesDigest } from '../connect/versions.js';
 import type { VersionFiles } from '../connect/versions.js';
 import { fetchConnector } from './connect-files.js';
 import type { ConnectorView } from './connect-files.js';
@@ -117,14 +117,24 @@ async function assertFolderUnchanged(
     state: ConnectorState
 ): Promise<void> {
     const local: ConnectorFiles = readFiles(directory);
+    if (state.baseDigest !== undefined) {
+        if (filesDigest(local) !== state.baseDigest) {
+            throw changedFolder();
+        }
+        return;
+    }
     const origin: VersionFiles | null = state.baseSeq === null ? null : await fetchVersion(context, session, connectorId, state.baseSeq);
     if (origin === null || !sameFiles(local, origin)) {
-        throw new CliError(
-            'A pasta tem mudanças que não foram para o Nexo; restaurar as apagaria.',
-            EXIT_CODES.failure,
-            'Suba com `nexo connect push -m "..."`, ou use --force para descartá-las.'
-        );
+        throw changedFolder();
     }
+}
+
+function changedFolder(): CliError {
+    return new CliError(
+        'A pasta tem mudanças que não foram para o Nexo; restaurar as apagaria.',
+        EXIT_CODES.failure,
+        'Suba com `nexo connect push -m "..."`, ou use --force para descartá-las.'
+    );
 }
 
 function restorePreview(target: VersionFiles, seq: number): { title: string; changes: readonly string[] } {
@@ -150,7 +160,12 @@ async function applyRestore(
     });
     const created: number = (response.body as { seq?: number }).seq ?? target.seq;
     writeFiles(where.directory, { code: target.code, manifest: target.manifest });
-    writeState(where.directory, { ...where.state, connectorId: where.connectorId, baseSeq: created });
+    writeState(where.directory, {
+        ...where.state,
+        connectorId: where.connectorId,
+        baseSeq: created,
+        baseDigest: filesDigest({ code: target.code, manifest: target.manifest })
+    });
     return response;
 }
 
@@ -165,10 +180,10 @@ export async function connectRestore(
     const state: ConnectorState = readState(directory);
     const connectorId: string = connectorIdOf(options, dir);
     const session: Session = sessionOf(context, options);
-    const target: VersionFiles = await fetchVersion(context, session, connectorId, seq);
     if (options.force !== true) {
         await assertFolderUnchanged(context, session, connectorId, directory, state);
     }
+    const target: VersionFiles = await fetchVersion(context, session, connectorId, seq);
     await requestLocalChange(context, {
         preview: restorePreview(target, seq),
         command: `nexo connect restore ${String(seq)}`,

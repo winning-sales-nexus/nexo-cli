@@ -37,11 +37,16 @@ function sentenceOf(item: unknown): string | null {
     }
     const label: string | null = textOf(item.label);
     const reason: string | null = textOf(item.reason);
+    const field: string | null = textOf(item.path) ?? textOf(item.field);
+    const message: string | null = textOf(item.message);
+    if (field !== null && message !== null) {
+        return `${field}: ${message}`;
+    }
     return textOf(item.sentence) ?? (label === null || reason === null ? null : `${label}: ${reason}`);
 }
 
 function listedIn(meta: Readonly<Record<string, unknown>> | undefined): string | null {
-    const items: readonly unknown[] = [meta?.pending, meta?.problems, meta?.findings].flatMap((list: unknown) =>
+    const items: readonly unknown[] = [meta?.issues, meta?.pending, meta?.problems, meta?.findings].flatMap((list: unknown) =>
         Array.isArray(list) ? (list as readonly unknown[]) : []
     );
     const lines: readonly string[] = items.map(sentenceOf).flatMap((line: string | null) => (line === null ? [] : [`  - ${line}`]));

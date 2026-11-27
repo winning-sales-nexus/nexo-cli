@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 export interface VersionSummary {
     readonly seq: number;
     readonly origin: string;
@@ -72,6 +73,15 @@ export function sameFiles(
         local.code.trimEnd() === remote.code.trimEnd() &&
         JSON.stringify(sortKeys(local.manifest)) === JSON.stringify(sortKeys(remote.manifest))
     );
+}
+
+/** Resumo estável do que `sameFiles` compara: o mesmo digest para os mesmos arquivos. */
+export function filesDigest(files: { readonly code: string; readonly manifest: Record<string, unknown> }): string {
+    return createHash('sha256')
+        .update(files.code.trimEnd())
+        .update('\0')
+        .update(JSON.stringify(sortKeys(files.manifest)))
+        .digest('hex');
 }
 
 function sortKeys(value: unknown): unknown {
