@@ -310,7 +310,6 @@ Os modelos são os do app, nos dois canais. O e-mail é um documento de blocos c
 
 O token precisa de `automations:read` para ler, prever e estruturar, e de `automations:write` para criar, mudar e publicar (admin ou líder de vendas, com o módulo Automações no plano). Também atende por `nexo modelos`. A skill `nexo-automations` traz as diretrizes de estilo do e-mail.
 
-
 ## Agentes de atendimento
 
 ```
