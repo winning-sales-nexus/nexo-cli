@@ -75,6 +75,7 @@ const HINT_BY_TYPE: Readonly<Record<string, string | null>> = {
     'connect.erp_operation_not_found': 'Veja as operações que você alcança com `nexo erp list`.',
     'connect.operation_failed': 'O erro veio do outro sistema (o ERP), não do Nexo. Quem cuida do conector lê a execução citada e corrige.',
     'connect.operation_timeout': 'O outro sistema (o ERP) não respondeu a tempo; o Nexo está de pé. Tente de novo mais tarde.',
+    'connect.hosts_awaiting_approval': 'Aprove os hosts: `nexo connect hosts approve` abre a tela do conector, e a aprovação é da pessoa.',
     'connect.pause_before_delete': 'Só se apaga um conector pausado ou em rascunho: pause antes com `nexo connect pause`.',
     'connect.run_in_progress': 'Há uma execução em andamento: espere terminar (veja `nexo connect runs`) e tente de novo.',
     'agents.template_required': 'Diga o modelo da versão nova com --template <id>.'

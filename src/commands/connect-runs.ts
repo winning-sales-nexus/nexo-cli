@@ -134,7 +134,7 @@ export async function connectChange(
     });
 }
 
-async function secretValue(context: CliContext, name: string, options: ConnectRunOptions): Promise<string> {
+export async function secretValue(context: CliContext, name: string, options: Pick<ConnectRunOptions, 'stdin'>): Promise<string> {
     if (options.stdin === true) {
         return (await readAll(context.stdin)).replace(/\r?\n$/, '');
     }

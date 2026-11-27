@@ -2,6 +2,8 @@ import { AGENT_PAIRING_PAGE, knownAppUrl } from '../config/environments.js';
 import type { Session } from '../config/session.js';
 import { clientOf, printJson, printLine, printNotice, sessionOf } from '../context.js';
 import type { CliContext } from '../context.js';
+import { DEFAULT_PATIENCE, pollUntil, timedOut } from '../connect/access.js';
+import type { Patience } from '../connect/access.js';
 import { requestLocalChange } from '../connect/changes.js';
 import { describeAgent, describeAgentRow, isAgent, isAgentList, isPairingCode, newlyPaired, revokePreview } from '../connect/agents.js';
 import type { Agent, PairingCode } from '../connect/agents.js';
@@ -18,14 +20,9 @@ export interface AgentOptions extends Omit<ConnectRunOptions, 'confirm'> {
     readonly name?: string;
 }
 
-export interface PairWait {
-    readonly intervalMs: number;
-    readonly timeoutMs: number;
-    /** O relógio da espera; o padrão é `Date.now`. */
-    readonly now?: () => number;
-}
+export type PairWait = Patience;
 
-export const PAIR_WAIT: PairWait = { intervalMs: 3000, timeoutMs: 10 * 60_000 };
+export const PAIR_WAIT: PairWait = DEFAULT_PATIENCE;
 
 async function fetchAgents(context: CliContext, session: Session): Promise<readonly Agent[]> {
     const response: ApiResponse = await clientOf(context, session).request({ method: 'GET', path: '/v1/connect/agents' });
@@ -96,22 +93,15 @@ async function createCode(context: CliContext, session: Session, options: AgentO
 }
 
 async function waitForPaired(context: CliContext, session: Session, known: ReadonlySet<string>, wait: PairWait): Promise<Agent> {
-    const now: () => number = wait.now ?? Date.now;
-    const deadline: number = now() + wait.timeoutMs;
-    for (;;) {
-        const paired: Agent | null = newlyPaired(await fetchAgents(context, session), known);
-        if (paired !== null) {
-            return paired;
-        }
-        if (now() >= deadline) {
-            throw new CliError(
-                'Nenhum agente novo foi pareado a tempo.',
-                EXIT_CODES.failure,
-                'Gere o código na tela, instale o agente com ele e confira com `nexo connect agents`.'
-            );
-        }
-        await pause(context, wait.intervalMs);
-    }
+    return pollUntil(
+        async () => newlyPaired(await fetchAgents(context, session), known),
+        (ms: number) => pause(context, ms),
+        wait,
+        timedOut(
+            'Nenhum agente novo foi pareado a tempo.',
+            'Gere o código na tela, instale o agente com ele e confira com `nexo connect agents`.'
+        )
+    );
 }
 
 const PAIRING_HINT: string =
