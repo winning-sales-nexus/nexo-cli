@@ -884,7 +884,7 @@ describe('connector lifecycle: rename, delete and the schedule', () => {
     });
     const me: unknown = {
         user: { name: 'Ana', email: 'ana@example.com', profiles: [] },
-        company: { id: 'c1', name: 'Empresa', timezone: 'America/Sao_Paulo' },
+        company: { id: 'c1', name: 'Empresa', timezone: 'Asia/Tokyo' },
         credential: { name: 'x', expiresAt: '2027-01-01T00:00:00Z', scopes: [] }
     };
     const deletePreview: unknown = {
@@ -903,9 +903,14 @@ describe('connector lifecycle: rename, delete and the schedule', () => {
     }
 
     it('rename sends the PATCH and shows the old and the new name', async () => {
+        let name: string = 'Clientes do ERP';
         const h: Harness = harness({
-            [`GET ${ONE}`]: () => detail({}),
-            [`PATCH ${ONE}`]: () => ({ id: CONNECTOR, name: 'Clientes do Omie' })
+            [`GET ${ONE}`]: () => detail({ name }),
+            [`PATCH ${ONE}`]: (call: Call) => {
+                name = (call.body as { name: string }).name;
+                return { id: CONNECTOR, name };
+            },
+            'GET /v1/connect/connectors': () => [{ id: CONNECTOR, name, status: 'enabled', headSeq: 1, publishedSeq: 1 }]
         });
 
         expect(await run(h.context, ['connect', '--connector', CONNECTOR, 'rename', 'Clientes do Omie', '--description', 'Do Omie'])).toBe(
@@ -914,6 +919,9 @@ describe('connector lifecycle: rename, delete and the schedule', () => {
 
         expect(h.calls.at(-1)).toEqual({ method: 'PATCH', path: ONE, body: { name: 'Clientes do Omie', description: 'Do Omie' } });
         expect(h.out()).toContain('"Clientes do ERP" -> "Clientes do Omie"');
+
+        expect(await run(h.context, ['connect', 'list'])).toBe(0);
+        expect(h.out()).toContain('Clientes do Omie');
     });
 
     it('rename keeps the name of the local folder in step', async () => {
@@ -1004,7 +1012,7 @@ describe('connector lifecycle: rename, delete and the schedule', () => {
 
         expect(await run(h.context, ['connect', 'status', dir])).toBe(0);
 
-        expect(h.out()).toContain('Agenda: todo dia às 08:00 e 18:00. Próxima: 27/11 18:00.');
+        expect(h.out()).toContain('Agenda: todo dia às 08:00 e 18:00. Próxima: 28/11 06:00.');
     });
 
     it('status says paused or no schedule, and an old answer without the fields does not break', async () => {
@@ -1054,7 +1062,7 @@ describe('connector lifecycle: rename, delete and the schedule', () => {
         expect(await run(h.context, ['connect', 'list'])).toBe(0);
 
         const lines: string[] = h.out().trim().split('\n');
-        expect(lines[0]).toContain('próxima 27/11 22:00');
+        expect(lines[0]).toContain('próxima 28/11 10:00');
         expect(lines[1]).toContain('próxima -');
     });
 
