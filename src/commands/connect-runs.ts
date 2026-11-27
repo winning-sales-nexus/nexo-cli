@@ -27,7 +27,7 @@ interface Rehearsal {
     readonly link: string;
 }
 
-export function connectorIdOf(options: ConnectRunOptions, dir: string | undefined): string {
+export function connectorIdOf(options: Pick<ConnectRunOptions, 'connector'>, dir: string | undefined): string {
     if (options.connector !== undefined) {
         return options.connector;
     }
@@ -110,7 +110,8 @@ export async function connectChange(
 ): Promise<void> {
     await requestChange(context, sessionOf(context, options), {
         connectorId: connectorIdOf(options, dir),
-        kind,
+        path: kind,
+        command: `nexo connect ${kind}`,
         confirm: options.confirm,
         yes: options.yes === true,
         json: options.json === true

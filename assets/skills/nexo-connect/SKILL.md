@@ -22,7 +22,10 @@ Um **conector** é um programa pequeno em TypeScript mais um **manifesto** JSON 
 3. Segredos: peça à **pessoa** para rodar `nexo connect secrets set <NOME>` no terminal dela (o valor não aparece e nunca volta). Hosts: regra 2.
 4. `nexo connect rehearse <pasta>` ensaia, espera e mostra o resultado inteiro (o que escreveria, passos com erro, o stack). Sai com código 1 se não passou limpo. Corrija, `push` de novo e ensaie até passar.
 5. `nexo connect publish <pasta>` e depois `nexo connect enable <pasta>`: sem terminal, a CLI mostra a prévia e o comando com `--confirm <token>`. **Mostre a prévia à pessoa e só rode o `--confirm` depois do sim dela, uma vez.** Nunca use `--yes` por conta própria.
-6. Execução com erro: `nexo connect runs` e `nexo connect run <id>`; corrija, ensaie, publique. Quarentena e desfazer ainda vão por `nexo api connect/connectors/<id>/...` (prévia e sim).
+6. Execução com erro: `nexo connect runs` e `nexo connect run <id>`; corrija, ensaie, publique. Desfazer ainda vai por `nexo api connect/connectors/<id>/...` (prévia e sim).
+   - **Quarentena:** `nexo connect quarantine` lista os registros abertos (id, objeto, motivo, valores mascarados, execução). `quarantine fix <registro> --set campo=valor` (ou `--file <json>`; `properties.<chave>=valor` para propriedade) e `quarantine discard <registro>` mostram o registro e esperam o sim; `quarantine reprocess` mostra a prévia do Nexo. `fix` e `discard` aplicam com `--confirm` (sem token); `reprocess`, com `--confirm <token>`.
+   - **Escritas no outro sistema:** `nexo connect writes` lista a escrita retida e os hosts confirmados; `writes confirm <escrita>`, `write-hosts confirm <host>` e `write-hosts revoke <host>` mostram a prévia e aplicam com `--confirm <token>`. O que sai para o outro sistema não se desfaz.
+   - Em todos: **mostre a prévia à pessoa e só aplique depois do sim dela.** Nunca use `--yes` por conta própria. Campo fora do manifesto ou host fora dele volta como recusa em português: leia, não insista.
 7. `nexo connect status <pasta>` diz a versão em edição, a publicada, a da pasta, e o que falta. Se alguém mudou o conector no app, `push` recusa com conflito: `nexo connect pull <id> <pasta-nova>` e junte.
 
 ## Cuidados no código
