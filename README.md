@@ -134,6 +134,20 @@ nexo connect write-hosts revoke api.erp.example.com.br                # revoga
 
 Cada comando que muda algo mostra a prévia e pede o sim num terminal; `-y` aplica logo depois de mostrar. Fora de um terminal, a CLI mostra a prévia e o comando que aplica: `reprocess`, `writes confirm` e `write-hosts` com `--confirm <token>`, que vale uma vez; `fix` e `discard` (o `/v1` não tem prévia para eles, a prévia é montada pela CLI) com `--confirm`, sem token. Em `fix`, `--set campo=valor` mexe num campo nativo e `--set properties.chave=valor` numa propriedade; `true` e `false` viram booleano e o resto é texto (para outro tipo, use `--file`). Um campo fora do manifesto, ou um host que não é dele, volta como a recusa do Nexo, em português. Todos aceitam `--json`.
 
+### Acesso do conector: hosts, segredos e webhook
+
+```sh
+nexo connect hosts                                  # os hosts aprovados e os que esperam o sim de uma pessoa
+nexo connect hosts approve                          # abre a tela do conector nos hosts e espera a aprovação (até 10 minutos); --no-wait só abre
+nexo connect secrets list                           # cada segredo: preenchido ou faltando, e desde quando (nunca o valor)
+nexo connect webhook                                # a URL, como o outro sistema assina e se há segredo
+nexo connect webhook secret set --generate          # gera 32 bytes em hexadecimal aqui e mostra o valor uma vez (ou digite sem eco, ou --stdin)
+```
+
+**Aprovar host é da pessoa, na tela.** O token do `nexo login` nunca recebe `connectors:hosts`, e por isso a CLI não aprova nada sozinha: `hosts approve` mostra os hosts (cada um passa a receber as chamadas do conector com os segredos dele), abre a tela do conector já nos hosts, a pessoa aprova lá com a sessão dela, e a CLI só espera o host aparecer entre os aprovados e diz quais foram. Não precisa mais criar uma chave pessoal para isso; uma chave pessoal com `connectors:hosts` continua valendo, mas só com uma pessoa no terminal: a CLI mostra a prévia do `/v1` e a pessoa digita `aprovar` (ou o host) para aplicar. `hosts approve` não tem `-y` nem `--confirm`, e fora de um terminal vai sempre pela tela. Passou dos 10 minutos, a CLI sai com código 1. Num ambiente que a CLI não conhece, ela mostra o link e não abre o navegador.
+
+**Nenhum valor secreto sai na tela nem no `--json`.** `secrets list` diz só se está preenchido. O segredo do `webhook secret set` é digitado sem eco ou vem por `--stdin`; `--generate` mostra o valor gerado uma vez, para você levar ao outro sistema (ele não dá acesso ao Nexo), e por isso não vai com `--json`. Trocar o segredo faz o anterior deixar de valer na hora. Todos aceitam `--json`.
+
 ### Agentes locais
 
 O **agente local** é o programa instalado na rede da empresa que leva as chamadas até um ERP sem porta aberta. Os comandos são da empresa, não de uma pasta de conector.

@@ -31,6 +31,9 @@ import {
     writesList
 } from './commands/connect-retained.js';
 import type { RetainedOptions } from './commands/connect-retained.js';
+import { secretsList } from './commands/connect-access.js';
+import type { AccessOptions } from './commands/connect-access.js';
+import { addAccessCommands } from './program-connect-access.js';
 import { CHANGES } from './connect/changes.types.js';
 import type { ChangeKind } from './connect/changes.types.js';
 import type { CliContext } from './context.js';
@@ -187,9 +190,10 @@ function addChangeCommands(connect: Command, context: CliContext): void {
                 await connectChange(context, kind, dir, command.optsWithGlobals());
             });
     }
-    connect
+    const secrets: Command = connect
         .command('secrets')
-        .description('Segredos do conector: o valor é digitado por uma pessoa e nunca volta')
+        .description('Segredos do conector: o valor é digitado por uma pessoa e nunca volta');
+    secrets
         .command('set')
         .description('Preenche um segredo do manifesto')
         .argument('<nome>', 'nome do segredo, como no manifesto')
@@ -197,6 +201,13 @@ function addChangeCommands(connect: Command, context: CliContext): void {
         .option('--stdin', 'lê o valor do stdin (para script)')
         .action(async (name: string, dir: string, _options: ConnectRunOptions, command: Command) => {
             await connectSecretSet(context, name, dir, command.optsWithGlobals());
+        });
+    secrets
+        .command('list')
+        .description('Os segredos que o manifesto pede: o nome, se está preenchido e desde quando (nunca o valor)')
+        .argument('[pasta]', 'pasta do conector', '.')
+        .action(async (dir: string, _options: AccessOptions, command: Command) => {
+            await secretsList(context, dir, command.optsWithGlobals());
         });
 }
 
@@ -413,4 +424,5 @@ export function addConnectCommands(program: Command, context: CliContext): void 
     addQuarantineCommands(connect, context);
     addWriteCommands(connect, context);
     addAgentCommands(connect, context);
+    addAccessCommands(connect, context);
 }

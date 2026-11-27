@@ -5,6 +5,7 @@ import { PassThrough, Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import { agentPair } from '../src/commands/connect-agents.js';
 import { connectBuild } from '../src/commands/connect-build.js';
+import { hostsApprove } from '../src/commands/connect-hosts.js';
 import { connectRehearse } from '../src/commands/connect-runs.js';
 import { CredentialsStore } from '../src/config/credentials-store.js';
 import type { CliContext } from '../src/context.js';
@@ -1249,5 +1250,225 @@ describe('nexo connect agents', () => {
 
         expect(await run(h.context, ['connect', 'agents', 'revoke', AGENT_ID, '-y'])).toBe(2);
         expect(h.calls.filter((call: Call) => call.method === 'POST')).toEqual([]);
+    });
+});
+
+describe('nexo connect: access (hosts, secrets and webhook)', () => {
+    const BASE: string = `/v1/connect/connectors/${CONNECTOR}`;
+    const OPTION: string[] = ['--connector', CONNECTOR];
+    const SCREEN: string = `${LINK}?foco=hosts`;
+
+    function detail(approved: string[], pending: string[]): unknown {
+        return { connector: { id: CONNECTOR, name: 'Clientes do ERP', approvedHosts: approved }, pendingHosts: pending, link: LINK };
+    }
+
+    function opening(h: Harness, environment: Record<string, string> = { NEXO_TOKEN: TOKEN }): { context: CliContext; opened: string[] } {
+        const opened: string[] = [];
+        return {
+            opened,
+            context: {
+                ...h.context,
+                env: environment,
+                sleep: () => Promise.resolve(),
+                openUrl: (url: string) => {
+                    opened.push(url);
+                    return Promise.resolve(true);
+                }
+            }
+        };
+    }
+
+    function approvedAfterTwoReads(): Record<string, Route> {
+        let reads: number = 0;
+        return {
+            [`GET ${BASE}`]: () => {
+                reads += 1;
+                return reads < 3 ? detail([], ['api.erp.example.com.br']) : detail(['api.erp.example.com.br'], []);
+            },
+            [`POST ${BASE}/hosts/approve/preview`]: () => json(403, { title: 'Falta o escopo connectors:hosts', status: 403 })
+        };
+    }
+
+    it('hosts shows the approved and the pending ones', async () => {
+        const h: Harness = harness({ [`GET ${BASE}`]: () => detail(['api.a.com'], ['api.b.com']) });
+
+        expect(await run(h.context, ['connect', 'hosts', ...OPTION])).toBe(0);
+
+        expect(h.out()).toContain('Aprovados: api.a.com');
+        expect(h.out()).toContain('Esperando o sim de uma pessoa: api.b.com');
+    });
+
+    it('hosts approve opens the screen on the hosts and ends when the host shows among the approved ones', async () => {
+        const h: Harness = harness(approvedAfterTwoReads());
+        const { context, opened } = opening(h);
+
+        expect(await run(context, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+
+        expect(opened).toEqual([SCREEN]);
+        expect(h.out()).toContain('Aprovados: api.erp.example.com.br');
+        expect(h.err()).toContain('receber as chamadas');
+        expect(h.calls.filter((call: Call) => call.method === 'GET')).toHaveLength(3);
+    });
+
+    it('hosts approve --no-wait only opens the screen', async () => {
+        const h: Harness = harness(approvedAfterTwoReads());
+        const { context, opened } = opening(h);
+
+        expect(await run(context, ['connect', 'hosts', 'approve', 'api.erp.example.com.br', '--no-wait', ...OPTION])).toBe(0);
+
+        expect(opened).toEqual([SCREEN]);
+        expect(h.calls.filter((call: Call) => call.method === 'GET')).toHaveLength(1);
+    });
+
+    it('hosts approve fails when the time runs out, by the fake clock, and refuses a host the version does not ask for', async () => {
+        const h: Harness = harness({
+            [`GET ${BASE}`]: () => detail([], ['api.erp.example.com.br']),
+            [`POST ${BASE}/hosts/approve/preview`]: () => json(403, { title: 'Falta o escopo connectors:hosts', status: 403 })
+        });
+        const { context } = opening(h, { NEXO_TOKEN: TOKEN });
+        let clock: number = 0;
+
+        await expect(
+            hostsApprove(context, [], { connector: CONNECTOR }, { intervalMs: 1000, timeoutMs: 3000, now: () => (clock += 1000) })
+        ).rejects.toMatchObject({ exitCode: 1 });
+        expect(await run(context, ['connect', 'hosts', 'approve', 'api.outro.com', ...OPTION])).toBe(2);
+    });
+
+    function typing(text: string): Readable & { isTTY: boolean } {
+        const stream: PassThrough & { isTTY?: boolean } = new PassThrough();
+        stream.isTTY = true;
+        stream.end(text);
+        return stream as Readable & { isTTY: boolean };
+    }
+
+    function withScope(): Record<string, Route> {
+        return {
+            ...approvedAfterTwoReads(),
+            [`POST ${BASE}/hosts/approve/preview`]: () => ({
+                title: 'Aprovar hosts',
+                changes: ['api.erp.example.com.br'],
+                confirmation: { token: 'tok-1', expiresAt: '2026-11-27T13:00:00.000Z' }
+            }),
+            [`POST ${BASE}/hosts/approve`]: () => detail(['api.erp.example.com.br'], [])
+        };
+    }
+
+    it('hosts approve with a personal key refuses -y and --confirm, and without a terminal never calls the approval: it goes to the screen', async () => {
+        const h: Harness = harness(withScope());
+        const { context, opened } = opening(h);
+
+        expect(await run(context, ['connect', 'hosts', 'approve', '-y', ...OPTION])).not.toBe(0);
+        expect(await run(context, ['connect', 'hosts', 'approve', '--confirm', 'tok-1', ...OPTION])).not.toBe(0);
+        expect(h.calls).toEqual([]);
+
+        expect(await run(context, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+        expect(opened).toEqual([SCREEN]);
+        expect(h.calls.filter((call: Call) => call.path.includes('hosts/approve'))).toEqual([]);
+    });
+
+    it('hosts approve with a personal key and a terminal only applies after the person types', async () => {
+        const refused: Harness = harness(withScope());
+        const first: { context: CliContext; opened: string[] } = opening(refused);
+        expect(await run({ ...first.context, stdin: typing('nao\n') }, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+        expect(refused.calls.filter((call: Call) => call.method === 'POST' && call.path.endsWith('/hosts/approve'))).toEqual([]);
+        expect(first.opened).toEqual([]);
+
+        const h: Harness = harness(withScope());
+        const second: { context: CliContext; opened: string[] } = opening(h);
+        expect(await run({ ...second.context, stdin: typing('aprovar\n') }, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+        expect(h.calls.at(-1)).toMatchObject({
+            path: `${BASE}/hosts/approve`,
+            body: { hosts: ['api.erp.example.com.br'], confirmationToken: 'tok-1' }
+        });
+        expect(h.err()).toContain('receber as chamadas');
+        expect(h.out()).toContain('Aprovados: api.erp.example.com.br');
+    });
+
+    it('hosts approve treats a token that is not a personal key as the login one: the screen', async () => {
+        const h: Harness = harness(withScope());
+        const { context, opened } = opening(h, { NEXO_TOKEN: 'eyJhbGciOi.outro.token' });
+
+        expect(await run({ ...context, stdin: typing('aprovar\n') }, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+        expect(opened).toEqual([SCREEN]);
+        expect(h.calls.filter((call: Call) => call.path.includes('hosts/approve'))).toEqual([]);
+    });
+
+    it('hosts approve never calls the approval with an OAuth token, and does not open the browser for an API it does not know', async () => {
+        const h: Harness = harness(approvedAfterTwoReads());
+        const store: CredentialsStore = new CredentialsStore(mkdtempSync(join(tmpdir(), 'nexo-connect-oauth-')));
+        store.save('default', {
+            kind: 'oauth',
+            apiUrl: API,
+            accessToken: 'tok',
+            refreshToken: 'ref',
+            expiresAt: '2099-01-01T00:00:00.000Z',
+            scope: 'connectors:read',
+            savedAt: '2026-11-27T00:00:00.000Z'
+        });
+        const { context, opened } = opening({ ...h, context: { ...h.context, store } }, {});
+
+        expect(await run(context, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+        expect(opened).toEqual([SCREEN]);
+        expect(h.calls.filter((call: Call) => call.path.includes('hosts/approve'))).toEqual([]);
+
+        const local: Harness = harness(approvedAfterTwoReads());
+        const unknown: { context: CliContext; opened: string[] } = opening(local, {
+            NEXO_TOKEN: TOKEN,
+            NEXO_API_URL: 'http://localhost:3000'
+        });
+        const toLocal: FetchFunction = (url: string, init: RequestInit) =>
+            local.context.fetchFn(url.replace('http://localhost:3000', API), init);
+        expect(await run({ ...unknown.context, fetchFn: toLocal }, ['connect', 'hosts', 'approve', '--no-wait', ...OPTION])).toBe(0);
+        expect(unknown.opened).toEqual([]);
+    });
+
+    it('secrets list shows names and state and never a value', async () => {
+        const h: Harness = harness({
+            [`GET ${BASE}/secrets`]: () => [
+                { name: 'ERP_TOKEN', label: 'Token', help: null, filled: true, setAt: '2026-11-20T10:00:00.000Z' },
+                { name: 'ERP_USER', label: 'Usuário', help: null, filled: false, setAt: null }
+            ]
+        });
+
+        expect(await run(h.context, ['connect', 'secrets', 'list', ...OPTION])).toBe(0);
+
+        expect(h.out()).toContain('ERP_TOKEN');
+        expect(h.out()).toContain('desde 2026-11-20T10:00:00.000Z');
+        expect(h.out()).toMatch(/ERP_USER\s+faltando/);
+    });
+
+    it('webhook shows the URL and whether there is a secret; webhook secret set --generate shows the value once', async () => {
+        const setup: Record<string, unknown> = {
+            url: 'https://mcp-nexo.winningsales.com.br/hooks/abc',
+            secretSet: false,
+            signatureHeader: 'X-Nexo-Signature',
+            timestampHeader: 'X-Nexo-Timestamp'
+        };
+        const shown: Harness = harness({ [`GET ${BASE}/webhook`]: () => setup });
+        expect(await run(shown.context, ['connect', 'webhook', ...OPTION])).toBe(0);
+        expect(shown.out()).toContain('hooks/abc');
+        expect(shown.out()).toContain('ainda não definido');
+
+        const h: Harness = harness({ [`PUT ${BASE}/webhook/secret`]: () => ({ ...setup, secretSet: true }) });
+        expect(await run(h.context, ['connect', 'webhook', 'secret', 'set', '--generate', ...OPTION])).toBe(0);
+        const secret: string = (h.calls[0]?.body as { secret: string }).secret;
+        expect(secret).toMatch(/^[0-9a-f]{64}$/);
+        expect(h.out()).toContain(`Segredo: ${secret}`);
+
+        const refused: Harness = harness({});
+        expect(await run(refused.context, ['connect', 'webhook', 'secret', 'set', '--generate', '--json', ...OPTION])).toBe(2);
+        expect(refused.calls).toEqual([]);
+    });
+});
+
+describe('nexo connect rehearse: hosts waiting for the yes', () => {
+    it('points to hosts approve', async () => {
+        const h: Harness = harness({
+            [`POST /v1/connect/connectors/${CONNECTOR}/rehearsals`]: () =>
+                json(422, { type: 'connect.hosts_awaiting_approval', title: 'Há hosts esperando o sim', status: 422 })
+        });
+
+        expect(await run(h.context, ['connect', 'rehearse', '--connector', CONNECTOR])).not.toBe(0);
+        expect(h.err()).toContain('nexo connect hosts approve');
     });
 });

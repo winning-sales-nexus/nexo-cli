@@ -111,7 +111,10 @@ async function saveVersion(
 function reportSaved(context: CliContext, saved: SavedVersion): void {
     printLine(context, `Versão ${String(saved.version.seq)} salva. Ela está em edição: ensaie com \`nexo connect rehearse\`.`);
     if (saved.pendingHosts.length > 0) {
-        printLine(context, `Hosts esperando o sim de uma pessoa: ${saved.pendingHosts.join(', ')}`);
+        printLine(
+            context,
+            `Hosts esperando o sim de uma pessoa: ${saved.pendingHosts.join(', ')}. Aprove com \`nexo connect hosts approve\`.`
+        );
     }
     if (saved.missingSecrets.length > 0) {
         printLine(
@@ -212,7 +215,7 @@ export async function connectStatus(context: CliContext, dir: string | undefined
     }
     printLine(
         context,
-        `Segredos faltando: ${view.missingSecrets.join(', ') || 'nenhum'}. Hosts esperando: ${view.pendingHosts.join(', ') || 'nenhum'}.`
+        `Segredos faltando: ${view.missingSecrets.join(', ') || 'nenhum'}. Hosts esperando: ${view.pendingHosts.join(', ') || 'nenhum'}${view.pendingHosts.length > 0 ? ' (aprove com `nexo connect hosts approve`)' : ''}.`
     );
     const zone: string | null = typeof view.connector.nextRunAt === 'string' ? await companyTimeZone(context, session) : null;
     const agenda: string | null = scheduleLine(view.connector, zone);
