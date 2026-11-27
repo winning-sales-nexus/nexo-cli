@@ -89,6 +89,22 @@ O conector vive numa pasta do seu repositório: `connector.ts`, `manifest.json`,
 
 Publicar, ligar e pausar mostram a prévia e pedem o sim. Fora de um terminal (numa IA ou num script), a CLI mostra a prévia e o comando para aplicar com `--confirm <token>`, que vale uma vez. O valor de um segredo só é digitado por uma pessoa num terminal (ou por `--stdin`, num script) e nunca volta pela API.
 
+### Registros retidos: quarentena e escritas no outro sistema
+
+```sh
+nexo connect quarantine clientes-erp                                  # os registros abertos: id, objeto, motivo, valores mascarados e execução
+nexo connect quarantine fix <registro> --set cnpj=12345678000190      # mostra campo, valor de hoje e valor novo; pede o sim
+nexo connect quarantine fix <registro> --file correcao.json           # o corpo do PATCH: { "values": {...}, "properties": {...} }
+nexo connect quarantine discard <registro>                            # mostra o registro; pede o sim
+nexo connect quarantine reprocess                                     # prévia do Nexo; aplica depois do sim
+nexo connect writes clientes-erp                                      # as escritas retidas e os hosts confirmados
+nexo connect writes confirm <escrita>                                 # prévia do Nexo; a escrita sai e não se desfaz
+nexo connect write-hosts confirm api.erp.example.com.br               # confirma a escrita num host do manifesto
+nexo connect write-hosts revoke api.erp.example.com.br                # revoga
+```
+
+Cada comando que muda algo mostra a prévia e pede o sim num terminal; `-y` aplica logo depois de mostrar. Fora de um terminal, a CLI mostra a prévia e o comando que aplica: `reprocess`, `writes confirm` e `write-hosts` com `--confirm <token>`, que vale uma vez; `fix` e `discard` (o `/v1` não tem prévia para eles, a prévia é montada pela CLI) com `--confirm`, sem token. Em `fix`, `--set campo=valor` mexe num campo nativo e `--set properties.chave=valor` numa propriedade; `true` e `false` viram booleano e o resto é texto (para outro tipo, use `--file`). Um campo fora do manifesto, ou um host que não é dele, volta como a recusa do Nexo, em português. Todos aceitam `--json`.
+
 ## As automações
 
 ```sh
