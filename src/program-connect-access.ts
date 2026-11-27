@@ -36,8 +36,6 @@ function addHostsCommands(connect: Command, context: CliContext): void {
         )
         .argument('[host...]', 'hosts a aprovar, e por último a pasta do conector (padrão: todos os que esperam, na pasta atual)')
         .option('--no-wait', 'só abre a tela, sem esperar a aprovação')
-        .option('--confirm <token>', 'com uma chave pessoal com connectors:hosts: aplica com o token da prévia, depois do sim da pessoa')
-        .option('-y, --yes', YES_HELP)
         .action(async (args: string[], _options: HostsApproveOptions, command: Command) => {
             await hostsApprove(context, args, command.optsWithGlobals());
         });

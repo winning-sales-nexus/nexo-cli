@@ -1334,6 +1334,65 @@ describe('nexo connect: access (hosts, secrets, webhook, OAuth, SFTP and e-mail)
         expect(await run(context, ['connect', 'hosts', 'approve', 'api.outro.com', ...OPTION])).toBe(2);
     });
 
+    function typing(text: string): Readable & { isTTY: boolean } {
+        const stream: PassThrough & { isTTY?: boolean } = new PassThrough();
+        stream.isTTY = true;
+        stream.end(text);
+        return stream as Readable & { isTTY: boolean };
+    }
+
+    function withScope(): Record<string, Route> {
+        return {
+            ...approvedAfterTwoReads(),
+            [`POST ${BASE}/hosts/approve/preview`]: () => ({
+                title: 'Aprovar hosts',
+                changes: ['api.erp.example.com.br'],
+                confirmation: { token: 'tok-1', expiresAt: '2026-11-27T13:00:00.000Z' }
+            }),
+            [`POST ${BASE}/hosts/approve`]: () => detail(['api.erp.example.com.br'], [])
+        };
+    }
+
+    it('hosts approve with a personal key refuses -y and --confirm, and without a terminal never calls the approval: it goes to the screen', async () => {
+        const h: Harness = harness(withScope());
+        const { context, opened } = opening(h);
+
+        expect(await run(context, ['connect', 'hosts', 'approve', '-y', ...OPTION])).not.toBe(0);
+        expect(await run(context, ['connect', 'hosts', 'approve', '--confirm', 'tok-1', ...OPTION])).not.toBe(0);
+        expect(h.calls).toEqual([]);
+
+        expect(await run(context, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+        expect(opened).toEqual([SCREEN]);
+        expect(h.calls.filter((call: Call) => call.path.includes('hosts/approve'))).toEqual([]);
+    });
+
+    it('hosts approve with a personal key and a terminal only applies after the person types', async () => {
+        const refused: Harness = harness(withScope());
+        const first: { context: CliContext; opened: string[] } = opening(refused);
+        expect(await run({ ...first.context, stdin: typing('nao\n') }, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+        expect(refused.calls.filter((call: Call) => call.method === 'POST' && call.path.endsWith('/hosts/approve'))).toEqual([]);
+        expect(first.opened).toEqual([]);
+
+        const h: Harness = harness(withScope());
+        const second: { context: CliContext; opened: string[] } = opening(h);
+        expect(await run({ ...second.context, stdin: typing('aprovar\n') }, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+        expect(h.calls.at(-1)).toMatchObject({
+            path: `${BASE}/hosts/approve`,
+            body: { hosts: ['api.erp.example.com.br'], confirmationToken: 'tok-1' }
+        });
+        expect(h.err()).toContain('receber as chamadas');
+        expect(h.out()).toContain('Aprovados: api.erp.example.com.br');
+    });
+
+    it('hosts approve treats a token that is not a personal key as the login one: the screen', async () => {
+        const h: Harness = harness(withScope());
+        const { context, opened } = opening(h, { NEXO_TOKEN: 'eyJhbGciOi.outro.token' });
+
+        expect(await run({ ...context, stdin: typing('aprovar\n') }, ['connect', 'hosts', 'approve', ...OPTION])).toBe(0);
+        expect(opened).toEqual([SCREEN]);
+        expect(h.calls.filter((call: Call) => call.path.includes('hosts/approve'))).toEqual([]);
+    });
+
     it('hosts approve never calls the approval with an OAuth token, and does not open the browser for an API it does not know', async () => {
         const h: Harness = harness(approvedAfterTwoReads());
         const store: CredentialsStore = new CredentialsStore(mkdtempSync(join(tmpdir(), 'nexo-connect-oauth-')));
