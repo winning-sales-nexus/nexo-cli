@@ -47,7 +47,10 @@ interface Harness {
     readonly project: string;
     readonly home: string;
     served: Served[];
+    readonly queries: string[];
 }
+
+let OLD_API: boolean = false;
 
 function respond(body: unknown, status: number = 200): Response {
     return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -70,6 +73,7 @@ function harness(login: boolean = true): Harness {
         project,
         home,
         served: [SKILL, UNIT, NOTE, OUT_OF_INDEX],
+        queries: [],
         out: () => out,
         err: () => err,
         context: undefined as unknown as CliContext
@@ -89,9 +93,10 @@ function harness(login: boolean = true): Harness {
             return Promise.resolve(respond({}, 404));
         }
         if (path === '/v1/skills') {
-            return Promise.resolve(
-                respond({ skills: state.served.filter((item: Served) => item.hidden !== true).map(viewOf), reachVersion: 'r' })
-            );
+            const asked: string | null = new URL(input).searchParams.get('includeContext');
+            state.queries.push(asked ?? 'ausente');
+            const sent: Served[] = state.served.filter((item: Served) => item.hidden !== true && (!OLD_API || item.kind === 'skill'));
+            return Promise.resolve(respond({ skills: sent.map(viewOf), reachVersion: 'r' }));
         }
         const found: Served | undefined = state.served.find((item: Served) => path === `/v1/skills/${item.name}`);
         return Promise.resolve(
@@ -243,5 +248,61 @@ describe('nexo skills install with units of context', () => {
         expect(existsSync(join(h.home, '.claude'))).toBe(false);
         expect(h.err()).toContain('Sem login');
         expect(existsSync(join(h.project, '.claude/skills/nexo-api/SKILL.md'))).toBe(true);
+    });
+});
+
+describe('nexo skills with the includeContext parameter and the notes of the review', () => {
+    it('asks for the units of context with includeContext=true, and an old API that ignores it still lists the skills', async () => {
+        const h: Harness = harness();
+        await run(h.context, ['skills', 'list', '--dir', h.project]);
+        expect(h.queries).toEqual(['true']);
+        expect(h.out()).toContain('u-123 [contexto: preferencia, empresa]');
+
+        OLD_API = true;
+        try {
+            const old: Harness = harness();
+            expect(await run(old.context, ['skills', 'list', '--dir', old.project])).toBe(0);
+            expect(old.out()).toContain('regra-da-empresa [empresa]');
+            expect(old.out()).not.toContain('u-123');
+        } finally {
+            OLD_API = false;
+        }
+    });
+
+    it('opens a unit of context of level product, which the CLI does not carry', async () => {
+        const h: Harness = harness();
+        h.served = [{ name: 'u-prod', kind: 'base', title: 'Base do produto', level: 'product', body: 'CORPO DO PRODUTO.' }];
+
+        expect(await run(h.context, ['skills', 'show', 'u-prod'])).toBe(0);
+
+        expect(h.out()).toContain('CORPO DO PRODUTO.');
+    });
+
+    it('ignores a unit of a level the CLI does not know, without dropping the list', async () => {
+        const h: Harness = harness();
+        h.served = [SKILL, { name: 'u-novo', kind: 'base', title: 'Nível novo', level: 'galaxy', body: 'x' }, UNIT];
+
+        expect(await run(h.context, ['skills', 'list', '--dir', h.project])).toBe(0);
+
+        expect(h.out()).toContain('regra-da-empresa [empresa]');
+        expect(h.out()).toContain('u-123');
+        expect(h.out()).not.toContain('u-novo');
+    });
+
+    it('escapes title and description in the index and handles an empty title', async () => {
+        const h: Harness = harness();
+        mkdirSync(join(h.project, '.claude'));
+        h.served = [
+            { name: 'u-1', kind: 'base', title: '', level: 'company', body: 'x' },
+            { name: 'u-2', kind: 'base', title: '# Título\n- falso item `x`', level: 'company', body: 'x' }
+        ];
+
+        await run(h.context, ['skills', 'install', '--dir', h.project]);
+
+        const index: string = readFileSync(join(h.home, '.claude/skills/nexo-default-indice-do-cerebro/SKILL.md'), 'utf8');
+        expect(index).toContain('`u-1` (base, empresa): sem título. Quando usar:');
+        expect(index).not.toContain(': .');
+        expect(index).toContain('`u-2` (base, empresa): \\# Título - falso item \\`x\\`. Quando usar:');
+        expect(index.split('\n').filter((line: string) => line.startsWith('- '))).toHaveLength(2);
     });
 });

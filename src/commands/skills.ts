@@ -278,7 +278,7 @@ async function openedOutsideIndex(context: CliContext, state: OkState, name: str
     }
 }
 
-/** The skill of the client or the unit of context to open, read now with the token; null when the answer is a bundled skill or nothing. */
+/** The skill of the client or the unit of context to open (a product skill comes with the CLI; a unit of any level, product included, only the API has), read now with the token; null when the answer is a bundled skill or nothing. */
 async function remoteToShow(
     context: CliContext,
     state: OkState,
@@ -287,7 +287,8 @@ async function remoteToShow(
     bundled: Skill | undefined
 ): Promise<RemoteSkill | null> {
     if (entry !== undefined) {
-        return entry.level === 'product' ? null : remoteSkill(clientOf(context, state.session), name);
+        const bundledProduct: boolean = entry.level === 'product' && entry.kind === SKILL_KIND && bundled !== undefined;
+        return bundledProduct ? null : remoteSkill(clientOf(context, state.session), name);
     }
     return bundled === undefined ? openedOutsideIndex(context, state, name) : null;
 }

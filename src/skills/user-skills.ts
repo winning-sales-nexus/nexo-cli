@@ -88,9 +88,19 @@ export function contextIndexFolderName(profile: string): string {
     return `nexo-${slugOf(profile)}-indice-do-cerebro`;
 }
 
+/** One line of the index: markdown and line breaks of a title or description cannot open a heading, a list or a block of the file. */
+function inlineText(text: string): string {
+    return oneLine(text).replace(/[\\`*_[\]<>|#]/g, (char: string) => `\\${char}`);
+}
+
 function unitLine(unit: RemoteSkillEntry): string {
     const test: string = unit.status === 'tentative' ? ', em teste' : '';
-    return `- \`${unit.name}\` (${unit.kind}, ${LEVEL_LABELS[unit.level]}${test}): ${oneLine(unit.title)}. ${oneLine(unit.description)}`;
+    const title: string = inlineText(unit.title);
+    const description: string = inlineText(unit.description);
+    const text: string = [title === '' ? 'sem título' : title, description === '' ? '' : description]
+        .filter((part: string) => part !== '')
+        .join('. ');
+    return `- \`${unit.name}\` (${unit.kind}, ${LEVEL_LABELS[unit.level]}${test}): ${text}${/[.!?:]$/.test(text) ? '' : '.'}`;
 }
 
 /**

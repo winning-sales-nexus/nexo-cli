@@ -257,6 +257,17 @@ describe('nexo brain import', () => {
         expect(h.calls.filter((call: Call) => call.method === 'PUT')).toHaveLength(3);
     });
 
+    it('stops with a clear error, sending nothing, when a name does not match the file of that position', async () => {
+        const opened: Record<string, unknown> = round('uploading', []);
+        opened.files = [...(opened.files as Record<string, unknown>[])].reverse();
+        const h: Harness = harness({ ...routesFor(round('completed', [])), 'POST /v1/knowledge/imports': { status: 201, body: opened } });
+
+        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).not.toBe(0);
+
+        expect(h.err()).toContain('A rodada voltou com SKILL.md na posição 1');
+        expect(h.calls.filter((call: Call) => call.method === 'PUT')).toHaveLength(0);
+    });
+
     it('does not follow a symbolic link and says it was ignored', async () => {
         symlinkSync(join(folder, 'notas'), join(folder, 'atalho'));
         const h: Harness = harness({});
