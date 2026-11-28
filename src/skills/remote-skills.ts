@@ -69,7 +69,7 @@ function entryOf(wire: WireEntry): RemoteSkillEntry {
 }
 
 function isSkill(value: unknown): value is WireEntry & { readonly body: string } {
-    return isEntry(value) && typeof (value as unknown as Readonly<Record<string, unknown>>).body === 'string';
+    return isShape(value) && typeof (value as unknown as Readonly<Record<string, unknown>>).body === 'string';
 }
 
 /**

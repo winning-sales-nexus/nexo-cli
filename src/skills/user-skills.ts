@@ -95,12 +95,14 @@ function inlineText(text: string): string {
 
 function unitLine(unit: RemoteSkillEntry): string {
     const test: string = unit.status === 'tentative' ? ', em teste' : '';
+    const kind: string = unit.kind.replace(/[^\w.-]/g, '_');
+    const id: string = oneLine(unit.name).replaceAll('`', "'");
     const title: string = inlineText(unit.title);
     const description: string = inlineText(unit.description);
     const text: string = [title === '' ? 'sem título' : title, description === '' ? '' : description]
         .filter((part: string) => part !== '')
         .join('. ');
-    return `- \`${unit.name}\` (${unit.kind}, ${LEVEL_LABELS[unit.level]}${test}): ${text}${/[.!?:]$/.test(text) ? '' : '.'}`;
+    return `- \`${id}\` (${kind}, ${LEVEL_LABELS[unit.level]}${test}): ${text}${/[.!?:]$/.test(text) ? '' : '.'}`;
 }
 
 /**

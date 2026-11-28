@@ -314,13 +314,15 @@ async function upload(context: CliContext, url: string, local: LocalImportFile):
     }
 }
 
-/** The name the API gives back may differ in writing only (spaces around, `\\` for `/`, a leading `./`, accents composed or not). */
+/** The name the API gives back may differ in writing only (spaces around, `\\` for `/`, empty, `.` and `..` segments dropped like the API does, accents composed or not). */
 export function normalizedName(name: string): string {
-    return name
+    const parts: readonly string[] = name
         .trim()
         .normalize('NFC')
         .replaceAll('\\', '/')
-        .replace(/^(?:\.\/)+/, '');
+        .split('/')
+        .filter((part: string) => part !== '' && part !== '.' && part !== '..');
+    return parts.length === 0 ? name.trim().normalize('NFC') : parts.join('/');
 }
 
 async function sendFiles(context: CliContext, round: Round, files: readonly LocalImportFile[]): Promise<void> {

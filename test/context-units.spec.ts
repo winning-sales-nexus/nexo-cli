@@ -305,4 +305,18 @@ describe('nexo skills with the includeContext parameter and the notes of the rev
         expect(index).toContain('`u-2` (base, empresa): \\# Título - falso item \\`x\\`. Quando usar:');
         expect(index.split('\n').filter((line: string) => line.startsWith('- '))).toHaveLength(2);
     });
+
+    it('opens a unit of a level the CLI does not know, and escapes its id and type in the index', async () => {
+        const h: Harness = harness();
+        mkdirSync(join(h.project, '.claude'));
+        h.served = [{ name: 'u`x\n- falso', kind: 'tipo*novo', title: 'T', level: 'company', body: 'x' }];
+        await run(h.context, ['skills', 'install', '--dir', h.project]);
+        const index: string = readFileSync(join(h.home, '.claude/skills/nexo-default-indice-do-cerebro/SKILL.md'), 'utf8');
+        expect(index).toContain("`u'x - falso` (tipo_novo, empresa)");
+
+        const novel: Harness = harness();
+        novel.served = [{ name: 'u-novo', kind: 'base', title: 'Novo', level: 'galaxy', body: 'CORPO NOVO' }];
+        expect(await run(novel.context, ['skills', 'show', 'u-novo'])).toBe(0);
+        expect(novel.out()).toContain('CORPO NOVO');
+    });
 });
