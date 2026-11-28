@@ -7,7 +7,7 @@ import type { ApiResponse } from '../http/nexo-client.js';
 import { readAll, readSecret } from '../input/read-input.js';
 import { requestChange } from '../connect/changes.js';
 import type { ChangeKind } from '../connect/changes.types.js';
-import { readArgs } from '../connect/operation-args.js';
+import { readArgs, readWebhookCall } from '../connect/operation-args.js';
 import { projectDirectory, readState, writeState } from '../connect/project.js';
 import type { ConnectorState } from '../connect/project.js';
 import { companyTimeZone, formatNextRun, hasNextRun } from '../connect/schedule.js';
@@ -28,6 +28,7 @@ export interface ConnectRunOptions extends GlobalOptions {
     readonly args?: string;
     readonly quiet?: boolean;
     readonly description?: string;
+    readonly input?: string;
 }
 
 export interface Rehearsal {
@@ -55,26 +56,34 @@ export function reportRehearsal(context: CliContext, run: Run, rehearsal: Rehear
     printLine(context, `Tela: ${rehearsal.link}`);
 }
 
+function rehearsalBody(options: ConnectRunOptions): Record<string, unknown> {
+    if (options.args !== undefined && options.operation === undefined) {
+        throw usageError('--args vai com --operation.', 'Diga qual operação do manifesto ensaiar: --operation <chave>.');
+    }
+    if (options.input !== undefined && options.operation !== undefined) {
+        throw usageError('--input não vai com --operation.', 'A chamada de exemplo é do gatilho webhook; a operação tem os seus --args.');
+    }
+    return {
+        scope: options.full === true ? 'full' : 'sample',
+        ...(options.operation === undefined ? {} : { operation: options.operation }),
+        ...(options.args === undefined ? {} : { args: readArgs(options.args) }),
+        ...(options.input === undefined ? {} : { webhook: readWebhookCall(options.input) })
+    };
+}
+
 export async function connectRehearse(
     context: CliContext,
     dir: string | undefined,
     options: ConnectRunOptions,
     wait: WaitOptions = DEFAULT_WAIT
 ): Promise<void> {
-    if (options.args !== undefined && options.operation === undefined) {
-        throw usageError('--args vai com --operation.', 'Diga qual operação do manifesto ensaiar: --operation <chave>.');
-    }
-    const args: Record<string, unknown> | undefined = options.args === undefined ? undefined : readArgs(options.args);
+    const body: Record<string, unknown> = rehearsalBody(options);
     const connectorId: string = connectorIdOf(options, dir);
     const session: Session = sessionOf(context, options);
     const response: ApiResponse = await clientOf(context, session).request({
         method: 'POST',
         path: `/v1/connect/connectors/${connectorId}/rehearsals`,
-        body: {
-            scope: options.full === true ? 'full' : 'sample',
-            ...(options.operation === undefined ? {} : { operation: options.operation }),
-            ...(args === undefined ? {} : { args })
-        }
+        body
     });
     const rehearsal: Rehearsal = response.body as Rehearsal;
     if (options.wait === false) {

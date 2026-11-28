@@ -6,10 +6,11 @@ import { EXIT_CODES } from '../exit-codes.types.js';
 import type { ApiResponse } from '../http/nexo-client.js';
 
 export interface PlannedCall {
-    readonly method: string;
+    /** O passo do Nexo (`ctx.nexo.create`) não traz método nem operação. */
+    readonly method?: string | null;
     readonly host: string;
     readonly path: string;
-    readonly operation: string;
+    readonly operation?: string | null;
     readonly count: number;
 }
 
@@ -105,10 +106,17 @@ function plannedLines(title: string, calls: readonly PlannedCall[] | null): read
     if (calls === null || calls.length === 0) {
         return [];
     }
-    return [
-        title,
-        ...calls.map((call: PlannedCall) => `  ${call.method} ${call.host}${call.path} (${call.operation}) × ${String(call.count)}`)
+    return [title, ...calls.map((call: PlannedCall) => `  ${plannedCall(call)} × ${String(call.count)}`)];
+}
+
+function plannedCall(call: PlannedCall): string {
+    const path: string = call.path === '' || call.path.startsWith('/') ? call.path : `/${call.path}`;
+    const parts: readonly string[] = [
+        ...(call.method === undefined || call.method === null || call.method === '' ? [] : [call.method]),
+        `${call.host}${path}`,
+        ...(call.operation === undefined || call.operation === null || call.operation === '' ? [] : [`(${call.operation})`])
     ];
+    return parts.join(' ');
 }
 
 function failedSteps(steps: readonly RunStep[] | null): readonly string[] {

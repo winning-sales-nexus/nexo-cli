@@ -113,6 +113,7 @@ nexo connect versions clientes-erp                       # número, resumo, orig
 nexo connect diff 1 3 clientes-erp                       # o que mudou no código e no manifesto (sem <para>, até a em edição)
 nexo connect restore 1 clientes-erp                      # mostra a versão, pede o sim (ou -y) e reescreve connector.ts e manifest.json
 nexo connect rehearse --operation pedidos --args '{"dias":3}'   # ensaia uma operação; --args aceita @arquivo.json
+nexo connect rehearse --input chamada.json   # ensaia o webhook com uma chamada de exemplo: {"body":"<texto cru>","contentType":"...","headers":{},"query":{}}
 nexo connect run-now clientes-erp                        # roda a versão publicada ao vivo: mostra, pede o sim (ou -y) e espera
 nexo connect initial-load clientes-erp                   # a carga inicial, ao vivo; --no-wait só abre a execução
 nexo connect undo <execução> clientes-erp                # prévia do Nexo; aplica depois do sim
