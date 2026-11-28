@@ -83,6 +83,70 @@ export function userSkillFileOf(profile: string, skill: RemoteSkill, now: Date):
     ].join('\n');
 }
 
+/** The folder of the index of the Cérebro: one skill per tool whose body is the list of descriptions, never the bodies. */
+export function contextIndexFolderName(profile: string): string {
+    return `nexo-${slugOf(profile)}-indice-do-cerebro`;
+}
+
+function unitLine(unit: RemoteSkillEntry): string {
+    const test: string = unit.status === 'tentative' ? ', em teste' : '';
+    return `- \`${unit.name}\` (${unit.kind}, ${LEVEL_LABELS[unit.level]}${test}): ${oneLine(unit.title)}. ${oneLine(unit.description)}`;
+}
+
+/**
+ * The index of the Cérebro for the AI of the person: name, type, level and description of each unit of context, plus the instruction to open
+ * one with `nexo skills show`. It carries no body and no date, so an index that did not change is not rewritten.
+ */
+export function contextIndexFileOf(profile: string, units: readonly RemoteSkillEntry[]): string {
+    return [
+        '---',
+        `name: ${contextIndexFolderName(profile)}`,
+        'description: "Índice do Cérebro da empresa: contexto que o Nexo guarda (regras, preferências, notas, identidade visual). Consulte antes de responder sobre a empresa, os clientes ou como trabalhar aqui."',
+        'metadata:',
+        `  nexo-profile: ${JSON.stringify(profile)}`,
+        '  nexo-index: context',
+        '---',
+        '',
+        '# Índice do Cérebro',
+        '',
+        'Este arquivo só lista o que existe, com a descrição de cada unidade. O texto de uma unidade não está aqui: quando uma descrição servir ao que você está fazendo, abra a unidade com o comando abaixo e leia o conteúdo na hora.',
+        '',
+        '```',
+        'nexo skills show <id>',
+        '```',
+        '',
+        ...units.map(unitLine),
+        ''
+    ].join('\n');
+}
+
+function indexFolders(home: string, tools: readonly UserTool[], profile: string, units: readonly RemoteSkillEntry[]): readonly string[] {
+    return units.length === 0 ? [] : tools.map((tool: UserTool) => join(userSkillsDirectory(home, tool), contextIndexFolderName(profile)));
+}
+
+function syncContextIndex(
+    home: string,
+    tools: readonly UserTool[],
+    profile: string,
+    units: readonly RemoteSkillEntry[]
+): readonly string[] {
+    if (units.length === 0) {
+        return [];
+    }
+    const content: string = contextIndexFileOf(profile, units);
+    return tools.flatMap((tool: UserTool) => {
+        const folder: string = join(userSkillsDirectory(home, tool), contextIndexFolderName(profile));
+        const file: string = join(folder, 'SKILL.md');
+        if (existsSync(file) && existsSync(join(folder, MARKER)) && readFileSync(file, 'utf8') === content) {
+            return [];
+        }
+        mkdirSync(folder, { recursive: true });
+        writeFileSync(join(folder, MARKER), `${profile}\n`);
+        writeFileSync(file, content);
+        return [file];
+    });
+}
+
 function foldersOf(directory: string, profile: string): readonly string[] {
     if (!existsSync(directory)) {
         return [];
@@ -155,6 +219,16 @@ interface Slot {
     readonly current: boolean;
 }
 
+function removeUnwanted(profile: string, wanted: ReadonlySet<string>, home: string): readonly string[] {
+    const removed: readonly string[] = USER_TOOLS.flatMap((tool: UserTool) => foldersOf(userSkillsDirectory(home, tool), profile)).filter(
+        (folder: string) => !wanted.has(folder)
+    );
+    for (const folder of removed) {
+        rmSync(folder, { recursive: true, force: true });
+    }
+    return removed;
+}
+
 /**
  * Brings the folders of the user to what the API lists for the profile, comparing versions instead of wiping and rewriting: a skill whose
  * version did not change is neither downloaded nor rewritten (only its date is refreshed, which is what the "older than a day" rule reads),
@@ -167,7 +241,8 @@ export async function syncUserSkills(
     profile: string,
     entries: readonly RemoteSkillEntry[],
     load: LoadSkill,
-    now: Date = new Date()
+    now: Date = new Date(),
+    units: readonly RemoteSkillEntry[] = []
 ): Promise<UserSkillsSync> {
     const slots: readonly Slot[] = tools.flatMap((tool: UserTool) =>
         entries.map((entry: RemoteSkillEntry) => {
@@ -178,13 +253,9 @@ export async function syncUserSkills(
     const stale: ReadonlySet<RemoteSkillEntry> = new Set(slots.filter((slot: Slot) => !slot.current).map((slot: Slot) => slot.entry));
     const loaded: readonly RemoteSkill[] = await Promise.all([...stale].map(load));
     const bodies: ReadonlyMap<string, RemoteSkill> = new Map(loaded.map((skill: RemoteSkill) => [skill.name, skill]));
-    const wanted: ReadonlySet<string> = new Set(slots.map((slot: Slot) => slot.folder));
-    const removed: readonly string[] = USER_TOOLS.flatMap((tool: UserTool) => foldersOf(userSkillsDirectory(home, tool), profile)).filter(
-        (folder: string) => !wanted.has(folder)
-    );
-    for (const folder of removed) {
-        rmSync(folder, { recursive: true, force: true });
-    }
+    const wanted: ReadonlySet<string> = new Set([...slots.map((slot: Slot) => slot.folder), ...indexFolders(home, tools, profile, units)]);
+    const removed: readonly string[] = removeUnwanted(profile, wanted, home);
+    const indexed: readonly string[] = syncContextIndex(home, tools, profile, units);
     const written: readonly string[] = slots.flatMap((slot: Slot) => {
         const fresh: RemoteSkill | undefined = bodies.get(slot.entry.name);
         if (slot.current || fresh === undefined) {
@@ -196,7 +267,7 @@ export async function syncUserSkills(
     const upToDate: readonly string[] = entries
         .filter((entry: RemoteSkillEntry) => !stale.has(entry))
         .map((entry: RemoteSkillEntry) => entry.name);
-    return { written, upToDate, removed };
+    return { written: [...written, ...indexed], upToDate, removed };
 }
 
 export function installedUserTools(home: string, profile: string, skill: Pick<RemoteSkill, 'name' | 'status'>): readonly UserTool[] {
