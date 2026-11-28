@@ -273,6 +273,8 @@ nexo artifacts get <artefato> --version-number 2     # uma versão, com o link p
 
 ```sh
 nexo brain areas                              # as áreas da empresa (o id vai em --area)
+nexo brain import <pasta> --scope company     # importa uma pasta de projeto do Claude (só admin); --scope area --area <área> para uma área
+nexo brain import <pasta> --scope company --yes --json   # sem perguntar, com o resumo cru (o que entrou, o que ficou de fora e por quê)
 nexo brain moments                            # os momentos que aceitam skill nova
 nexo brain list area --scope <área>           # as skills de um nível (area, team, company ou person; a pessoal é só sua)
 nexo brain create area --area <área> --objective "Follow-up curto" --moment follow_up_draft \
