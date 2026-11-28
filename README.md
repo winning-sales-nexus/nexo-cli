@@ -277,6 +277,7 @@ nexo brain list area --scope <área>           # as skills de um nível (area, t
 nexo brain create area --area <área> --objective "Follow-up curto" --moment follow_up_draft \
   --always "citar o último passo" --always "propor uma data" --never "prometer desconto" --example "Oi, Ana..."
 nexo brain create company --objective ... --moment ... --never ... --example ...    # empresa: sem --area/--team
+nexo brain create company --objective ... --moment attendance_agent_turn --agent-role cs ...   # agente de atendimento: sdr (o padrão) ou cs; só nesse momento
 nexo brain create team --team <time> ...
 nexo brain edit area <skill> --add-always "propor uma data" --update-never "prometer desconto => prometer prazo" --remove-always "..."
 nexo brain edit company <skill> --remove-never "..." --confirm-shrink

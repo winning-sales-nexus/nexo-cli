@@ -53,6 +53,7 @@ function addWriteCommands(brain: Command, context: CliContext): void {
         .option('--team <id>', 'o time da skill (nível team)')
         .option('--objective <texto>', 'o objetivo, em uma linha')
         .option('--moment <momento>', 'o momento da lista (nexo brain moments)')
+        .option('--agent-role <papel>', 'só com o momento attendance_agent_turn: sdr (o padrão) ou cs')
         .option('--always <texto>', 'o que fazer sempre (repita para mais de um)', collect, [])
         .option('--never <texto>', 'o que nunca fazer (repita para mais de um)', collect, [])
         .option('--example <texto>', 'um exemplo de como deve sair, em uma linha')

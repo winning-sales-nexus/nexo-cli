@@ -113,6 +113,19 @@ describe('nexo brain', () => {
         expect(h.calls[0]?.body).not.toHaveProperty('areaId');
     });
 
+    it('sends agentRole only for attendance_agent_turn and refuses other values', async () => {
+        const h: Harness = harness({ 'POST /v1/brain/company-skills': { status: 201, body: SKILL } });
+        const base: string[] = ['brain', 'create', 'company', '--objective', 'x', '--never', 'n', '--example', 'y'];
+
+        expect(await run(h.context, [...base, '--moment', 'attendance_agent_turn', '--agent-role', 'cs'])).toBe(0);
+        expect(h.calls[0]?.body).toMatchObject({ moment: 'attendance_agent_turn', agentRole: 'cs' });
+        expect(await run(h.context, [...base, '--moment', 'attendance_agent_turn'])).toBe(0);
+        expect(h.calls[1]?.body).not.toHaveProperty('agentRole');
+        expect(await run(h.context, [...base, '--moment', 'attendance_agent_turn', '--agent-role', 'x'])).not.toBe(0);
+        expect(await run(h.context, [...base, '--moment', 'follow_up_draft', '--agent-role', 'cs'])).not.toBe(0);
+        expect(h.calls).toHaveLength(2);
+    });
+
     it('edits by item and sends confirmShrink only when asked', async () => {
         const h: Harness = harness({ [`PUT /v1/brain/team-skills/${ID}`]: { body: { ...SKILL, version: 2 } } });
 
