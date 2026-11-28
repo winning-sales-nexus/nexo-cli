@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { RETRY_HINT, renderCallbackPage } from './callback-page.js';
 import { CliError } from '../errors.js';
 import { EXIT_CODES } from '../exit-codes.types.js';
 
@@ -16,15 +17,33 @@ export interface LoopbackServer {
     readonly close: () => void;
 }
 
-const PAGE_STYLE: string = 'font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.5';
-
-function page(title: string, text: string): string {
-    return `<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>${title}</title><body style="${PAGE_STYLE}"><h1>${title}</h1><p>${text}</p></body></html>`;
-}
-
 function answer(response: ServerResponse, status: number, html: string): void {
     response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
     response.end(html);
+}
+
+function answerNotFound(response: ServerResponse): void {
+    answer(
+        response,
+        404,
+        renderCallbackPage({ state: 'error', title: 'Nada aqui', text: 'Este endereço só recebe a volta do login do Nexo.' })
+    );
+}
+
+function answerFailure(response: ServerResponse, error: CliError): void {
+    answer(response, 400, renderCallbackPage({ state: 'error', title: 'Não deu certo', text: error.message, hint: RETRY_HINT }));
+}
+
+function answerSuccess(response: ServerResponse): void {
+    answer(
+        response,
+        200,
+        renderCallbackPage({
+            state: 'success',
+            title: 'Pronto',
+            text: 'A CLI do Nexo recebeu o acesso. Pode fechar esta aba e voltar ao terminal.'
+        })
+    );
 }
 
 function failure(message: string): CliError {
@@ -54,17 +73,17 @@ function waitForCode(server: Server, redirectUri: string, expectation: CallbackE
         server.on('request', (request: IncomingMessage, response: ServerResponse) => {
             const url: URL = new URL(request.url ?? '/', redirectUri);
             if (url.pathname !== '/callback') {
-                answer(response, 404, page('Nada aqui', 'Este endereço só recebe a volta do login do Nexo.'));
+                answerNotFound(response);
                 return;
             }
             const outcome: string | CliError = outcomeOf(url, expectation);
             clearTimeout(timer);
             if (outcome instanceof CliError) {
-                answer(response, 400, page('Não deu certo', `${outcome.message} Volte ao terminal.`));
+                answerFailure(response, outcome);
                 reject(outcome);
                 return;
             }
-            answer(response, 200, page('Pronto', 'A CLI do Nexo recebeu o acesso. Pode fechar esta aba e voltar ao terminal.'));
+            answerSuccess(response);
             resolve(outcome);
         });
     });
