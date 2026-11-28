@@ -290,6 +290,26 @@ nexo brain choose <comparação> a              # a escolha às cegas; só entã
 
 Ninguém envia o texto da skill: a CLI só manda a **ideia** (objetivo, momento da lista, o que fazer sempre, o que nunca fazer, um exemplo) e o Cérebro escreve o `SKILL.md`. Não há opção para nome, descrição nem corpo. A skill nasce em teste e só liga depois do teste "não piora" e da escolha às cegas. `edit` muda um item por vez (`--add-*`, `--update-*` com `"atual => novo"`, `--remove-*`, em `always` ou `never`) e nenhuma outra linha muda; a edição que tira item ou encolhe a skill em mais de 30% volta 409 e só passa com `--confirm-shrink`, depois do sim da pessoa. Os erros da API (hierarquia, texto recusado, nome repetido, falta de permissão) aparecem com a explicação. Só admin, com o escopo `calibration:write` para escrever. Atende também por `nexo cerebro`. A API pública cobre empresa (criar e editar), área e time; a skill pessoal e a biblioteca de modelos da Winning ainda não têm rota no `/v1`.
 
+## Base de conhecimento: itens e temas
+
+```sh
+nexo knowledge themes list                    # os temas, com quantos itens, arquivos e fontes web cada um guarda
+nexo knowledge themes create "Nexo: licença e contrato"
+nexo knowledge themes rename <tema> "Novo nome"
+nexo knowledge themes remove <tema> --yes     # só tema vazio; com conteúdo a API recusa (409 knowledge.theme_not_empty)
+nexo knowledge items list --type rule         # os itens, com o tema de cada um (--needs-you, --page, --page-size)
+nexo knowledge items list --theme <tema>      # só os de um tema: a CLI percorre as páginas e filtra
+nexo knowledge items create --type price --text "..." --theme <tema>
+nexo knowledge items create --type rule --text "..." --subject discount --limit "10%" --approver "Ana"   # regra: --subject obrigatório; --condition, --limit, --exception, --approver opcionais
+nexo knowledge items edit <item> --text "..." --type practice --theme <tema>
+nexo knowledge items off <item>                # tira de uso, sem apagar; `on` religa
+nexo knowledge items resolve <item> --action choose   # pendência: choose, approve, use, rewrite (com --text) ou discard (pergunta; --yes)
+nexo knowledge items remove <item> --yes      # remove de vez (não volta com o mesmo material)
+nexo knowledge items move --theme <tema> <item> <item> ...   # até 100 ids; um id que não existe recusa tudo
+```
+
+Os tipos são `rule`, `practice`, `product_fact`, `price`, `proof` e `standard`. Mudar só o tema não gera revisão; mudar o tipo gera uma e o item passa a "editado". Sair de `rule` apaga os campos da regra; item `rule` novo ou virando `rule` pede `--subject` (`discount`, `minimum_price`, `deadline`, `payment_terms`, `integration`, `scope`, `implementation`); numa edição de regra os campos que você não mandar ficam vazios, então mande todos os que valem. Nome de tema repetido volta 409 `knowledge.theme_name_taken`. Só admin, com o escopo `calibration:write` para escrever. Atende também por `nexo base`.
+
 ## Modelos de mensagem e o e-mail com a marca
 
 ```sh

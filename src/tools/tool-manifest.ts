@@ -185,6 +185,18 @@ export const COMMAND_TOOLS: Readonly<Record<string, ToolDeclaration>> = {
     'nexo brain from-template': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
     'nexo brain blind-test': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
     'nexo brain choose': { none: 'Skills do Cérebro pela ideia, em /v1/brain; ainda sem chave de ferramenta no produto' },
+    'nexo knowledge items list': { key: 'settings' },
+    'nexo knowledge items create': { key: 'knowledge_change' },
+    'nexo knowledge items edit': { key: 'knowledge_change' },
+    'nexo knowledge items move': { key: 'knowledge_change' },
+    'nexo knowledge items on': { key: 'knowledge_change' },
+    'nexo knowledge items off': { key: 'knowledge_change' },
+    'nexo knowledge items resolve': { key: 'knowledge_change' },
+    'nexo knowledge items remove': { key: 'knowledge_change' },
+    'nexo knowledge themes list': { key: 'settings' },
+    'nexo knowledge themes create': { key: 'knowledge_change' },
+    'nexo knowledge themes rename': { key: 'knowledge_change' },
+    'nexo knowledge themes remove': { key: 'knowledge_change' },
     'nexo skills install': {
         none: 'Entrega as skills (produto no projeto, empresa/área/time na pasta do usuário); não é ferramenta de produto'
     },
