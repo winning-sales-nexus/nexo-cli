@@ -2,7 +2,8 @@ import { CliError } from '../errors.js';
 import { EXIT_CODES } from '../exit-codes.types.js';
 import type { TokenSource } from '../auth/token-source.js';
 import { USER_AGENT } from '../version.js';
-import { NexoApiError, problemOf } from './problem.js';
+import { NexoApiError, loginHintFor, missingScopeOf, problemOf } from './problem.js';
+import type { Problem } from './problem.js';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -56,9 +57,28 @@ export class NexoClient {
         }
         const body: unknown = await bodyOf(response);
         if (!response.ok) {
-            throw new NexoApiError(problemOf(response.status, body));
+            const problem: Problem = problemOf(response.status, body);
+            throw new NexoApiError(problem, await this.scopeHint(problem));
         }
         return { status: response.status, body };
+    }
+
+    /** On a scope refusal, reads the scopes the token has (best effort) to name the exact login command. */
+    private async scopeHint(problem: Problem): Promise<string | null> {
+        const missing: string | null = missingScopeOf(problem);
+        if (missing === null) {
+            return null;
+        }
+        let granted: readonly string[] = [];
+        try {
+            const me: Response = await this.send({ method: 'GET', path: '/v1/me' }, await this.tokens.current());
+            const body: unknown = me.ok ? await bodyOf(me) : null;
+            const scopes: unknown = (body as { credential?: { scopes?: unknown } } | null)?.credential?.scopes;
+            granted = Array.isArray(scopes) ? scopes.filter((scope: unknown): scope is string => typeof scope === 'string') : [];
+        } catch {
+            granted = [];
+        }
+        return loginHintFor(missing, granted);
     }
 
     private async send(request: ApiRequest, token: string): Promise<Response> {

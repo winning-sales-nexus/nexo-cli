@@ -106,8 +106,8 @@ function hintOf(problem: Problem): string | null {
 export class NexoApiError extends CliError {
     public readonly problem: Problem;
 
-    public constructor(problem: Problem) {
-        super(NexoApiError.messageOf(problem), EXIT_BY_STATUS[problem.status] ?? EXIT_CODES.failure, hintOf(problem));
+    public constructor(problem: Problem, hint: string | null = null) {
+        super(NexoApiError.messageOf(problem), EXIT_BY_STATUS[problem.status] ?? EXIT_CODES.failure, hint ?? hintOf(problem));
         this.name = 'NexoApiError';
         this.problem = problem;
     }
@@ -117,4 +117,15 @@ export class NexoApiError extends CliError {
         const detail: string = problem.detail === null ? '' : `: ${problem.detail}`;
         return `${problem.title}${detail}${reference}`;
     }
+}
+
+/** The scope a 403 says is missing (public_api.insufficient_scope carries it in meta.scope). */
+export function missingScopeOf(problem: Problem): string | null {
+    return problem.status === 403 ? textOf(problem.meta?.scope) : null;
+}
+
+/** The exact login command that asks for the scope the token lacks, keeping the scopes it already has. */
+export function loginHintFor(missing: string, granted: readonly string[]): string {
+    const scopes: string = [...new Set([...granted, missing])].join(' ');
+    return `Falta o escopo ${missing}, que só vem quando pedido pelo nome. Rode: nexo login --scopes "${scopes}"`;
 }

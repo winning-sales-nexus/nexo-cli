@@ -37,6 +37,8 @@ NEXO_TOKEN=nexo_pat_... nexo whoami # sem login, pelo ambiente
 | `--api-url <url>`      | entra numa API em outro endereço (só https fora da máquina) |
 | `-p, --profile <nome>` | guarda e usa mais de um login, um por perfil                |
 
+Escopo restrito (`automations:write`, `context:write`, `connectors:write`, `access:admin`, `crm:schema`) só vem quando pedido pelo nome. Se faltar, o 403 mostra o comando exato: `nexo login --scopes "<os que você já tem> <o que falta>"`.
+
 ## Comandos
 
 ```sh
