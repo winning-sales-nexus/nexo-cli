@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { CredentialsStore } from '../src/config/credentials-store.js';
 import type { CliContext } from '../src/context.js';
 import type { FetchFunction } from '../src/http/nexo-client.js';
+import { pollPause } from '../src/commands/brain-import.js';
 import { run } from '../src/run.js';
 
 const API: string = 'https://mcp-nexo.winningsales.com.br';
@@ -84,15 +85,15 @@ function round(status: string, items: readonly unknown[], extra: Record<string, 
         status,
         stopReason: null,
         files: [
-            { id: 'f1', fileName: 'SKILL.md', kind: 'skill', status: 'awaiting_upload', reason: null, upload: { url: `${STORAGE}/1` } },
             {
                 id: 'f2',
                 fileName: 'notas/contexto.txt',
                 kind: 'context',
                 status: 'awaiting_upload',
                 reason: null,
-                upload: { url: `${STORAGE}/2` }
-            }
+                upload: { url: `${STORAGE}/1` }
+            },
+            { id: 'f1', fileName: 'SKILL.md', kind: 'skill', status: 'awaiting_upload', reason: null, upload: { url: `${STORAGE}/2` } }
         ],
         summary: { entered: 0, repeated: 0, contradicted: 0, blocked: 0, refused: 0, unread: 0, alreadyThere: 0, items },
         ...extra
@@ -102,8 +103,8 @@ function round(status: string, items: readonly unknown[], extra: Record<string, 
 function routesFor(final: Record<string, unknown>): Routes {
     return {
         'POST /v1/knowledge/imports': { status: 201, body: round('uploading', []) },
-        [`PUT ${STORAGE}/1`]: { status: 200, body: {} },
         [`PUT ${STORAGE}/2`]: { status: 200, body: {} },
+        [`PUT ${STORAGE}/1`]: { status: 200, body: {} },
         [`POST /v1/knowledge/imports/${ROUND}/start`]: { body: round('running', []) },
         [`GET /v1/knowledge/imports/${ROUND}`]: { body: final }
     };
@@ -141,7 +142,7 @@ describe('nexo brain import', () => {
         expect(code).toBe(0);
         expect(h.err()).toContain('2 arquivo(s) para mandar (1 de skill, 1 de contexto)');
         expect(h.err()).toContain('Ignorado: foto.png');
-        expect(h.err()).not.toContain('.git');
+        expect(h.err()).toContain('Ignorado: .git (oculto)');
         expect(h.calls).toEqual([]);
     });
 
@@ -220,5 +221,57 @@ describe('nexo brain import', () => {
         expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
 
         expect(h.out().match(/já estava:/g)).toHaveLength(2);
+    });
+
+    it('keeps the API message on a 403 that is not the role refusal', async () => {
+        const h: Harness = harness({
+            'POST /v1/knowledge/imports': {
+                status: 403,
+                body: { type: 'public_api.insufficient_scope', title: 'Escopo insuficiente', status: 403, detail: 'falta knowledge:write' }
+            }
+        });
+
+        const code: number = await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes']);
+
+        expect(code).toBe(4);
+        expect(h.err()).toContain('Escopo insuficiente');
+        expect(h.err()).not.toContain('só de admin');
+    });
+
+    it('matches the upload links by position, so a name the API normalizes still gets its file', async () => {
+        writeFileSync(join(folder, ' espaco.md'), 'texto');
+        const opened: Record<string, unknown> = round('uploading', []);
+        opened.files = [
+            { id: 'a', fileName: 'espaco.md', kind: 'context', status: 'awaiting_upload', reason: null, upload: { url: `${STORAGE}/0` } },
+            ...(opened.files as unknown[])
+        ];
+        const routes: Routes = {
+            ...routesFor(round('completed', [])),
+            'POST /v1/knowledge/imports': { status: 201, body: opened },
+            [`PUT ${STORAGE}/0`]: { status: 200, body: {} }
+        };
+        const h: Harness = harness(routes);
+
+        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
+
+        expect(h.calls.filter((call: Call) => call.method === 'PUT')).toHaveLength(3);
+    });
+
+    it('does not follow a symbolic link and says it was ignored', async () => {
+        symlinkSync(join(folder, 'notas'), join(folder, 'atalho'));
+        const h: Harness = harness({});
+
+        await run(h.context, ['brain', 'import', folder, '--scope', 'company']);
+
+        expect(h.err()).toContain('Ignorado: atalho (link simbólico)');
+        expect(h.err()).toContain('2 arquivo(s) para mandar');
+    });
+
+    it('falls back to the default pause when NEXO_IMPORT_POLL_MS is empty or invalid', () => {
+        expect(pollPause('')).toBe(2000);
+        expect(pollPause('abc')).toBe(2000);
+        expect(pollPause('0')).toBe(2000);
+        expect(pollPause(undefined)).toBe(2000);
+        expect(pollPause('5')).toBe(5);
     });
 });

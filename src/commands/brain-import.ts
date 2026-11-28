@@ -1,3 +1,4 @@
+import type { Dirent } from 'node:fs';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { clientOf, printJson, printLine, printNotice, sessionOf } from '../context.js';
@@ -122,26 +123,53 @@ function classify(root: string, path: string, name: string): LocalImportFile | I
     return { fileName, path, sizeInBytes, contentType, kind: SKILL_FILE.test(name) ? 'skill' : 'context' };
 }
 
-function filesUnder(directory: string): readonly string[] {
-    return readdirSync(directory, { withFileTypes: true })
-        .filter((entry) => !entry.name.startsWith('.') && !SKIPPED_DIRECTORIES.has(entry.name))
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .flatMap((entry) => {
-            const path: string = join(directory, entry.name);
-            if (entry.isDirectory()) {
-                return filesUnder(path);
-            }
-            return entry.isFile() ? [path] : [];
-        });
+interface Walked {
+    readonly paths: readonly string[];
+    readonly ignored: readonly IgnoredFile[];
+}
+
+function ignoredReason(entry: Dirent): string | null {
+    if (entry.isSymbolicLink()) {
+        return 'link simbólico';
+    }
+    if (entry.name.startsWith('.')) {
+        return 'oculto';
+    }
+    return SKIPPED_DIRECTORIES.has(entry.name) ? 'pasta de dependências' : null;
+}
+
+function walk(root: string, directory: string): Walked {
+    const paths: string[] = [];
+    const ignored: IgnoredFile[] = [];
+    const entries: Dirent[] = readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+        const path: string = join(directory, entry.name);
+        const reason: string | null = ignoredReason(entry);
+        if (reason !== null) {
+            ignored.push({ fileName: relative(root, path).split(sep).join('/'), reason });
+            continue;
+        }
+        if (entry.isDirectory()) {
+            const inner: Walked = walk(root, path);
+            paths.push(...inner.paths);
+            ignored.push(...inner.ignored);
+            continue;
+        }
+        if (entry.isFile()) {
+            paths.push(path);
+        }
+    }
+    return { paths, ignored };
 }
 
 function scan(root: string): Scanned {
-    const classified: readonly (LocalImportFile | IgnoredFile)[] = filesUnder(root).map((path: string) =>
+    const walked: Walked = walk(root, root);
+    const classified: readonly (LocalImportFile | IgnoredFile)[] = walked.paths.map((path: string) =>
         classify(root, path, path.slice(path.lastIndexOf(sep) + 1))
     );
     return {
         files: classified.filter((item): item is LocalImportFile => 'path' in item),
-        ignored: classified.filter((item): item is IgnoredFile => 'reason' in item)
+        ignored: [...walked.ignored, ...classified.filter((item): item is IgnoredFile => 'reason' in item)]
     };
 }
 
@@ -263,36 +291,43 @@ async function openRound(context: CliContext, options: BrainOptions, target: Tar
     return (await call(context, options, 'POST', IMPORTS_PATH, body)) as Round;
 }
 
+async function upload(context: CliContext, url: string, local: LocalImportFile): Promise<void> {
+    let response: Response;
+    try {
+        response = await context.fetchFn(url, {
+            method: 'PUT',
+            headers: { 'content-type': local.contentType },
+            body: new Uint8Array(readFileSync(local.path))
+        });
+    } catch (error: unknown) {
+        throw new CliError(
+            `Não consegui enviar ${local.fileName}: ${error instanceof Error ? error.message : String(error)}.`,
+            EXIT_CODES.failure
+        );
+    }
+    if (!response.ok) {
+        throw new CliError(
+            `Não consegui enviar ${local.fileName}: o link respondeu ${String(response.status)}.`,
+            EXIT_CODES.failure,
+            'O link vale 15 minutos; rode o comando de novo.'
+        );
+    }
+}
+
 async function sendFiles(context: CliContext, round: Round, files: readonly LocalImportFile[]): Promise<void> {
-    const byName: ReadonlyMap<string, LocalImportFile> = new Map(files.map((file: LocalImportFile) => [file.fileName, file]));
-    for (const target of round.files) {
-        if (target.upload === null) {
+    if (round.files.length !== files.length) {
+        throw new CliError(
+            `A rodada voltou com ${String(round.files.length)} arquivo(s), e mandei ${String(files.length)}.`,
+            EXIT_CODES.failure,
+            'Rode o comando de novo.'
+        );
+    }
+    for (const [index, target] of round.files.entries()) {
+        const local: LocalImportFile | undefined = files[index];
+        if (target.upload === null || local === undefined) {
             continue;
         }
-        const local: LocalImportFile | undefined = byName.get(target.fileName);
-        if (local === undefined) {
-            continue;
-        }
-        let response: Response;
-        try {
-            response = await context.fetchFn(target.upload.url, {
-                method: 'PUT',
-                headers: { 'content-type': local.contentType },
-                body: new Uint8Array(readFileSync(local.path))
-            });
-        } catch (error: unknown) {
-            throw new CliError(
-                `Não consegui enviar ${local.fileName}: ${error instanceof Error ? error.message : String(error)}.`,
-                EXIT_CODES.failure
-            );
-        }
-        if (!response.ok) {
-            throw new CliError(
-                `Não consegui enviar ${local.fileName}: o link respondeu ${String(response.status)}.`,
-                EXIT_CODES.failure,
-                'O link vale 15 minutos; rode o comando de novo.'
-            );
-        }
+        await upload(context, target.upload.url, local);
     }
 }
 
@@ -302,8 +337,13 @@ function sleep(milliseconds: number): Promise<void> {
     });
 }
 
+export function pollPause(raw: string | undefined): number {
+    const value: number = Number(raw?.trim());
+    return raw !== undefined && raw.trim() !== '' && Number.isFinite(value) && value >= 1 ? Math.floor(value) : DEFAULT_POLL_MS;
+}
+
 async function followRound(context: CliContext, options: BrainOptions, started: Round): Promise<Round> {
-    const pause: number = Number(context.env.NEXO_IMPORT_POLL_MS ?? DEFAULT_POLL_MS);
+    const pause: number = pollPause(context.env.NEXO_IMPORT_POLL_MS);
     let round: Round = started;
     let waited: number = 0;
     while (round.status === 'running' || round.status === 'uploading') {
@@ -315,7 +355,7 @@ async function followRound(context: CliContext, options: BrainOptions, started: 
             );
         }
         await sleep(pause);
-        waited += Math.max(pause, 1);
+        waited += pause;
         round = (await call(context, options, 'GET', `${IMPORTS_PATH}/${encodeURIComponent(round.id)}`)) as Round;
     }
     return round;
@@ -337,8 +377,14 @@ function printSummary(context: CliContext, round: Round): void {
     }
 }
 
+const NOT_ROLE_REFUSALS: readonly string[] = ['insufficient_scope', 'product_not_contracted', 'blocked_during_platform_visit'];
+
 function forbiddenAsAdminOnly(error: unknown): unknown {
-    if (error instanceof NexoApiError && error.problem.status === 403) {
+    if (
+        error instanceof NexoApiError &&
+        error.problem.status === 403 &&
+        !NOT_ROLE_REFUSALS.some((suffix: string) => error.problem.type.endsWith(suffix))
+    ) {
         return new CliError(
             'O import de projetos é só de admin.',
             EXIT_CODES.forbidden,
