@@ -213,6 +213,53 @@ describe('nexo automations publish', () => {
         expect(h.calls[2]?.body).toEqual({ versionId: 'ver-1', cancelLiveRuns: true });
     });
 
+    const WARNING: Record<string, unknown> = { key: null, code: 'flows.provider_rejected', reason: 'Esta regra envia mensagens sozinha.' };
+    const withWarnings = (warnings: unknown[]): unknown => ({
+        flow: { ...FLOW_ROW, publishedSeq: 2 },
+        working: { ...working(), warnings },
+        versions: []
+    });
+
+    it('shows the warnings in the preview, before the yes', async () => {
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => withWarnings([WARNING]),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
+        });
+
+        expect(await run(h.context, ['automations', '--automation', FLOW, 'publish'])).toBe(0);
+
+        expect(h.out()).toContain('1 aviso(s) antes de publicar');
+        expect(h.out()).toContain('  regra: Esta regra envia mensagens sozinha.');
+        expect(h.out()).not.toContain('[flows.');
+        expect(h.calls.map((call) => call.method)).toEqual(['GET', 'GET']);
+    });
+
+    it('prints no warning section when there is none', async () => {
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => withWarnings([]),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE })
+        });
+
+        await run(h.context, ['automations', '--automation', FLOW, 'publish']);
+
+        expect(h.out()).not.toContain('aviso(s)');
+    });
+
+    it('with --json, puts the warnings inside the single JSON on stdout', async () => {
+        const h: Harness = harness({
+            [`GET /v1/automations/${FLOW}`]: () => withWarnings([WARNING]),
+            [`GET /v1/automations/${FLOW}/versions/2`]: () => ({ seq: 2, document: LIVE }),
+            [`POST /v1/automations/${FLOW}/publish`]: () => ({ flow: FLOW_ROW })
+        });
+
+        expect(await run(h.context, ['automations', '--automation', FLOW, 'publish', '--yes', '--json'])).toBe(0);
+
+        const parsed: { warnings: unknown[] } = JSON.parse(h.out()) as { warnings: unknown[] };
+        expect(parsed.warnings).toEqual([WARNING]);
+        expect(h.err()).toContain('Publicar');
+        expect(h.err()).toContain('Esta regra envia mensagens sozinha.');
+    });
+
     it('refuses a draft with problems before calling publish', async () => {
         const h: Harness = harness({
             [`GET /v1/automations/${FLOW}`]: () => detail([{ key: null, code: 'flows.no_trigger', reason: 'Falta o gatilho.' }])

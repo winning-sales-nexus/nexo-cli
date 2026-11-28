@@ -29,6 +29,7 @@ interface WorkingVersion {
     readonly id: string;
     readonly document: Record<string, unknown>;
     readonly problems: readonly FlowProblem[];
+    readonly warnings?: readonly FlowProblem[];
 }
 
 interface FlowRow {
@@ -459,25 +460,37 @@ function listensToUpdates(document: Record<string, unknown>): boolean {
     return Array.isArray(nodes) && nodes.some((node: unknown) => (node as { kind?: unknown }).kind === 'entidade.alterada');
 }
 
+function showWarnings(context: CliContext, warnings: readonly FlowProblem[]): void {
+    if (warnings.length === 0) {
+        return;
+    }
+    printLine(context, `${String(warnings.length)} aviso(s) antes de publicar:`);
+    warnings.forEach((warning: FlowProblem) => {
+        printLine(context, `  ${warning.key === null ? 'regra' : `passo ${warning.key}`}: ${warning.reason}`);
+    });
+}
+
+function publishHeadline(publishedSeq: number | null): string {
+    return publishedSeq === null ? 'Primeira publicação: a automação liga.' : `Substitui a versão ${String(publishedSeq)}, que está no ar.`;
+}
+
 function showPublishPreview(
     context: CliContext,
     detail: FlowDetail,
+    working: WorkingVersion,
     local: AutomationSettings | null,
     live: Record<string, unknown> | null
 ): void {
-    const headline: string =
-        detail.flow.publishedSeq === null
-            ? 'Primeira publicação: a automação liga.'
-            : `Substitui a versão ${String(detail.flow.publishedSeq)}, que está no ar.`;
-    printLine(context, `Publicar "${detail.flow.name}". ${headline}`);
-    showContent(context, live, detail.working?.document ?? {});
-    if (listensToUpdates(detail.working?.document ?? {})) {
+    printLine(context, `Publicar "${detail.flow.name}". ${publishHeadline(detail.flow.publishedSeq)}`);
+    showContent(context, live, working.document);
+    showWarnings(context, working.warnings ?? []);
+    if (listensToUpdates(working.document)) {
         printLine(
             context,
             `Janela de ${String(UPDATE_WINDOW_HOURS)} h: depois de uma alteração, as seguintes do mesmo registro, dentro de ${String(UPDATE_WINDOW_HOURS)} h, não disparam a regra de novo.`
         );
     }
-    if (local !== null && !sameDraft(local.document, detail.working?.document)) {
+    if (local !== null && !sameDraft(local.document, working.document)) {
         printNotice(
             context,
             'Atenção: o automation.json desta pasta é diferente do rascunho no Nexo. Rode `nexo automations push` antes, se quer publicar o da pasta.'
@@ -485,31 +498,37 @@ function showPublishPreview(
     }
 }
 
+function workingOrRefuse(context: CliContext, detail: FlowDetail): WorkingVersion {
+    if (detail.working !== null && detail.working.problems.length === 0) {
+        return detail.working;
+    }
+    describeProblems(detail.working?.problems ?? []).forEach((line: string) => {
+        printLine(context, line);
+    });
+    throw new CliError(
+        'O rascunho tem problemas e não pode ser publicado.',
+        EXIT_CODES.failure,
+        'Corrija, `nexo automations push` e tente de novo.'
+    );
+}
+
 export async function automationsPublish(context: CliContext, dir: string | undefined, options: AutomationOptions): Promise<void> {
     const flowId: string = flowIdOf(options, dir);
     const session: Session = sessionOf(context, options);
     const detail: FlowDetail = (await call(context, session, 'GET', `/${flowId}`)) as FlowDetail;
-    if (detail.working === null || detail.working.problems.length > 0) {
-        describeProblems(detail.working?.problems ?? []).forEach((line: string) => {
-            printLine(context, line);
-        });
-        throw new CliError(
-            'O rascunho tem problemas e não pode ser publicado.',
-            EXIT_CODES.failure,
-            'Corrija, `nexo automations push` e tente de novo.'
-        );
-    }
+    const working: WorkingVersion = workingOrRefuse(context, detail);
     const local: AutomationSettings | null = options.automation === undefined ? readAutomation(projectDirectory(dir)) : null;
-    showPublishPreview(context, detail, local, await liveDocument(context, session, flowId, detail.flow.publishedSeq));
+    const live: Record<string, unknown> | null = await liveDocument(context, session, flowId, detail.flow.publishedSeq);
+    showPublishPreview(options.json === true ? { ...context, stdout: context.stderr } : context, detail, working, local, live);
     if (!(await confirmed(context, options))) {
         return;
     }
     const published: unknown = await call(context, session, 'POST', `/${flowId}/publish`, {
-        versionId: detail.working.id,
+        versionId: working.id,
         ...(options.cancelLiveRuns === true ? { cancelLiveRuns: true } : {})
     });
     if (options.json === true) {
-        printJson(context, published);
+        printJson(context, { ...(published as Record<string, unknown>), warnings: working.warnings ?? [] });
         return;
     }
     printLine(context, 'Publicada.');
