@@ -1,6 +1,8 @@
 ---
 name: nexo-dashboards
 description: Como montar e mudar painéis (dashboards) do Nexo pela API — catálogo de dados, consultas, fórmulas entre séries, metas, variáveis de filtro, prévia e salvamento versionado. Use sempre que a tarefa for criar ou editar um painel, uma aba, um gráfico ou um filtro do Nexo, ler os números de um relatório salvo, ou criar alertas e links públicos de painel.
+metadata:
+  category: developer
 ---
 
 # Painéis do Nexo

@@ -1,6 +1,8 @@
 ---
 name: nexo-automations
 description: Como montar, publicar e acompanhar automações do Nexo (regras de gatilho, condição, espera e ação sobre negócios, contatos e outros registros) pela CLI `nexo automations`. Use sempre que a tarefa for criar ou mudar uma automação, um fluxo ou uma regra que roda sozinha no Nexo, ou investigar por que uma execução falhou.
+metadata:
+  category: developer
 ---
 
 # Automações do Nexo
@@ -26,6 +28,10 @@ Além dos gatilhos de cada registro, três gatilhos escutam **qualquer entidade*
 - `nexo automations entities` lista as entidades que o seu perfil vê, e `nexo automations entities <entidade>` mostra os campos (chave, nome e tipo). Só vale entidade e campo que estiverem aí: uma entidade que o Nexo não conhece recusa a publicação inteira.
 - **Janela de 24 h:** em `entidade.alterada`, depois que uma alteração dispara a regra, as outras alterações do **mesmo registro** nas 24 h seguintes não disparam de novo (ficam contadas em `suppressedUpdates` da execução, e `updateWindowEndsAt` diz até quando vale). Diga isso à pessoa antes de publicar; `nexo automations publish` mostra o aviso.
 - **Origem:** o evento guarda quem gravou (`actorKind`) e por onde (`origin.surface`: `api`, `mcp`, `app`...; `origin.flowId` quando foi uma automação). Uma automação não dispara outra por padrão: o evento gravado por uma automação não aciona regras com `reactsToAutomations: false`.
+
+## Chegada registrada: a regra sobre quem chega de outro sistema
+
+`crm.chegada.registrada` dispara a cada chegada de uma pessoa no Nexo, de qualquer fonte, e roda sobre o lead da chegada ou, com `{ "subject": "contact" }` na `config`, sobre o contato em que ela caiu sem abrir lead. A condição e o texto leem os campos da chegada que disparou, só nesta regra: `chegada.fonte`, `chegada.sistema`, `chegada.conector`, `chegada.campanha`, `chegada.anuncio`, `chegada.formulario`, `chegada.utm_source`, `chegada.utm_medium`, `chegada.utm_campaign`, `chegada.utm_term`, `chegada.utm_content`, `chegada.url_entrada`, `chegada.hora` e `chegada.desfecho` (`nexo automations catalog --json` os lista). `chegada.sistema` é o identificador do sistema do catálogo do Connect a que o conector está ligado, em minúsculas; sem sistema ligado ele fica vazio, e a condição é por `chegada.conector`. Sob qualquer outro gatilho esses campos chegam vazios, e a conferência recusa, com o motivo em português, a condição que compara um campo `chegada.*` com um texto sob outro gatilho (as outras comparações não são conferidas: confira você o gatilho). Um pedido que junta o outro sistema e o aviso (conector com webhook que cria o lead com origem, depois esta regra) são dois passos com o sim da pessoa em cada um: o conector primeiro (`nexo-connect`), a regra depois. Campo de chegada que o catálogo não traz não existe: diga isso à pessoa em vez de trocar por outro.
 
 ## O ciclo
 
