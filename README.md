@@ -224,7 +224,7 @@ A regra vive em `automation.json` (nome, reentrada e o documento com os passos e
 
 Os gatilhos genéricos (`entidade.criada`, `entidade.alterada`, `entidade.apagada`) escutam qualquer entidade: `nexo automations entities` mostra as entidades e os campos, e `nexo automations events lead <registro>` mostra o que o Nexo guardou do registro (operação, nomes dos campos que mudaram, origem e despacho) para depurar uma regra que não disparou. Uma alteração segura uma janela de 24 h: as seguintes do mesmo registro não disparam de novo, e a prévia do `publish` e o `runs` mostram isso. `get`, `versions` e `restore` completam o ciclo.
 
-Por enquanto, os escopos de automação só existem no token pessoal (`nexo login --token`).
+Os escopos de automação vêm pelo login do navegador, pedidos pelo nome: `nexo login --scopes <os seus>,automations:write`.
 
 ## Painéis como código
 
