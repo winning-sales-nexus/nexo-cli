@@ -127,7 +127,7 @@ function addSkillsCommands(program: Command, context: CliContext): void {
     skills
         .command('install')
         .description(
-            'Grava as skills de produto no projeto; com login, as da sua empresa, área e time vão para a sua pasta (~/.claude, ~/.cursor ou ~/.codex), nunca para o projeto'
+            'Grava as skills de produto no projeto; com login, as da sua empresa, área e time e um índice do Cérebro (só as descrições) vão para a sua pasta (~/.claude, ~/.cursor ou ~/.codex), nunca para o projeto'
         )
         .option('--claude', 'em .claude/skills')
         .option('--cursor', 'em .cursor/skills')
@@ -139,15 +139,15 @@ function addSkillsCommands(program: Command, context: CliContext): void {
         });
     skills
         .command('list')
-        .description('Lista as skills, com o nível de cada uma (produto, empresa, área, time) e onde estão instaladas')
+        .description('Lista as skills e as unidades de contexto do Cérebro, com tipo, nível e descrição (e onde cada skill está instalada)')
         .option('-d, --dir <pasta>', 'pasta do projeto', '.')
         .action(async (_options: SkillsOptions, command: Command) => {
             await skillsList(context, command.optsWithGlobals());
         });
     skills
         .command('show')
-        .description('Mostra uma skill inteira, sem gravar nada')
-        .argument('<nome>', 'nome da skill (de skills list)')
+        .description('Mostra uma skill ou uma unidade de contexto do Cérebro inteira, sem gravar nada')
+        .argument('<nome>', 'nome da skill ou id da unidade de contexto (de skills list)')
         .action(async (name: string, _options: SkillsOptions, command: Command) => {
             await skillsShow(context, name, command.optsWithGlobals());
         });
