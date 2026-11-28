@@ -7,7 +7,7 @@ import type { CliContext, GlobalOptions } from '../context.js';
 import { CliError, usageError } from '../errors.js';
 import type { NexoClient } from '../http/nexo-client.js';
 import { NexoApiError } from '../http/problem.js';
-import { LEVEL_LABELS, clientLevelOnly, remoteIndex, remoteSkill } from '../skills/remote-skills.js';
+import { LEVEL_LABELS, SKILL_KIND, clientLevelOnly, contextUnits, remoteIndex, remoteSkill } from '../skills/remote-skills.js';
 import type { RemoteSkill, RemoteSkillEntry } from '../skills/remote-skills.js';
 import { staleBundledSkills, staleNotice } from '../skills/bundled-freshness.js';
 import { bundledSkills } from '../skills/skill-files.js';
@@ -89,10 +89,29 @@ function remoteNotice(context: CliContext, state: RemoteState): void {
     }
 }
 
+type OkState = Extract<RemoteState, { readonly kind: 'ok' }>;
+
 interface ClientInstall {
     readonly tools: readonly UserTool[];
     readonly skills: readonly string[];
+    readonly units: readonly string[];
     readonly sync: UserSkillsSync;
+}
+
+async function syncedClient(context: CliContext, state: OkState, targets: readonly SkillTarget[]): Promise<ClientInstall> {
+    const client: NexoClient = clientOf(context, state.session);
+    const entries: readonly RemoteSkillEntry[] = clientLevelOnly(state.entries);
+    const units: readonly RemoteSkillEntry[] = contextUnits(state.entries);
+    const home: string = homeOf(context.env);
+    const tools: readonly UserTool[] = userToolsFor(home, targets);
+    const load = (entry: RemoteSkillEntry): Promise<RemoteSkill> => remoteSkill(client, entry.name);
+    const sync: UserSkillsSync = await syncUserSkills(home, tools, state.session.profile, entries, load, new Date(), units);
+    return {
+        tools,
+        skills: entries.map((entry: RemoteSkillEntry) => entry.name),
+        units: units.map((unit: RemoteSkillEntry) => unit.name),
+        sync
+    };
 }
 
 async function installClientSkills(
@@ -104,14 +123,7 @@ async function installClientSkills(
         return null;
     }
     try {
-        const client: NexoClient = clientOf(context, state.session);
-        const entries: readonly RemoteSkillEntry[] = clientLevelOnly(state.entries);
-        const home: string = homeOf(context.env);
-        const tools: readonly UserTool[] = userToolsFor(home, targets);
-        const sync: UserSkillsSync = await syncUserSkills(home, tools, state.session.profile, entries, (entry: RemoteSkillEntry) =>
-            remoteSkill(client, entry.name)
-        );
-        return { tools, skills: entries.map((entry: RemoteSkillEntry) => entry.name), sync };
+        return await syncedClient(context, state, targets);
     } catch (error: unknown) {
         printNotice(
             context,
@@ -128,7 +140,22 @@ function clientSummary(client: ClientInstall): string {
         `${String(upToDate.length)} já em dia`,
         `${String(removed.length)} removidas`
     ];
-    return `${String(client.skills.length)} skills da sua empresa, área e time na sua pasta (${client.tools.join(', ')}), fora do projeto: ${parts.join(', ')}.${written.length === 0 && removed.length === 0 ? ' Nada mudou desde o último install.' : ''}`;
+    const index: string =
+        client.units.length === 0
+            ? ''
+            : ` Mais um índice com a descrição de ${String(client.units.length)} unidades de contexto do Cérebro (o texto delas não é gravado: a sua IA abre com \`nexo skills show <id>\`).`;
+    return `${String(client.skills.length)} skills da sua empresa, área e time na sua pasta (${client.tools.join(', ')}), fora do projeto: ${parts.join(', ')}.${index}${written.length === 0 && removed.length === 0 ? ' Nada mudou desde o último install.' : ''}`;
+}
+
+function clientJson(client: ClientInstall | null): Readonly<Record<string, readonly string[]>> {
+    return {
+        clientSkills: client === null ? [] : client.skills,
+        contextUnits: client === null ? [] : client.units,
+        clientTools: client === null ? [] : client.tools,
+        clientFiles: client === null ? [] : client.sync.written,
+        clientUpToDate: client === null ? [] : client.sync.upToDate,
+        clientRemoved: client === null ? [] : client.sync.removed
+    };
 }
 
 export async function skillsInstall(context: CliContext, options: SkillsOptions): Promise<void> {
@@ -144,11 +171,7 @@ export async function skillsInstall(context: CliContext, options: SkillsOptions)
             targets,
             skills: skills.map((skill: Skill) => skill.name),
             files: written,
-            clientSkills: client === null ? [] : client.skills,
-            clientTools: client === null ? [] : client.tools,
-            clientFiles: client === null ? [] : client.sync.written,
-            clientUpToDate: client === null ? [] : client.sync.upToDate,
-            clientRemoved: client === null ? [] : client.sync.removed
+            ...clientJson(client)
         });
         return;
     }
@@ -174,6 +197,8 @@ function installedIn(directory: string, skill: Skill): readonly SkillTarget[] {
 
 interface ListRow {
     readonly name: string;
+    readonly kind: string;
+    readonly title: string;
     readonly level: string;
     readonly description: string;
     readonly installed: readonly string[];
@@ -182,6 +207,8 @@ interface ListRow {
 function productRows(directory: string): readonly ListRow[] {
     return bundledSkills().map((skill: Skill) => ({
         name: skill.name,
+        kind: SKILL_KIND,
+        title: skill.name,
         level: LEVEL_LABELS.product,
         description: skill.description,
         installed: installedIn(directory, skill)
@@ -193,12 +220,24 @@ function clientRows(context: CliContext, state: RemoteState): readonly ListRow[]
         return [];
     }
     const home: string = homeOf(context.env);
-    return clientLevelOnly(state.entries).map((entry: RemoteSkillEntry) => ({
+    const units: readonly RemoteSkillEntry[] = contextUnits(state.entries);
+    const unitRows: readonly ListRow[] = units.map((entry: RemoteSkillEntry) => ({
         name: entry.name,
+        kind: entry.kind,
+        title: entry.title,
+        level: entry.status === 'tentative' ? `${LEVEL_LABELS[entry.level]}, em teste` : LEVEL_LABELS[entry.level],
+        description: entry.description,
+        installed: []
+    }));
+    const skillRows: readonly ListRow[] = clientLevelOnly(state.entries).map((entry: RemoteSkillEntry) => ({
+        name: entry.name,
+        kind: entry.kind,
+        title: entry.title,
         level: entry.status === 'tentative' ? `${LEVEL_LABELS[entry.level]}, em teste` : LEVEL_LABELS[entry.level],
         description: entry.description,
         installed: installedUserTools(home, state.session.profile, entry)
     }));
+    return [...unitRows, ...skillRows];
 }
 
 export async function skillsList(context: CliContext, options: SkillsOptions): Promise<void> {
@@ -210,6 +249,10 @@ export async function skillsList(context: CliContext, options: SkillsOptions): P
         return;
     }
     for (const row of rows) {
+        if (row.kind !== SKILL_KIND) {
+            printLine(context, `${row.name} [contexto: ${row.kind}, ${row.level}] ${row.title}\n    ${row.description}`);
+            continue;
+        }
         const where: string = row.installed.length === 0 ? 'não instalada aqui' : `instalada: ${row.installed.join(', ')}`;
         printLine(context, `${row.name} [${row.level}] (${where})\n    ${row.description}`);
     }
@@ -221,20 +264,48 @@ function bundledNamed(name: string): Skill | undefined {
     return bundledSkills().find((skill: Skill) => skill.name === name);
 }
 
+const NOT_FOUND: number = 404;
+
+/** The index the CLI gets is cut to the budget of the channel, so a unit may be open although it is not listed: the API decides. */
+async function openedOutsideIndex(context: CliContext, state: OkState, name: string): Promise<RemoteSkill | null> {
+    try {
+        return await remoteSkill(clientOf(context, state.session), name);
+    } catch (error: unknown) {
+        if (error instanceof NexoApiError && error.problem.status === NOT_FOUND) {
+            return null;
+        }
+        throw error;
+    }
+}
+
+/** The skill of the client or the unit of context to open, read now with the token; null when the answer is a bundled skill or nothing. */
+async function remoteToShow(
+    context: CliContext,
+    state: OkState,
+    name: string,
+    entry: RemoteSkillEntry | undefined,
+    bundled: Skill | undefined
+): Promise<RemoteSkill | null> {
+    if (entry !== undefined) {
+        return entry.level === 'product' ? null : remoteSkill(clientOf(context, state.session), name);
+    }
+    return bundled === undefined ? openedOutsideIndex(context, state, name) : null;
+}
+
 /** Prints one skill and writes nothing: the body of a skill of the client is read with the token at the time of use. */
 export async function skillsShow(context: CliContext, name: string, options: SkillsOptions): Promise<void> {
     const state: RemoteState = await remoteState(context, options);
     const bundled: Skill | undefined = bundledNamed(name);
     const entry: RemoteSkillEntry | undefined =
         state.kind === 'ok' ? state.entries.find((each: RemoteSkillEntry) => each.name === name) : undefined;
-    if (state.kind === 'ok' && entry !== undefined && entry.level !== 'product') {
-        const skill: RemoteSkill = await remoteSkill(clientOf(context, state.session), name);
-        printLine(context, options.json === true ? JSON.stringify(skill, null, 2) : skill.body);
+    const remote: RemoteSkill | null = state.kind === 'ok' ? await remoteToShow(context, state, name, entry, bundled) : null;
+    if (remote !== null) {
+        printLine(context, options.json === true ? JSON.stringify(remote, null, 2) : remote.body);
         return;
     }
     if (bundled === undefined) {
         remoteNotice(context, state);
-        throw usageError(`Não achei a skill ${name}.`, 'Veja os nomes com `nexo skills list`.');
+        throw usageError(`Não achei a skill ou a unidade de contexto ${name}.`, 'Veja os nomes com `nexo skills list`.');
     }
     printLine(context, options.json === true ? JSON.stringify({ name, level: 'product', body: bundled.body }, null, 2) : bundled.content);
     remoteNotice(context, state);
