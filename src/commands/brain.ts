@@ -12,6 +12,7 @@ export interface BrainOptions extends GlobalOptions {
     readonly team?: string;
     readonly objective?: string;
     readonly moment?: string;
+    readonly agentRole?: string;
     readonly always?: readonly string[];
     readonly never?: readonly string[];
     readonly example?: string;
@@ -148,15 +149,32 @@ function required(value: string | undefined, flag: string): string {
     return value;
 }
 
+const AGENT_ROLE_MOMENT: string = 'attendance_agent_turn';
+
+function agentRoleOf(value: string | undefined, moment: string): { readonly agentRole?: string } {
+    if (value === undefined) {
+        return {};
+    }
+    if (value !== 'sdr' && value !== 'cs') {
+        throw usageError('--agent-role aceita sdr (o padrão) ou cs.');
+    }
+    if (moment !== AGENT_ROLE_MOMENT) {
+        throw usageError(`--agent-role só vale com --moment ${AGENT_ROLE_MOMENT}.`);
+    }
+    return { agentRole: value };
+}
+
 function ideaOf(options: BrainOptions): Record<string, unknown> {
     const always: readonly string[] = listOf(options.always);
     const never: readonly string[] = listOf(options.never);
     if (always.length + never.length === 0) {
         throw usageError('Diga ao menos uma coisa para fazer sempre (--always) ou para nunca fazer (--never).');
     }
+    const moment: string = required(options.moment, '--moment');
     return {
         objective: required(options.objective, '--objective'),
-        moment: required(options.moment, '--moment'),
+        moment,
+        ...agentRoleOf(options.agentRole, moment),
         always,
         never,
         example: required(options.example, '--example')
