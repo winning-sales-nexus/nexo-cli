@@ -689,7 +689,7 @@ describe('executions: run-now, initial-load and undo', () => {
 
     it('rehearse --operation sends the operation and the args, and refuses args that are not JSON before calling', async () => {
         const h: Harness = harness({
-            [`POST ${BASE}/rehearsals`]: () => ({ ...(opened as object), mode: 'dry_run' }),
+            [`POST ${BASE}/rehearsals`]: () => opened,
             [`GET ${BASE}/runs/run-7`]: () => runOf('succeeded')
         });
         const file: string = join(h.root, 'args.json');
@@ -713,6 +713,51 @@ describe('executions: run-now, initial-load and undo', () => {
         ).not.toBe(0);
         expect(refused.err()).toContain('não é JSON válido');
         expect(refused.calls).toEqual([]);
+    });
+});
+
+describe('nexo connect rehearse --input', () => {
+    const BASE: string = `/v1/connect/connectors/${CONNECTOR}`;
+    const opened: unknown = { connectorId: CONNECTOR, runId: 'run-7', mode: 'dry_run', status: 'running', link: `${LINK}/runs/run-7` };
+    const posts = (h: Harness): Call[] => h.calls.filter((call) => call.method === 'POST');
+
+    it('sends the sample webhook call and refuses a malformed file before calling', async () => {
+        const h: Harness = harness({
+            [`POST ${BASE}/rehearsals`]: () => opened,
+            [`GET ${BASE}/runs/run-7`]: () => runOf('succeeded')
+        });
+        const file: string = join(h.root, 'call.json');
+        writeFileSync(
+            file,
+            JSON.stringify({ body: 'nome=Ana&fone=1199', contentType: 'application/x-www-form-urlencoded', query: { src: 'x' } })
+        );
+        expect(await run(h.context, ['connect', '--connector', CONNECTOR, 'rehearse', '--input', file])).toBe(0);
+        expect(posts(h).map((call) => call.body)).toEqual([
+            {
+                scope: 'sample',
+                webhook: { body: 'nome=Ana&fone=1199', contentType: 'application/x-www-form-urlencoded', query: { src: 'x' } }
+            }
+        ]);
+
+        const bad: string = join(h.root, 'bad.json');
+        writeFileSync(bad, JSON.stringify({ body: { a: 1 }, contentType: 'application/json' }));
+        const refused: Harness = harness({});
+        expect(await run(refused.context, ['connect', '--connector', CONNECTOR, 'rehearse', '--input', bad])).not.toBe(0);
+        expect(refused.err()).toContain('texto cru');
+        expect(await run(refused.context, ['connect', '--connector', CONNECTOR, 'rehearse', '--input', file, '--operation', 'x'])).not.toBe(
+            0
+        );
+        expect(refused.calls).toEqual([]);
+    });
+
+    it('shows a planned Nexo step without method or operation without "undefined"', async () => {
+        const h: Harness = harness({
+            [`POST ${BASE}/rehearsals`]: () => opened,
+            [`GET ${BASE}/runs/run-7`]: () => runOf('succeeded', { plannedNexoWrites: [{ host: 'nexo', path: 'lead', count: 2 }] })
+        });
+        expect(await run(h.context, ['connect', '--connector', CONNECTOR, 'rehearse'])).toBe(0);
+        expect(h.out()).toContain('nexo/lead × 2');
+        expect(h.out()).not.toContain('undefined');
     });
 });
 

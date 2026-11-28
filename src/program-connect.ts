@@ -85,7 +85,7 @@ function addSyncCommands(connect: Command, context: CliContext): void {
         });
 }
 
-function addRunCommands(connect: Command, context: CliContext): void {
+function addRehearseCommand(connect: Command, context: CliContext): void {
     connect
         .command('rehearse')
         .description('Ensaia a versão em edição e mostra o resultado inteiro')
@@ -94,10 +94,18 @@ function addRunCommands(connect: Command, context: CliContext): void {
         .option('--no-wait', 'só começa o ensaio, sem esperar')
         .option('--operation <chave>', 'ensaia esta operação do manifesto (com --args)')
         .option('--args <json|@arquivo>', 'argumentos da operação: um objeto JSON, ou @arquivo')
+        .option(
+            '--input <arquivo>',
+            'a chamada de webhook de exemplo: JSON com body (texto cru), contentType e, se quiser, headers e query'
+        )
         .option('-q, --quiet', 'só o resumo, sem logs, resultado nem quarentena')
         .action(async (dir: string, _options: ConnectRunOptions, command: Command) => {
             await connectRehearse(context, dir, command.optsWithGlobals());
         });
+}
+
+function addRunCommands(connect: Command, context: CliContext): void {
+    addRehearseCommand(connect, context);
     connect
         .command('runs')
         .description('As últimas execuções')
