@@ -1,3 +1,4 @@
+import { existsSync, statSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import type { Interface } from 'node:readline';
 import { clientOf, printJson, printLine, printNotice, sessionOf } from '../context.js';
@@ -182,13 +183,17 @@ export async function automationsList(context: CliContext, options: AutomationOp
     });
 }
 
+function isDirectory(path: string): boolean {
+    return existsSync(path) && statSync(path).isDirectory();
+}
+
 export async function automationsGet(
     context: CliContext,
     id: string | undefined,
     dir: string | undefined,
     options: AutomationOptions
 ): Promise<void> {
-    const flowId: string = id ?? flowIdOf(options, dir);
+    const flowId: string = id !== undefined && !isDirectory(id) ? id : flowIdOf(options, id ?? dir);
     const detail: FlowDetail = (await call(context, sessionOf(context, options), 'GET', `/${flowId}`)) as FlowDetail;
     if (options.json === true) {
         printJson(context, detail);

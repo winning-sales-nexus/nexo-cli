@@ -443,6 +443,15 @@ describe('nexo automations get, versions, restore and the window', () => {
         expect(h.out()).toContain('v2');
     });
 
+    it('gets the automation of a folder given as the argument', async () => {
+        const h: Harness = harness({ [`GET /v1/automations/${FLOW}`]: () => ({ flow: FLOW_ROW, working: working(), versions: [] }) });
+        writeFileSync(join(h.root, 'nexo-automation.json'), JSON.stringify({ flowId: FLOW }));
+
+        expect(await run(h.context, ['automations', 'get', h.root])).toBe(0);
+
+        expect(h.out()).toContain('Boas-vindas');
+    });
+
     it('restore without --yes only shows what it would do', async () => {
         const h: Harness = harness({});
 
