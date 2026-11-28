@@ -311,6 +311,19 @@ Os modelos são os do app, nos dois canais. O e-mail é um documento de blocos c
 
 O token precisa de `automations:read` para ler, prever e estruturar, e de `automations:write` para criar, mudar e publicar (admin ou líder de vendas, com o módulo Automações no plano). Também atende por `nexo modelos`. A skill `nexo-automations` traz as diretrizes de estilo do e-mail.
 
+## Contexto da empresa
+
+```sh
+nexo context                                  # os sete blocos, campo a campo, com a origem de cada um
+nexo context oferta                           # só um bloco (empresa, icp, persona, proposta_de_valor, posicionamento, oferta, prova)
+nexo context set oferta offerings.0.whatItIs "Diagnóstico de 60 minutos"   # muda um campo
+nexo context add oferta offerings '{"name":"Curso"}' --value-json          # soma um item a uma lista
+nexo context remove persona personas.0.painPoints 2                        # tira um item (posição a partir de 0, ou o texto exato)
+nexo context confirm proposta_de_valor        # confirma o rascunho do bloco como está
+```
+
+Ler precisa de `context:read`. Escrever é só de administrador e precisa do escopo `context:write`, que nenhum login traz por padrão: peça pelo nome, junto dos que você usa (`nexo login --scopes <os seus>,context:write`, já que `--scopes` troca o padrão). Cada mudança mostra a prévia do que sai e do que entra e só grava depois do sim num terminal; `-y` grava logo depois de mostrar. Fora de um terminal, a CLI mostra a prévia e não grava: mostre à pessoa e rode de novo com `--yes`. Um bloco que a empresa já confirmou volta recusado até o pedido levar `--change-confirmed`, e a prévia avisa disso; `confirm` não pede. Mudar um campo de um bloco em rascunho confirma o bloco inteiro. A versão anterior do bloco fica guardada. O campo é o caminho que `nexo context` mostra (pontos e posições a partir de 0), e `--value-json` manda o valor como JSON (objeto de oferta ou persona, lista, número). Também atende por `nexo contexto`. `--json` imprime a resposta da API.
+
 ## Agentes de atendimento
 
 ```

@@ -13,6 +13,7 @@ import { addTemplateCommands } from './program-templates.js';
 import { addBrainCommands } from './program-brain.js';
 import { addErpCommands } from './program-erp.js';
 import { addAgentCommands } from './program-agents.js';
+import { addContextCommands } from './program-context.js';
 
 import { addDashboardCommands } from './program-dashboards.js';
 import type { McpOptions } from './commands/mcp.js';
@@ -190,6 +191,11 @@ function addBillingCommands(program: Command, context: CliContext): void {
         });
 }
 
+function addCompanyBrainCommands(program: Command, context: CliContext): void {
+    addBrainCommands(program, context);
+    addContextCommands(program, context);
+}
+
 export function buildProgram(context: CliContext): Command {
     const program: Command = new Command('nexo')
         .description('CLI do Nexo: a API, o Connect, os dashboards, os fluxos, os documentos e as análises no terminal')
@@ -218,7 +224,7 @@ export function buildProgram(context: CliContext): Command {
     addDealCommands(program, context);
     addArtifactCommands(program, context);
     addTemplateCommands(program, context);
-    addBrainCommands(program, context);
+    addCompanyBrainCommands(program, context);
     addErpCommands(program, context);
     addAgentCommands(program, context);
     return program;
