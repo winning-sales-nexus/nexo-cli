@@ -112,7 +112,9 @@ function plannedLines(title: string, calls: readonly PlannedCall[] | null): read
 }
 
 function failedSteps(steps: readonly RunStep[] | null): readonly string[] {
-    const failed: readonly RunStep[] = (steps ?? []).filter((step: RunStep) => step.errorCode !== null || (step.status ?? 0) >= 400);
+    const failed: readonly RunStep[] = (steps ?? []).filter(
+        (step: RunStep) => (step.errorCode ?? null) !== null || (step.status ?? 0) >= 400
+    );
     return failed
         .slice(0, 10)
         .map((step: RunStep) =>
