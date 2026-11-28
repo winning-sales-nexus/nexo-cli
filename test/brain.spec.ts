@@ -67,7 +67,7 @@ const SKILL: Record<string, unknown> = {
 };
 
 describe('nexo brain', () => {
-    it('creates an area skill from the idea and never sends a name, a description or a body', async () => {
+    it('creates an area skill from the idea and sends the old fields and no name, description or body', async () => {
         const h: Harness = harness({ 'POST /v1/brain/area-skills': { status: 201, body: SKILL } });
 
         const code: number = await run(h.context, [
@@ -160,6 +160,7 @@ describe('nexo brain', () => {
         expect(code).not.toBe(0);
         expect(h.err()).toContain('encolhe a skill em 40%');
         expect(h.err()).toContain('--confirm-shrink');
+        expect(h.err()).not.toContain('30%');
     });
 
     it('rejects an update with no arrow and an edit with no change', async () => {
@@ -170,13 +171,42 @@ describe('nexo brain', () => {
         expect(h.calls).toEqual([]);
     });
 
-    it('has no option that sends a name, a description or a body', async () => {
+    it('creates a skill from free text with name, description and body only', async () => {
+        const h: Harness = harness({ 'POST /v1/brain/company-skills': { status: 201, body: SKILL } });
+
+        const code: number = await run(h.context, [
+            'brain',
+            'create',
+            'company',
+            '--name',
+            'follow-up',
+            '--description',
+            'Quando escrever o follow-up',
+            '--body',
+            'Quando usar: follow-up.\nSeja curto.'
+        ]);
+
+        expect(code).toBe(0);
+        expect(h.calls[0]?.body).toEqual({
+            name: 'follow-up',
+            description: 'Quando escrever o follow-up',
+            body: 'Quando usar: follow-up.\nSeja curto.'
+        });
+    });
+
+    it('refuses free text with a field missing', async () => {
         const h: Harness = harness({});
 
-        for (const flag of ['--name', '--description', '--body']) {
-            expect(await run(h.context, ['brain', 'create', 'company', flag, 'x'])).not.toBe(0);
-        }
+        expect(await run(h.context, ['brain', 'create', 'company', '--name', 'x', '--body', 'y'])).not.toBe(0);
         expect(h.calls).toEqual([]);
+    });
+
+    it('describes the shrink confirmation with no percentage', async () => {
+        const h: Harness = harness({});
+
+        await run(h.context, ['brain', 'edit', '--help']);
+        expect(h.out()).toContain('tirar item pede --confirm-shrink');
+        expect(h.out()).not.toContain('30%');
     });
 
     it('lists the moments offered, the areas and the skills of a level', async () => {

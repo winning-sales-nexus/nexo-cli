@@ -52,6 +52,9 @@ function addWriteCommands(brain: Command, context: CliContext): void {
         .argument(LEVEL, LEVEL_HELP)
         .option('--area <id>', 'a área da skill (nível area)')
         .option('--team <id>', 'o time da skill (nível team)')
+        .option('--name <nome>', 'o nome da skill (texto livre: vai com --description e --body)')
+        .option('--description <texto>', 'quando usar a skill, em uma linha (texto livre)')
+        .option('--body <texto>', 'o texto da skill (texto livre); com ele, objetivo, momento e exemplo são opcionais')
         .option('--objective <texto>', 'o objetivo, em uma linha')
         .option('--moment <momento>', 'a situação em que a skill atua, da lista de nexo brain moments')
         .option('--always <texto>', 'o que fazer sempre (repita para mais de um)', collect, [])
@@ -119,7 +122,7 @@ function addChangeCommands(brain: Command, context: CliContext): void {
         .option('--update-never <troca>', 'troca um item de "nunca": "atual => novo" (repita)', collect, [])
         .option('--remove-always <texto>', 'tira um item de "sempre" (repita)', collect, [])
         .option('--remove-never <texto>', 'tira um item de "nunca" (repita)', collect, [])
-        .option('--confirm-shrink', 'confirma a edição que tira item ou encolhe a skill em mais de 30%')
+        .option('--confirm-shrink', 'confirma a edição; tirar item pede --confirm-shrink')
         .action(async (level: string, skillId: string, _options: BrainOptions, command: Command) => {
             await brainEdit(context, level, skillId, command.optsWithGlobals());
         });
