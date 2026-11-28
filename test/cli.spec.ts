@@ -200,4 +200,23 @@ describe('nexo api', () => {
         expect(code).toBe(4);
         expect(JSON.parse(h.err())).toMatchObject({ type: 'public_api.forbidden', status: 403 });
     });
+
+    it('names the exact login command when a 403 says which scope is missing', async () => {
+        const problem: unknown = {
+            type: 'public_api.insufficient_scope',
+            title: 'AppError',
+            status: 403,
+            detail: 'Este token não tem o escopo automations:write.',
+            meta: { operation: 'flows.write', scope: 'automations:write' }
+        };
+        const h: Harness = harness(
+            (call: Call) => (call.url.endsWith('/v1/me') ? json(200, ME) : json(403, problem, 'application/problem+json')),
+            { env: { NEXO_TOKEN: TOKEN } }
+        );
+
+        const code: number = await run(h.context, ['api', 'flows']);
+
+        expect(code).toBe(4);
+        expect(h.err()).toContain('nexo login --scopes "deals:read automations:write"');
+    });
 });

@@ -37,6 +37,8 @@ NEXO_TOKEN=nexo_pat_... nexo whoami # sem login, pelo ambiente
 | `--api-url <url>`      | entra numa API em outro endereço (só https fora da máquina) |
 | `-p, --profile <nome>` | guarda e usa mais de um login, um por perfil                |
 
+Escopo restrito (`automations:write`, `context:write`, `connectors:write`, `access:admin`, `crm:schema`) só vem quando pedido pelo nome. Se faltar, o 403 mostra o comando exato: `nexo login --scopes "<os que você já tem> <o que falta>"`.
+
 ## Comandos
 
 ```sh
@@ -222,7 +224,7 @@ A regra vive em `automation.json` (nome, reentrada e o documento com os passos e
 
 Os gatilhos genéricos (`entidade.criada`, `entidade.alterada`, `entidade.apagada`) escutam qualquer entidade: `nexo automations entities` mostra as entidades e os campos, e `nexo automations events lead <registro>` mostra o que o Nexo guardou do registro (operação, nomes dos campos que mudaram, origem e despacho) para depurar uma regra que não disparou. Uma alteração segura uma janela de 24 h: as seguintes do mesmo registro não disparam de novo, e a prévia do `publish` e o `runs` mostram isso. `get`, `versions` e `restore` completam o ciclo.
 
-Por enquanto, os escopos de automação só existem no token pessoal (`nexo login --token`).
+Os escopos de automação vêm pelo login do navegador, pedidos pelo nome: `nexo login --scopes <os seus>,automations:write`.
 
 ## Painéis como código
 
