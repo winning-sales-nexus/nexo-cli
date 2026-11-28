@@ -12,6 +12,7 @@ import {
     brainTemplates
 } from './commands/brain.js';
 import type { BrainOptions } from './commands/brain.js';
+import { brainImport } from './commands/brain-import.js';
 import type { CliContext } from './context.js';
 
 function collect(value: string, previous: readonly string[]): readonly string[] {
@@ -58,6 +59,19 @@ function addWriteCommands(brain: Command, context: CliContext): void {
         .option('--example <texto>', 'um exemplo de como deve sair, em uma linha')
         .action(async (level: string, _options: BrainOptions, command: Command) => {
             await brainCreate(context, level, command.optsWithGlobals());
+        });
+}
+
+function addImportCommand(brain: Command, context: CliContext): void {
+    brain
+        .command('import')
+        .description('Importa uma pasta de projeto do Claude (skills e contexto) para o Cérebro. Só admin')
+        .argument('<pasta>', 'a pasta com os arquivos (PDF, DOCX, PPTX, XLSX, MD, TXT)')
+        .option('--scope <nível>', 'onde o import vale: company (empresa) ou area')
+        .option('--area <id>', 'a área (nexo brain areas); vale com o nível area')
+        .option('-y, --yes', 'manda sem perguntar (só depois do sim da pessoa)')
+        .action(async (folder: string, _options: BrainOptions, command: Command) => {
+            await brainImport(context, folder, command.optsWithGlobals());
         });
 }
 
@@ -127,6 +141,7 @@ export function addBrainCommands(program: Command, context: CliContext): void {
         .description('O Cérebro: as skills da empresa, das áreas e dos times, criadas pela ideia e editadas por item (nunca pelo texto)');
     addReadCommands(brain, context);
     addWriteCommands(brain, context);
+    addImportCommand(brain, context);
     addPersonCommands(brain, context);
     addChangeCommands(brain, context);
 }
