@@ -148,6 +148,29 @@ describe('nexo templates list and get', () => {
         expect(JSON.parse(h.out().split('\n').slice(1).join('\n'))).toEqual({ items: [] });
     });
 
+    it('shows the Meta status and the reason next to the internal state of a WhatsApp template', async () => {
+        const wa = (id: string, metaStatus: string, reason: string | null): Record<string, unknown> => ({
+            ...LEGACY,
+            id,
+            channel: 'whatsapp',
+            state: 'ready',
+            whatsapp: { metaStatus, reason }
+        });
+        const h: Harness = harness({
+            'GET /v1/message-templates': {
+                body: { items: [wa('a1', 'approved', null), wa('a2', 'rejected', 'Texto promocional'), LEGACY] }
+            }
+        });
+
+        expect(await run(h.context, ['templates', 'list'])).toBe(0);
+
+        const lines: string[] = h.out().split('\n');
+        expect(lines[0]).toContain('ready');
+        expect(lines[0]).toContain('[aprovado pela Meta]');
+        expect(lines[1]).toContain('[rejeitado pela Meta: Texto promocional]');
+        expect(lines[2]).not.toContain('Meta');
+    });
+
     it('opens a template with the format, the subject and the rules that use it', async () => {
         const h: Harness = harness({ [`GET /v1/message-templates/${ID}`]: { body: LEGACY } });
 

@@ -317,7 +317,8 @@ Os tipos são `rule`, `practice`, `product_fact`, `price`, `proof` e `standard`.
 ## Modelos de mensagem e o e-mail com a marca
 
 ```sh
-nexo templates list --channel email           # os modelos, com o canal, o estado e a versão
+nexo templates list --channel email           # os modelos, com o canal, o estado, a versão e, no WhatsApp, o status da Meta (em análise, aprovado, rejeitado, pausado)
+nexo whatsapp numbers                        # os números de WhatsApp: oficial da Meta, dono, estado, causa e se enviam modelos (admin e líder)
 nexo templates get <modelo>                   # o formato (com a marca, antigo ou texto simples) e as regras que usam; --json traz os blocos
 nexo templates preview <modelo> --html email.html   # a prévia do editor, com amostras fixas
 nexo templates structure --template <modelo> --out estruturado.json   # um modelo antigo na estrutura nova; nada é gravado
