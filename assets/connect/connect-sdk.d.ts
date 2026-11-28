@@ -6,6 +6,12 @@ export interface HttpRequest {
      * down that agent's tunnel into the customer's network. The gateway refuses anything else.
      */
     readonly url: string;
+    /**
+     * x-nexo-agent-page (path=<array path>&offset=<n>&limit=<n>, limit up to 10000) works only on the initial load
+     * (ctx.input.initialLoad) and only on an API of an agent: the agent calls once (up to 6 minutes and 120 MiB), keeps the answer and
+     * returns 200 { itens, total, offset, proximo } per page, or 202 { carregando: true } while it loads (call again). After the
+     * page whose proximo is null the agent deletes it.
+     */
     readonly headers?: Readonly<Record<string, string>>;
     readonly query?: Readonly<Record<string, string>>;
     /** A string goes as is; anything else is sent as JSON. */
@@ -84,13 +90,32 @@ export interface ConnectorContext {
     /** live applies writes; dry_run records them as planned. External reads are real in both. */
     readonly mode: RunMode;
     /**
-     * What started the run: the body of the webhook call (parsed JSON), a NexoEventInput when a Nexo event of the manifest's
-     * triggers started it, or null for a scheduled or manual run.
+     * What started the run: a NexoWebhookInput for a call to the connector's webhook, a NexoEventInput when a Nexo event of the manifest's
+     * triggers started it, a NexoCallInput when a flow called it, a NexoOperationInput when someone asked for one of the
+     * manifest's operations, a NexoInitialLoadInput on the initial load an admin started, or null for a scheduled or manual run.
      */
     readonly input: JsonValue | null;
 }
 /** A Nexo event that can start a run: a record created or changed, or a deal that went into a won stage. */
 export type NexoEventName = 'company.created' | 'company.updated' | 'contact.created' | 'contact.updated' | 'deal.created' | 'deal.updated' | 'deal.won' | 'lead.created' | 'lead.updated' | 'ticket.created' | 'ticket.updated';
+/**
+ * The input of a run a call to the connector's webhook started. `body` is the JSON object, or the fields of a form-encoded body (a repeated field
+ * becomes a list), or null for XML and plain text: then read `rawBody`. `authorization`, `cookie`, `proxy-authorization` and the header the
+ * trigger's `auth` reads never reach `headers`. A rehearsal has no call: `ctx.input` is null, so treat null.
+ */
+export interface NexoWebhookInput {
+    readonly body: JsonValue | null;
+    readonly rawBody: string;
+    readonly contentType: string | null;
+    readonly headers: Readonly<Record<string, string>>;
+    readonly query: Readonly<Record<string, string>>;
+    /** When the Nexo accepted the call, as an ISO instant. */
+    readonly receivedAt: string;
+}
+/** The input of the initial load: started once by an admin, never by the cron; read the whole source and leave the cursor for the cron. */
+export interface NexoInitialLoadInput {
+    readonly initialLoad: true;
+}
 /**
  * The input of a run a Nexo event started: ids only, never the record's data; read the record with ctx.nexo.get. The run starts once per eventId, however many
  * times the event arrives; deal.won has one eventId per deal, so a deal won again starts nothing. A write of this same
@@ -104,11 +129,49 @@ export interface NexoEventInput {
     /** ISO time of the change. */
     readonly occurredAt: string;
 }
+/**
+ * The input of a run another module of the Nexo called (trigger "call"), contract 1: the object the caller built, with `contract` at its
+ * top. The caller sizes it under the limit and never cuts it silently; the code never receives a secret in it.
+ */
+export interface NexoCallInput {
+    readonly contract: 1;
+    readonly [key: string]: JsonValue;
+}
+/** A profile the person holds: key is the default profile's key (admin, sales_lead, rep, read_only), or null for one the company made. */
+export interface NexoOperationProfile {
+    readonly id: string;
+    readonly name: string;
+    readonly key: string | null;
+}
+/** Who asked for the operation: the code may filter what it returns by this person (their own orders, their clients). */
+export interface NexoOperationPerson {
+    readonly userId: string;
+    readonly name: string;
+    readonly email: string;
+    readonly profiles: readonly NexoOperationProfile[];
+}
+/**
+ * The input of a run of one operation of the manifest, contract 2: which operation, its args (checked against the manifest before
+ * the run: each of its type, the required ones present, nothing else) and who asked. A rehearsal of an action plans its writes,
+ * as any rehearsal. The output is checked against the operation's own output.
+ */
+export interface NexoOperationInput {
+    readonly contract: 2;
+    readonly operation: string;
+    readonly args: Readonly<Record<string, JsonValue>>;
+    readonly person: NexoOperationPerson;
+}
 export type RunMode = 'live' | 'dry_run';
 export type CallIntent = 'read' | 'write';
 /** What the connector's default export returns. Nothing, or done: true, ends the run. */
 export interface ConnectorResult {
     readonly done?: boolean;
+    /**
+     * What the run hands back to whoever called it (a flow step), on the run that ends: the fields of the manifest's output, each of
+     * its type; a `list` field is an array of up to 50 objects with the item fields the manifest declares, and an `html` field is a string with the body of an e-mail (the Nexo cleans it when the run closes). Anything else, or a field of the wrong type, ends the run failed (invalid_output). Ignored by a run with no output
+     * in its manifest, and in the slices that go on.
+     */
+    readonly output?: Readonly<Record<string, JsonValue>>;
 }
 export type ConnectorMain = (ctx: ConnectorContext) => Promise<ConnectorResult | undefined>;
 export interface RunLimits {
@@ -330,8 +393,11 @@ export interface LocalDatabases {
 }
 
 
-/** Nexo objects a connector reads and writes; the manifest says which ones and which fields. */
-export type NexoObject = 'company' | 'contact' | 'deal' | 'lead' | 'ticket';
+/**
+ * Nexo objects a connector reads and writes; the manifest says which ones and which fields. `product` is the catalog of products
+ * and services: its properties are the attributes the admin defined in the Nexo Admin, and a product never gets a twin (see `createMany`).
+ */
+export type NexoObject = 'company' | 'contact' | 'deal' | 'lead' | 'ticket' | 'product';
 /** A record a lookup found. An archived one comes too: restore it in the update instead of creating a twin. */
 export interface NexoMatch {
     readonly id: string;
@@ -348,11 +414,70 @@ export type NexoLookup = {
 } | {
     readonly ref: string;
 };
-export type NexoFieldValue = string | number | null;
+/** A boolean only where the field is one (`active` of a product). */
+export type NexoFieldValue = string | number | boolean | null;
+/**
+ * A product's table of price tiers (`priceTiers` of the `product` object), in place of a single price. `mode` `flat` is a closed
+ * price (the amount of the tier is the total) and `per_unit` a unit price (the amount is of each unit, times the quantity).
+ * `measure` is what is counted ("fornecedores"), optional. From 1 to 200 tiers, `upTo` a positive integer rising from one tier to
+ * the next, the last one alone with `upTo: null` (no ceiling); `amountInCents` an integer, 0 or more.
+ */
+export interface NexoPriceTiers {
+    readonly mode: 'flat' | 'per_unit';
+    readonly measure?: string | null;
+    readonly tiers: readonly {
+        readonly upTo: number | null;
+        readonly amountInCents: number;
+    }[];
+}
+/** The value of a field of a record: a scalar, or `priceTiers` of a product. */
+export type NexoRecordValue = NexoFieldValue | NexoPriceTiers;
 export type NexoPropertyValue = string | number | boolean | readonly string[] | null;
+/**
+ * Where a new lead came from, all optional: it is written as the lead's arrival (campaign, ad, form, UTM, landing page, consent),
+ * so a rule can filter by it. The source stays `connect`; the connector (and its system) is recorded by the Nexo, never informed
+ * here. Only on a lead that does not exist yet; a field outside this list refuses the record.
+ */
+export interface NexoLeadOrigin {
+    readonly campaign?: string | null;
+    readonly adId?: string | null;
+    readonly formId?: string | null;
+    readonly utm?: {
+        readonly source?: string | null;
+        readonly medium?: string | null;
+        readonly campaign?: string | null;
+        readonly term?: string | null;
+        readonly content?: string | null;
+    };
+    readonly landingUrl?: string | null;
+    readonly legalBasis?: string | null;
+    readonly consentText?: string | null;
+    /** When the person arrived, as an ISO instant; without it, the moment of the write. */
+    readonly arrivedAt?: string;
+}
+/** The UTM of a planned origin: every key present, null when the connector did not tell it. */
+interface NexoPlannedUtm {
+    readonly source: string | null;
+    readonly medium: string | null;
+    readonly campaign: string | null;
+    readonly term: string | null;
+    readonly content: string | null;
+}
+/** The origin a rehearsal would write for a lead, with the source and the arrival moment filled. */
+export interface NexoPlannedOrigin {
+    readonly source: 'connect';
+    readonly campaign: string | null;
+    readonly adId: string | null;
+    readonly formId: string | null;
+    readonly utm: NexoPlannedUtm;
+    readonly landingUrl: string | null;
+    readonly legalBasis: string | null;
+    readonly consentText: string | null;
+    readonly arrivedAt: string;
+}
 export interface NexoRecordInput {
     /** Native fields, as the manifest names them. */
-    readonly values?: Readonly<Record<string, NexoFieldValue>>;
+    readonly values?: Readonly<Record<string, NexoRecordValue>>;
     /** Custom properties by key; the manifest declares each as `property:<key>`. */
     readonly properties?: Readonly<Record<string, NexoPropertyValue>>;
     /**
@@ -360,6 +485,13 @@ export interface NexoRecordInput {
      * core refuses keeps it in quarantine, so the reprocess that creates it links it too and the next run finds it by the ref.
      */
     readonly ref?: NexoRecordRef;
+    /** Only on a new `lead`: where it came from (campaign, UTM...), written with its arrival. */
+    readonly origin?: NexoLeadOrigin;
+    /**
+     * Only on a new `lead`, and not with `values.ownerId`: `"none"` opens it with no owner and outside the default routing. Without
+     * `ownerId` and `routing`, the default routing picks the owner. `values.ownerId` (the id `users.findByEmail` returns) opens it with that owner.
+     */
+    readonly routing?: 'none';
 }
 export interface NexoRecordRef {
     readonly system: string;
@@ -400,17 +532,94 @@ export interface NexoRefusal {
     readonly reason: string;
 }
 /**
- * A record as the connector reads it: its native fields by their manifest names and its custom properties by key. A field that
- * any active profile of the company hides never comes. An archived record comes too, marked.
+ * A record as the connector reads it: its native fields by their manifest names and its custom properties by key. A script a rule
+ * called reads only the records the rule's person reaches; one a trigger of its own started reads the company. An archived record
+ * comes too, marked.
  */
 export interface NexoRecordRead {
     readonly id: string;
     readonly archived: boolean;
-    readonly values: Readonly<Record<string, NexoFieldValue>>;
+    readonly values: Readonly<Record<string, NexoRecordValue>>;
     readonly properties: Readonly<Record<string, NexoPropertyValue>>;
+}
+/** How a filter of `query` compares; the same operators as the condition of an automation. */
+export type NexoOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'between' | 'in' | 'not_in' | 'contains' | 'is_empty' | 'is_not_empty' | 'older_than' | 'within_last';
+/**
+ * What a filter compares to: one value (`eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `contains`), a list of up to 50 (`in`, `not_in`), the
+ * smaller and the larger (`between`), or a number of days (`older_than`, `within_last`). `is_empty` and `is_not_empty` take none.
+ * Dates are YYYY-MM-DD (or an ISO instant) and money is in cents.
+ */
+export type NexoFilterValue = string | number | boolean | readonly (string | number | boolean)[];
+/**
+ * One condition of a query, on a native field (`{ field: 'amountInCents', op: 'gt', value: 1000000 }`) or on a custom property
+ * (`{ property: 'segment', op: 'eq', value: 'varejo' }`). A comparison holds only for a filled value: a record with no value never
+ * matches `neq` or `not_in`, and only `is_empty` asks for the empty. Text ignores case and edges. A `contains` or a range (`gt`,
+ * `gte`, `lt`, `lte`, `between`, `older_than`, `within_last`) on a property comes only together with an `eq` or `in` on another
+ * property, or on an indexed field (`email` of a contact, `cnpj` of a company, `ownerId`, `pipelineId`, `stageId`, `personId` of a
+ * lead or ticket).
+ */
+export type NexoFilter = {
+    readonly field: string;
+    readonly op: NexoOperator;
+    readonly value?: NexoFilterValue;
+} | {
+    readonly property: string;
+    readonly op: NexoOperator;
+    readonly value?: NexoFilterValue;
+};
+/** What `query` takes besides the entity. All the filters must hold (and). */
+export interface NexoQueryInput {
+    readonly where?: readonly NexoFilter[];
+    /** `id` (the default) or `createdAt`, the second only for `deal`. */
+    readonly orderBy?: 'id' | 'createdAt';
+    /** `asc` is the default. */
+    readonly direction?: 'asc' | 'desc';
+    /** Records per page, from 1 to 500; 100 when absent. */
+    readonly limit?: number;
+    /** The `next` of the page before; absent for the first page. */
+    readonly cursor?: string;
+    /** Archived records stay out unless true. */
+    readonly includeArchived?: boolean;
+}
+/**
+ * A page of a query. `next` is the cursor of the page after, or null at the end. The cursor is opaque and is not a snapshot of
+ * the moment: it continues after the last record of this page, so a record created or changed while the pages are read can come
+ * in a later page, or not come.
+ */
+export interface NexoPage {
+    readonly records: NexoRecordRead[];
+    readonly next: string | null;
 }
 export interface NexoUser {
     readonly id: string;
+    readonly name: string;
+    /** The person's owner in the Nexo CRM, the id `ownerId` takes; null when the person is not an active owner there. */
+    readonly ownerId: string | null;
+}
+/** A record of the person the lookup found: its id and its owner in the Nexo CRM (null when it has none). */
+export interface NexoPersonRecord {
+    readonly id: string;
+    readonly ownerId: string | null;
+}
+/** What the lead entry sees for a phone and an e-mail: the open lead and the contact, and how many deals the contact has in progress and won. */
+export interface NexoPersonLookup {
+    readonly found: boolean;
+    readonly lead: NexoPersonRecord | null;
+    readonly contact: NexoPersonRecord | null;
+    readonly deals: {
+        readonly open: number;
+        readonly won: number;
+    };
+}
+/** The keys of a person lookup: at least one of the two, as the lead entry reads them. */
+export interface NexoPersonKeys {
+    readonly phone?: string;
+    readonly email?: string;
+}
+/** A person of the other system (a rep of the ERP) to find in the company by e-mail, or to add to its list. */
+export interface NexoPersonInput {
+    readonly email: string;
+    /** The name the person gets when added; the start of the e-mail when it is shorter than two letters. */
     readonly name: string;
 }
 /**
@@ -422,11 +631,23 @@ export interface NexoApi {
     /** One record by its id, for an object of the manifest's reads; null when it does not exist. The run of a Nexo event reads its record here. */
     get(object: NexoObject, id: string): Promise<NexoRecordRead | null>;
     find(object: NexoObject, by: NexoLookup, values: readonly string[]): Promise<Record<string, NexoMatch[]>>;
+    /**
+     * Lists the records of an entity by filter, in pages of up to 500: `deal`, `lead`, `contact`, `company` and `ticket`, with their
+     * custom properties (a `product`, with its attributes, is read with `get` and `find`), `meeting`, `task`, `document`, `negotiation` and `temperature` (native fields only), `lead_arrival` (the arrivals of a lead: `leadId`, `contactId`, `system`, `source`, `campaign` and the UTM fields filter them; most recent first by `arrivedAt` with `direction: 'desc'`), and `whatsapp_chat`, the WhatsApp chats whose client waits for an answer. The entity must be in the manifest's reads and have a read door:
+     * one without it is refused, never read as the company. The records are the native ones, as `get` brings them, and a script a
+     * rule called gets only the ones the rule's person reaches. Pages by `id` come in the order of the id, and by `createdAt` where
+     * the entity has an index for it. The step keeps the entity, the filtered fields and the count, never the values.
+     * To list everything, ask page after page until `next` is null:
+     * `let cursor; do { const page = await ctx.nexo.query('deal', { where, cursor }); ...; cursor = page.next ?? undefined; } while (cursor)`.
+     */
+    query(entity: string, query?: NexoQueryInput): Promise<NexoPage>;
     /** The id, or null when the core refused the record: it is in the run's quarantine and the run ends partial. */
     create(object: NexoObject, record: NexoRecordInput): Promise<string | null>;
     /**
      * Up to 100 records in one call, created in order; the ids come back in the same order. A record the core refuses (an
-     * invalid CNPJ, an option that does not exist) gets null and goes to the run's quarantine; the others are written.
+     * invalid CNPJ, an option that does not exist) gets null and goes to the run's quarantine; the others are written. A
+     * `product` needs its `ref`, and lands on the product its ref already points at, or the one with its `code` (whatever made
+     * it), before a new one is born: the id that comes back may be of a product that already existed.
      */
     createMany(object: NexoObject, records: readonly NexoRecordInput[]): Promise<(string | null)[]>;
     /** False when the core refused the record and set it aside in quarantine. */
@@ -448,6 +669,23 @@ export interface NexoApi {
     readonly users: {
         /** People of the company by e-mail, to pick an owner; an unknown e-mail maps to null. */
         findByEmail(emails: readonly string[]): Promise<Record<string, NexoUser | null>>;
+        /**
+         * The same answer as `findByEmail`, adding the ones the company does not have yet: a new e-mail becomes a person only on the
+         * list (viewer seat, Somente leitura profile, no login, no e-mail sent) with an owner id the same run can write. A person of
+         * the company, active or not, comes back as is, nothing changed. An invalid e-mail, or one of another company, maps to null.
+         * Up to 500 per call, a repeated e-mail counting once; the keys are the e-mails as sent. Needs `"users": ["ensure"]` in the
+         * manifest. A rehearsal adds nobody and answers ids that exist only in the rehearsal. Undoing the run removes nobody.
+         */
+        ensure(people: readonly NexoPersonInput[]): Promise<Record<string, NexoUser | null>>;
+    };
+    readonly people: {
+        /**
+         * What the Nexo knows of a person by phone and e-mail, the keys normalized as the lead entry does (the phone with or without the
+         * ninth digit is the same person). Writes nothing, and runs for real in a rehearsal. Needs `person` in the manifest's reads; a run a
+         * rule called sees only what that rule's person reaches. `found` is false for a person nobody holds.
+         * To skip who already has a deal in progress: `const known = await ctx.nexo.people.lookup({ phone }); if (known.deals.open > 0) return;`.
+         */
+        lookup(keys: NexoPersonKeys): Promise<NexoPersonLookup>;
     };
 }
 /** The call as the gateway takes it. */
@@ -460,7 +698,10 @@ export type NexoCall = {
     readonly op: 'get';
     readonly object: NexoObject;
     readonly id: string;
-} | {
+} | ({
+    readonly op: 'query';
+    readonly entity: string;
+} & NexoQueryInput) | {
     readonly op: 'write';
     readonly object: NexoObject;
     readonly records: readonly NexoRecordCall[];
@@ -475,6 +716,11 @@ export type NexoCall = {
 } | {
     readonly op: 'users';
     readonly emails: readonly string[];
+} | ({
+    readonly op: 'person';
+} & NexoPersonKeys) | {
+    readonly op: 'ensureUsers';
+    readonly people: readonly NexoPersonInput[];
 };
 export type NexoLookupCall = {
     readonly kind: 'field';
@@ -498,10 +744,16 @@ export type NexoReply = {
     readonly op: 'get';
     readonly record: NexoRecordRead | null;
 } | {
+    readonly op: 'query';
+    readonly records: NexoRecordRead[];
+    readonly next: string | null;
+} | {
     readonly op: 'write';
     readonly planned: boolean;
     readonly ids: (string | null)[];
     readonly refused: NexoRefusal[];
+    /** A rehearsal of new leads: the origin each would be written with (null for a refused one), in the order of the records. */
+    readonly origins?: (NexoPlannedOrigin | null)[];
 } | {
     readonly op: 'link';
     readonly planned: boolean;
@@ -516,4 +768,35 @@ export type NexoReply = {
 } | {
     readonly op: 'users';
     readonly users: Record<string, NexoUser | null>;
+} | {
+    readonly op: 'person';
+    readonly person: NexoPersonLookup;
+} | {
+    readonly op: 'ensureUsers';
+    readonly planned: boolean;
+    /** How many people the call added to the list, or would add in a rehearsal. */
+    readonly created: number;
+    readonly users: Record<string, NexoUser | null>;
 };
+export {};
+
+
+/** One operation of the manifest, as the code implements it: ctx as always, and the input with the args and the person. */
+export type OperationHandler = (ctx: ConnectorContext, input: NexoOperationInput) => Promise<ConnectorResult | undefined>;
+/** The name the run records for an operation that refused the call by the connector's own rule. */
+export declare const OPERATION_REFUSED: string;
+/**
+ * Thrown by an operation that refuses the call by the connector's own rule, before any call to the other system: an operation
+ * outside the allowed list, a DELETE, a payroll or ledger operation. The Nexo answers that the connector does not allow it, and
+ * not that the other system failed, so the assistant knows that calling again changes nothing:
+ * `throw new OperationRefused('ExcluirPedido fica sempre fora da ponte')`. A failure of the other system stays a plain Error.
+ */
+export declare class OperationRefused extends Error {
+    constructor(message: string);
+}
+/**
+ * The default export of a connector made of operations, from one function per operation key:
+ * `export default operations({ titulos_vencidos: async (ctx, { args, person }) => ({ output: { ... } }) })`.
+ * An operation the manifest declares and the code does not implement fails the run with its name.
+ */
+export declare function operations(handlers: Readonly<Record<string, OperationHandler>>): ConnectorMain;

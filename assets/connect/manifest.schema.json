@@ -12,9 +12,8 @@
       "maximum": 1
     },
     "triggers": {
-      "description": "What starts a run: up to five, any mix of cron, webhook and Nexo event",
+      "description": "What starts a run: up to five, any mix of cron, webhook, Nexo event and call (called by a flow of the Nexo); none only when the connector declares operations",
       "type": "array",
-      "minItems": 1,
       "maxItems": 5,
       "items": {
         "oneOf": [
@@ -22,32 +21,193 @@
             "type": "object",
             "properties": {
               "type": {
-                "description": "Runs on a schedule, every everyMinutes minutes",
+                "description": "Runs on a schedule: every everyMinutes minutes, or at fixed times of the day (at, and the days) in the company time zone",
                 "type": "string",
                 "enum": [
                   "cron"
                 ]
               },
               "everyMinutes": {
-                "description": "Interval between runs, in minutes",
+                "description": "Interval between runs, in minutes; use it or at, never both",
                 "type": "integer",
                 "minimum": 5,
                 "maximum": 1440
+              },
+              "at": {
+                "description": "Time of day (HH:MM, company time zone) or a list of times, up to 24, none repeated; use it or everyMinutes, never both",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+                  },
+                  {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 24,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$"
+                    }
+                  }
+                ]
+              },
+              "days": {
+                "description": "Days of the week the fixed times run (mon, tue, wed, thu, fri, sat, sun); every day when left out; only with at",
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 7,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "mon",
+                    "tue",
+                    "wed",
+                    "thu",
+                    "fri",
+                    "sat",
+                    "sun"
+                  ]
+                }
               }
             },
             "required": [
-              "type",
-              "everyMinutes"
+              "type"
             ]
           },
           {
             "type": "object",
             "properties": {
               "type": {
-                "description": "Runs when the other system calls the connector's signed webhook",
+                "description": "Runs when the other system calls the connector's webhook",
                 "type": "string",
                 "enum": [
                   "webhook"
+                ]
+              },
+              "auth": {
+                "description": "How the other system proves the call is its own: without it, the token of the webhook's address is enough; with it, a call that fails the check runs nothing",
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "description": "The call carries the value of the secret in a header",
+                        "type": "string",
+                        "enum": [
+                          "header"
+                        ]
+                      },
+                      "header": {
+                        "description": "Name of the header that carries the value",
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9-]{1,100}$"
+                      },
+                      "secret": {
+                        "description": "Name of the secret, declared in secrets, whose value the header must carry",
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "header",
+                      "secret"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "description": "The call carries a user and a password, in the authorization header (HTTP Basic)",
+                        "type": "string",
+                        "enum": [
+                          "basic"
+                        ]
+                      },
+                      "user": {
+                        "description": "Name of the secret, declared in secrets, that holds the user",
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                      },
+                      "secret": {
+                        "description": "Name of the secret, declared in secrets, that holds the password",
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "user",
+                      "secret"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "description": "The call carries a signature of the raw body, made with the secret",
+                        "type": "string",
+                        "enum": [
+                          "hmac"
+                        ]
+                      },
+                      "header": {
+                        "description": "Name of the header that carries the signature",
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9-]{1,100}$"
+                      },
+                      "secret": {
+                        "description": "Name of the secret, declared in secrets, that signs",
+                        "type": "string",
+                        "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                      },
+                      "algorithm": {
+                        "description": "sha256 (the default) or sha1",
+                        "type": "string",
+                        "enum": [
+                          "sha256",
+                          "sha1"
+                        ]
+                      },
+                      "encoding": {
+                        "description": "How the signature is written: hex (the default) or base64",
+                        "type": "string",
+                        "enum": [
+                          "hex",
+                          "base64"
+                        ]
+                      },
+                      "prefix": {
+                        "description": "Text before the signature in the header, such as sha256=",
+                        "type": "string",
+                        "maxLength": 40
+                      },
+                      "signed": {
+                        "description": "What is signed: body (the default) or timestamp.body, the timestamp of timestampHeader, a dot and the body",
+                        "type": "string",
+                        "enum": [
+                          "body",
+                          "timestamp.body"
+                        ]
+                      },
+                      "timestampHeader": {
+                        "description": "Header with the moment of the call, in seconds since 1970; only with timestamp.body, where it is required",
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9-]{1,100}$"
+                      },
+                      "toleranceSeconds": {
+                        "description": "How old the moment of the call may be, in seconds (300 by default); only with timestamp.body",
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 86400
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "header",
+                      "secret"
+                    ]
+                  }
                 ]
               }
             },
@@ -86,6 +246,61 @@
             "required": [
               "type",
               "event"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "description": "Runs when another module of the Nexo calls the connector, with an input of the call contract (ctx.input)",
+                "type": "string",
+                "enum": [
+                  "call"
+                ]
+              },
+              "args": {
+                "description": "Extra values the caller fills in for each call, read in ctx.input.args by key",
+                "type": "array",
+                "maxItems": 10,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "description": "Name of the argument in ctx.input.args",
+                      "type": "string",
+                      "pattern": "^[a-z][a-zA-Z0-9]{0,39}$"
+                    },
+                    "label": {
+                      "description": "What the argument is, in Portuguese",
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "type": {
+                      "description": "text, number or boolean",
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "number",
+                        "boolean"
+                      ]
+                    },
+                    "required": {
+                      "description": "Whether the caller must fill it in",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "label",
+                    "type"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "type"
             ]
           }
         ]
@@ -206,7 +421,7 @@
     "reads": {
       "description": "Nexo objects the connector searches",
       "type": "array",
-      "maxItems": 7,
+      "maxItems": 14,
       "items": {
         "type": "string",
         "enum": [
@@ -216,7 +431,14 @@
           "lead",
           "ticket",
           "product",
-          "externalEvent"
+          "whatsapp_chat",
+          "meeting",
+          "task",
+          "document",
+          "negotiation",
+          "temperature",
+          "lead_arrival",
+          "person"
         ]
       }
     },
@@ -272,6 +494,144 @@
     "externalWrites": {
       "description": "Whether the connector writes into the other system",
       "type": "boolean"
+    },
+    "users": {
+      "description": "What the connector does with the company people besides finding them: ensure adds a missing e-mail as a person only on the list (viewer seat, read-only profile, no login, no e-mail) with ctx.nexo.users.ensure",
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "ensure"
+        ]
+      }
+    },
+    "output": {
+      "description": "What the code returns as { output } for whoever called it: checked against these fields when the run closes",
+      "type": "object",
+      "properties": {
+        "fields": {
+          "description": "The fields of the returned object",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "description": "Name of the field in the object the code returns",
+                "type": "string",
+                "pattern": "^[a-z][a-zA-Z0-9]{0,39}$"
+              },
+              "label": {
+                "description": "What the field is, in Portuguese",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "type": {
+                "description": "text, number, boolean, date (ISO 8601), option (one of options), list (items with itemFields), html (an e-mail body, cleaned when the run closes) or json (a free object or list, checked only by its size; only in an operation)",
+                "type": "string",
+                "enum": [
+                  "text",
+                  "number",
+                  "boolean",
+                  "date",
+                  "option",
+                  "list",
+                  "html",
+                  "json"
+                ]
+              },
+              "options": {
+                "description": "The allowed values of an option field",
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 30,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              },
+              "itemFields": {
+                "description": "The simple fields of each item of a list field: up to 10 fields, and the list has up to 50 items",
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 10,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "description": "Name of the field in each item of the list",
+                      "type": "string",
+                      "pattern": "^[a-z][a-zA-Z0-9]{0,39}$"
+                    },
+                    "label": {
+                      "description": "What the field is, in Portuguese",
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "type": {
+                      "description": "text, number, boolean, date (ISO 8601) or option (one of options)",
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "number",
+                        "boolean",
+                        "date",
+                        "option"
+                      ]
+                    },
+                    "options": {
+                      "description": "The allowed values of an option field",
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 30,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      }
+                    },
+                    "required": {
+                      "description": "Whether every item always has the field",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "label",
+                    "type"
+                  ]
+                }
+              },
+              "required": {
+                "description": "Whether the code always returns the field",
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "required": [
+              "key",
+              "label",
+              "type"
+            ]
+          }
+        },
+        "maxBytes": {
+          "description": "Largest output, serialized, in bytes",
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 65536,
+          "default": 4096
+        }
+      },
+      "required": [
+        "fields"
+      ]
     },
     "agents": {
       "description": "Local agents inside the customer's network and what the connector reaches through each: internal APIs and databases",
@@ -380,6 +740,235 @@
           "agentId"
         ]
       }
+    },
+    "operations": {
+      "description": "Queries and actions the connector runs on request, each with its args, its output and the profiles that may run it",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Name of the operation, unique in the connector: ctx.input.operation",
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "kind": {
+            "description": "query (reads the other system) or action (writes there)",
+            "type": "string",
+            "enum": [
+              "query",
+              "action"
+            ]
+          },
+          "label": {
+            "description": "Name of the operation as a person reads it, in Portuguese",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "description": {
+            "description": "What the operation does and returns, in Portuguese",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "args": {
+            "description": "Values whoever runs the operation fills in, read in ctx.input.args by key",
+            "type": "array",
+            "maxItems": 15,
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "description": "Name of the argument in ctx.input.args",
+                  "type": "string",
+                  "pattern": "^[a-z][a-zA-Z0-9]{0,39}$"
+                },
+                "description": {
+                  "description": "What the argument is and how to fill it, in Portuguese",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "type": {
+                  "description": "text, number, boolean, date (ISO 8601) or json (a free object of up to 8 KB)",
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "number",
+                    "boolean",
+                    "date",
+                    "json"
+                  ]
+                },
+                "required": {
+                  "description": "Whether whoever runs the operation must fill it in",
+                  "type": "boolean",
+                  "default": false
+                }
+              },
+              "required": [
+                "key",
+                "description",
+                "type"
+              ]
+            },
+            "default": []
+          },
+          "output": {
+            "description": "What the operation returns as { output }: checked against these fields when it ends",
+            "type": "object",
+            "properties": {
+              "fields": {
+                "description": "The fields of the returned object",
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 20,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "description": "Name of the field in the object the code returns",
+                      "type": "string",
+                      "pattern": "^[a-z][a-zA-Z0-9]{0,39}$"
+                    },
+                    "label": {
+                      "description": "What the field is, in Portuguese",
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "type": {
+                      "description": "text, number, boolean, date (ISO 8601), option (one of options), list (items with itemFields), html (an e-mail body, cleaned when the run closes) or json (a free object or list, checked only by its size; only in an operation)",
+                      "type": "string",
+                      "enum": [
+                        "text",
+                        "number",
+                        "boolean",
+                        "date",
+                        "option",
+                        "list",
+                        "html",
+                        "json"
+                      ]
+                    },
+                    "options": {
+                      "description": "The allowed values of an option field",
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 30,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      }
+                    },
+                    "itemFields": {
+                      "description": "The simple fields of each item of a list field: up to 10 fields, and the list has up to 50 items",
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 10,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "description": "Name of the field in each item of the list",
+                            "type": "string",
+                            "pattern": "^[a-z][a-zA-Z0-9]{0,39}$"
+                          },
+                          "label": {
+                            "description": "What the field is, in Portuguese",
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "type": {
+                            "description": "text, number, boolean, date (ISO 8601) or option (one of options)",
+                            "type": "string",
+                            "enum": [
+                              "text",
+                              "number",
+                              "boolean",
+                              "date",
+                              "option"
+                            ]
+                          },
+                          "options": {
+                            "description": "The allowed values of an option field",
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 30,
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            }
+                          },
+                          "required": {
+                            "description": "Whether every item always has the field",
+                            "type": "boolean",
+                            "default": false
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "label",
+                          "type"
+                        ]
+                      }
+                    },
+                    "required": {
+                      "description": "Whether the code always returns the field",
+                      "type": "boolean",
+                      "default": false
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "label",
+                    "type"
+                  ]
+                }
+              },
+              "maxBytes": {
+                "description": "Largest output of the operation, serialized, in bytes (up to 262144)",
+                "type": "integer",
+                "minimum": 64,
+                "maximum": 262144,
+                "default": 4096
+              }
+            },
+            "required": [
+              "fields"
+            ]
+          },
+          "profiles": {
+            "description": "Access profiles of the company that may run it: a profile's name as the Nexo shows it, or admin, sales_lead, rep, read_only; without profiles, only the admin",
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "label",
+          "description",
+          "output"
+        ]
+      }
+    },
+    "guide": {
+      "description": "Guide that teaches the assistant to use this connector's operations, in Portuguese, up to 4 KB: which operation answers which question, what the other system calls things, the format of dates. It speaks of the Nexo's operations, never of the other system's raw API; it goes with the published version",
+      "type": "string",
+      "minLength": 1
     },
     "oauth": {
       "description": "Whether the code calls the other system with the OAuth token the person authorized: ctx.secret(\"OAUTH_ACCESS_TOKEN\"), renewed by the gateway",
