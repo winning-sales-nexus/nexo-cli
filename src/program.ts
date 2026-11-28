@@ -11,6 +11,7 @@ import { addDocumentCommands } from './program-documents.js';
 import { addArtifactCommands, addDealCommands } from './program-artifacts.js';
 import { addTemplateCommands } from './program-templates.js';
 import { addBrainCommands } from './program-brain.js';
+import { addKnowledgeCommands } from './program-knowledge.js';
 import { addErpCommands } from './program-erp.js';
 import { addAgentCommands } from './program-agents.js';
 import { addContextCommands } from './program-context.js';
@@ -193,6 +194,7 @@ function addBillingCommands(program: Command, context: CliContext): void {
 
 function addCompanyBrainCommands(program: Command, context: CliContext): void {
     addBrainCommands(program, context);
+    addKnowledgeCommands(program, context);
     addContextCommands(program, context);
 }
 
