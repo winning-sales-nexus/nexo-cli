@@ -318,7 +318,8 @@ nexo context                                  # os sete blocos, campo a campo, c
 nexo context oferta                           # só um bloco (empresa, icp, persona, proposta_de_valor, posicionamento, oferta, prova)
 nexo context set oferta offerings.0.whatItIs "Diagnóstico de 60 minutos"   # muda um campo
 nexo context add oferta offerings '{"name":"Curso"}' --value-json          # soma um item a uma lista
-nexo context remove persona personas.0.painPoints 2                        # tira um item (posição a partir de 0, ou o texto exato)
+nexo context remove persona personas.0.painPoints "texto exato"           # tira um item pelo texto
+nexo context remove persona personas.0.painPoints --index 2               # ou pela posição, a partir de 0
 nexo context confirm proposta_de_valor        # confirma o rascunho do bloco como está
 ```
 

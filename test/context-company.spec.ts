@@ -136,11 +136,22 @@ describe('nexo context', () => {
             'POST /v1/company/context/changes/apply': { body: { message: 'ok' } }
         });
 
-        await run(h.context, ['context', 'remove', 'persona', 'personas.0.painPoints', '2', '-y']);
+        await run(h.context, ['context', 'remove', 'persona', 'personas.0.painPoints', '--index', '2', '-y']);
+        await run(h.context, ['context', 'remove', 'persona', 'personas.0.painPoints', '2026', '-y']);
         await run(h.context, ['context', 'confirm', 'proposta-de-valor', '-y']);
 
         expect(h.calls[0]?.body).toEqual({ bloco: 'persona', acao: 'item_tirar', campo: 'personas.0.painPoints', item: 2 });
-        expect(h.calls[2]?.body).toEqual({ bloco: 'proposta_de_valor', acao: 'bloco_confirmar' });
+        expect(h.calls[2]?.body).toEqual({ bloco: 'persona', acao: 'item_tirar', campo: 'personas.0.painPoints', item: '2026' });
+        expect(h.calls[4]?.body).toEqual({ bloco: 'proposta_de_valor', acao: 'bloco_confirmar' });
+    });
+
+    it('refuses a remove with both the text and --index, or with neither', async () => {
+        const h: Harness = harness({});
+        const base: string[] = ['context', 'remove', 'persona', 'personas.0.painPoints'];
+
+        expect(await run(h.context, [...base, 'x', '--index', '1'])).not.toBe(0);
+        expect(await run(h.context, base)).not.toBe(0);
+        expect(h.calls).toEqual([]);
     });
 
     it('refuses an unknown block before calling the Nexo', async () => {

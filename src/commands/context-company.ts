@@ -7,6 +7,7 @@ import { confirmed } from '../input/confirm.js';
 export interface ContextOptions extends GlobalOptions {
     readonly valueJson?: boolean;
     readonly changeConfirmed?: boolean;
+    readonly index?: string;
     readonly yes?: boolean;
 }
 
@@ -78,8 +79,17 @@ function valueOf(raw: string, options: ContextOptions): unknown {
     }
 }
 
-function itemOf(raw: string): number | string {
-    return /^\d+$/.test(raw) ? Number(raw) : raw;
+function itemOf(raw: string | undefined, index: string | undefined): number | string {
+    if ((raw === undefined) === (index === undefined)) {
+        throw usageError('Diga o item (o texto exato) ou --index <posição>, um dos dois.');
+    }
+    if (index === undefined) {
+        return raw as string;
+    }
+    if (!/^\d+$/.test(index)) {
+        throw usageError(`--index precisa de um número a partir de 0 (recebi "${index}").`);
+    }
+    return Number(index);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -190,10 +200,14 @@ export async function contextRemove(
     context: CliContext,
     rawBlock: string,
     field: string,
-    item: string,
+    item: string | undefined,
     options: ContextOptions
 ): Promise<void> {
-    await change(context, { bloco: blockOf(rawBlock), acao: 'item_tirar', campo: fieldOf(field), item: itemOf(item) }, options);
+    await change(
+        context,
+        { bloco: blockOf(rawBlock), acao: 'item_tirar', campo: fieldOf(field), item: itemOf(item, options.index) },
+        options
+    );
 }
 
 export async function contextConfirm(context: CliContext, rawBlock: string, options: ContextOptions): Promise<void> {

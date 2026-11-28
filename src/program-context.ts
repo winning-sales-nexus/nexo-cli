@@ -48,9 +48,10 @@ function addRemoveCommands(group: Command, context: CliContext): void {
             .description(`Tira um item de uma lista, com a prévia e o sim. ${WRITE_NOTE}`)
             .argument('<bloco>', BLOCK_HELP)
             .argument('<lista>', 'caminho da lista, como offerings')
-            .argument('<item>', 'a posição (a primeira é 0) ou o texto exato do item'),
+            .argument('[item]', 'o texto exato do item (para uma posição, use --index)')
+            .option('--index <n>', 'a posição do item na lista, a partir de 0, no lugar do texto'),
         false
-    ).action(async (block: string, field: string, item: string, _options: ContextOptions, command: Command) => {
+    ).action(async (block: string, field: string, item: string | undefined, _options: ContextOptions, command: Command) => {
         await contextRemove(context, block, field, item, command.optsWithGlobals());
     });
     addWriteOptions(
