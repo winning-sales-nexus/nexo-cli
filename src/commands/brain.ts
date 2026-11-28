@@ -154,30 +154,14 @@ function required(value: string | undefined, flag: string): string {
 function ideaOf(options: BrainOptions): Record<string, unknown> {
     const always: readonly string[] = listOf(options.always);
     const never: readonly string[] = listOf(options.never);
-    const free: boolean = options.name !== undefined || options.description !== undefined || options.body !== undefined;
-    if (free) {
-        return {
-            name: required(options.name, '--name'),
-            description: required(options.description, '--description'),
-            body: required(options.body, '--body'),
-            ...(options.objective === undefined ? {} : { objective: options.objective }),
-            ...(options.moment === undefined ? {} : { moment: options.moment }),
-            ...(always.length === 0 ? {} : { always }),
-            ...(never.length === 0 ? {} : { never }),
-            ...(options.example === undefined ? {} : { example: options.example })
-        };
-    }
-    if (always.length + never.length === 0) {
-        throw usageError(
-            'Diga ao menos uma coisa para fazer sempre (--always) ou para nunca fazer (--never), ou escreva a skill com --name, --description e --body.'
-        );
-    }
     return {
-        objective: required(options.objective, '--objective'),
-        moment: required(options.moment, '--moment'),
-        always,
-        never,
-        example: required(options.example, '--example')
+        ...(options.name === undefined ? {} : { name: options.name }),
+        ...(options.description === undefined ? {} : { description: options.description }),
+        ...(options.body === undefined ? {} : { body: options.body }),
+        ...(options.objective === undefined ? {} : { objective: options.objective }),
+        ...(options.moment === undefined ? {} : { moment: options.moment }),
+        ...(always.length + never.length === 0 ? {} : { always, never }),
+        ...(options.example === undefined ? {} : { example: options.example })
     };
 }
 

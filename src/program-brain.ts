@@ -48,13 +48,15 @@ function addReadCommands(brain: Command, context: CliContext): void {
 function addWriteCommands(brain: Command, context: CliContext): void {
     brain
         .command('create')
-        .description('Cria uma skill pela ideia; o Cérebro escreve o SKILL.md e a skill nasce em teste. Só admin, com calibration:write')
+        .description(
+            'Cria uma skill por texto livre (--body) ou pela ideia; o Cérebro escreve o que faltar e a skill nasce em teste. Só admin, com calibration:write'
+        )
         .argument(LEVEL, LEVEL_HELP)
         .option('--area <id>', 'a área da skill (nível area)')
         .option('--team <id>', 'o time da skill (nível team)')
-        .option('--name <nome>', 'o nome da skill (texto livre: vai com --description e --body)')
-        .option('--description <texto>', 'quando usar a skill, em uma linha (texto livre)')
-        .option('--body <texto>', 'o texto da skill (texto livre); com ele, objetivo, momento e exemplo são opcionais')
+        .option('--name <nome>', 'o nome da skill (opcional; o Cérebro escolhe se ficar de fora)')
+        .option('--description <texto>', 'quando usar a skill, em uma linha (opcional; o Cérebro escreve se ficar de fora)')
+        .option('--body <texto>', 'o texto da skill, livre; com ele, objetivo, momento e exemplo são opcionais')
         .option('--objective <texto>', 'o objetivo, em uma linha')
         .option('--moment <momento>', 'a situação em que a skill atua, da lista de nexo brain moments')
         .option('--always <texto>', 'o que fazer sempre (repita para mais de um)', collect, [])
@@ -122,7 +124,7 @@ function addChangeCommands(brain: Command, context: CliContext): void {
         .option('--update-never <troca>', 'troca um item de "nunca": "atual => novo" (repita)', collect, [])
         .option('--remove-always <texto>', 'tira um item de "sempre" (repita)', collect, [])
         .option('--remove-never <texto>', 'tira um item de "nunca" (repita)', collect, [])
-        .option('--confirm-shrink', 'confirma a edição; tirar item pede --confirm-shrink')
+        .option('--confirm-shrink', 'confirma a edição que tira item')
         .action(async (level: string, skillId: string, _options: BrainOptions, command: Command) => {
             await brainEdit(context, level, skillId, command.optsWithGlobals());
         });
@@ -141,7 +143,7 @@ export function addBrainCommands(program: Command, context: CliContext): void {
     const brain: Command = program
         .command('brain')
         .alias('cerebro')
-        .description('O Cérebro: as skills da empresa, das áreas e dos times, criadas pela ideia e editadas por item (nunca pelo texto)');
+        .description('O Cérebro: as skills da empresa, das áreas e dos times, criadas por texto livre ou pela ideia e editadas por item');
     addReadCommands(brain, context);
     addWriteCommands(brain, context);
     addImportCommand(brain, context);

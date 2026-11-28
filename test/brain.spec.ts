@@ -102,12 +102,10 @@ describe('nexo brain', () => {
         expect(h.out()).toContain('nasce em teste');
     });
 
-    it('creates a company skill with no place field and refuses an idea with no item', async () => {
+    it('creates a company skill with no place field and the same body as before for the old fields', async () => {
         const h: Harness = harness({ 'POST /v1/brain/company-skills': { status: 201, body: SKILL } });
         const base: string[] = ['brain', 'create', 'company', '--objective', 'x', '--moment', 'follow_up_draft', '--example', 'y'];
 
-        expect(await run(h.context, base)).not.toBe(0);
-        expect(h.calls).toEqual([]);
         expect(await run(h.context, [...base, '--never', 'inventar'])).toBe(0);
         expect(h.calls[0]?.body).toMatchObject({ never: ['inventar'], always: [] });
         expect(h.calls[0]?.body).not.toHaveProperty('areaId');
@@ -149,7 +147,7 @@ describe('nexo brain', () => {
                 body: {
                     type: 'brain.skill_shrink_needs_confirmation',
                     title: 'Conflito',
-                    detail: 'A edição encolhe a skill em 40%',
+                    detail: 'A edição tira item da skill',
                     status: 409
                 }
             }
@@ -158,7 +156,7 @@ describe('nexo brain', () => {
         const code: number = await run(h.context, ['brain', 'edit', 'company', ID, '--remove-never', 'x']);
 
         expect(code).not.toBe(0);
-        expect(h.err()).toContain('encolhe a skill em 40%');
+        expect(h.err()).toContain('tira item da skill');
         expect(h.err()).toContain('--confirm-shrink');
         expect(h.err()).not.toContain('30%');
     });
@@ -194,18 +192,18 @@ describe('nexo brain', () => {
         });
     });
 
-    it('refuses free text with a field missing', async () => {
-        const h: Harness = harness({});
+    it('sends only the body when only --body is given', async () => {
+        const h: Harness = harness({ 'POST /v1/brain/company-skills': { status: 201, body: SKILL } });
 
-        expect(await run(h.context, ['brain', 'create', 'company', '--name', 'x', '--body', 'y'])).not.toBe(0);
-        expect(h.calls).toEqual([]);
+        expect(await run(h.context, ['brain', 'create', 'company', '--body', 'Quando usar: follow-up.'])).toBe(0);
+        expect(h.calls[0]?.body).toEqual({ body: 'Quando usar: follow-up.' });
     });
 
     it('describes the shrink confirmation with no percentage', async () => {
         const h: Harness = harness({});
 
         await run(h.context, ['brain', 'edit', '--help']);
-        expect(h.out()).toContain('tirar item pede --confirm-shrink');
+        expect(h.out()).toContain('confirma a edição que tira item');
         expect(h.out()).not.toContain('30%');
     });
 

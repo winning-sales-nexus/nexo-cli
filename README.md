@@ -269,7 +269,7 @@ nexo artifacts get <artefato> --version-number 2     # uma versão, com o link p
 
 `deals analysis` cria a análise na primeira vez e uma versão nova a cada pedido; o `aiState` diz como a IA terminou (`written`, ou `fallback_*` quando a página saiu só com os números do Nexo; nesse caso, e se já havia uma versão com a leitura da IA, nada é gravado e a CLI avisa). O link `view` abre a página no navegador e vale 5 minutos. Dá 404 para o negócio que você não vê, 403 se o seu Editar de Negócios não alcança o dono e 409 se já há uma análise sendo gerada. `artifacts` só lê. A pessoa só vê o que a regra de Documentos deixa. O token precisa de `dashboards:write` para gerar e de `context:read` para listar e ler. Também atendem por `nexo negocios analise` e `nexo artefatos`. (`--version-number` e não `--version`, que é a versão da CLI.)
 
-## Cérebro: skills por ideia e por item
+## Cérebro: skills por texto livre, por ideia e por item
 
 ```sh
 nexo brain areas                              # as áreas da empresa (o id vai em --area)
@@ -279,7 +279,7 @@ nexo brain moments                            # os momentos que aceitam skill no
 nexo brain list area --scope <área>           # as skills de um nível (area, team, company ou person; a pessoal é só sua)
 nexo brain create area --area <área> --objective "Follow-up curto" --moment follow_up_draft \
   --always "citar o último passo" --always "propor uma data" --never "prometer desconto" --example "Oi, Ana..."
-nexo brain create company --objective ... --moment ... --never ... --example ...    # empresa: sem --area/--team
+nexo brain create company --body "Quando usar: ..."    # texto livre; empresa: sem --area/--team
 nexo brain create team --team <time> ...
 nexo brain edit area <skill> --add-always "propor uma data" --update-never "prometer desconto => prometer prazo" --remove-always "..."
 nexo brain edit company <skill> --remove-never "..." --confirm-shrink
@@ -293,7 +293,7 @@ nexo brain choose <comparação> a              # a escolha às cegas; só entã
 
 No import, um trecho barrado (segredo ou instrução à IA) sai em uma linha, com o arquivo e o trecho; rodar de novo relê o que ficou de fora por contradizer, sem duplicar o que já entrou.
 
-Ninguém envia o texto da skill: a CLI só manda a **ideia** (objetivo, momento da lista, o que fazer sempre, o que nunca fazer, um exemplo) e o Cérebro escreve o `SKILL.md`. Não há opção para nome, descrição nem corpo. A skill nasce em teste e só liga depois de provar que ajuda. `edit` muda um item por vez (`--add-*`, `--update-*` com `"atual => novo"`, `--remove-*`, em `always` ou `never`) e nenhuma outra linha muda; a edição que tira item ou encolhe a skill em mais de 30% volta 409 e só passa com `--confirm-shrink`, depois do sim da pessoa. Os erros da API (hierarquia, texto recusado, nome repetido, falta de permissão) aparecem com a explicação. Só admin, com o escopo `calibration:write` para escrever. Atende também por `nexo cerebro`. A API pública cobre empresa (criar e editar), área e time; a skill pessoal e a biblioteca de modelos da Winning ainda não têm rota no `/v1`.
+`create` aceita o texto livre (`--body`, com `--name` e `--description` opcionais; o Cérebro escreve o que faltar) ou a **ideia** (objetivo, momento da lista, o que fazer sempre, o que nunca fazer, um exemplo). Cada campo vai se você passar; a API diz se falta algo. A skill nasce em teste e só liga depois de provar que ajuda. `edit` muda um item por vez (`--add-*`, `--update-*` com `"atual => novo"`, `--remove-*`, em `always` ou `never`) e nenhuma outra linha muda; a edição que tira item volta 409 e só passa com `--confirm-shrink`, depois do sim da pessoa. Os erros da API (hierarquia, texto recusado, nome repetido, falta de permissão) aparecem com a explicação. Só admin, com o escopo `calibration:write` para escrever. Atende também por `nexo cerebro`. A API pública cobre empresa (criar e editar), área e time; a skill pessoal e a biblioteca de modelos da Winning ainda não têm rota no `/v1`.
 
 ## Modelos de mensagem e o e-mail com a marca
 
