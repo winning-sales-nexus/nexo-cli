@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { RETRY_HINT, renderCallbackPage } from './callback-page.js';
+import { renderCallbackPage } from './callback-page.js';
 import { CliError } from '../errors.js';
 import { EXIT_CODES } from '../exit-codes.types.js';
 
@@ -31,7 +31,7 @@ function answerNotFound(response: ServerResponse): void {
 }
 
 function answerFailure(response: ServerResponse, error: CliError): void {
-    answer(response, 400, renderCallbackPage({ state: 'error', title: 'Não deu certo', text: error.message, hint: RETRY_HINT }));
+    answer(response, 400, renderCallbackPage({ state: 'error', title: 'Não deu certo', text: error.message, retry: true }));
 }
 
 function answerSuccess(response: ServerResponse): void {
