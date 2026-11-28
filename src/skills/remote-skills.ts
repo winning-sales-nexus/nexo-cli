@@ -49,12 +49,15 @@ interface WireEntry extends Omit<RemoteSkillEntry, 'kind' | 'title'> {
 
 /** An API from before the units of context sends neither `kind` nor `title`: it is a skill, titled by its name. */
 function isEntry(value: unknown): value is WireEntry {
+    return isShape(value) && isLevel(value.level);
+}
+
+function isShape(value: unknown): value is Readonly<Record<string, unknown>> & { readonly name: string } {
     return (
         isRecord(value) &&
         typeof value.name === 'string' &&
         (value.kind === undefined || typeof value.kind === 'string') &&
         (value.title === undefined || typeof value.title === 'string') &&
-        isLevel(value.level) &&
         typeof value.status === 'string' &&
         typeof value.description === 'string' &&
         typeof value.version === 'string'
@@ -66,17 +69,20 @@ function entryOf(wire: WireEntry): RemoteSkillEntry {
 }
 
 function isSkill(value: unknown): value is WireEntry & { readonly body: string } {
-    return isEntry(value) && typeof (value as unknown as Readonly<Record<string, unknown>>).body === 'string';
+    return isShape(value) && typeof (value as unknown as Readonly<Record<string, unknown>>).body === 'string';
 }
 
-/** The skills and the units of context the token reaches, as `GET /v1/skills` lists them: the same reach of the copilot. */
+/**
+ * The skills and the units of context the token reaches, as `GET /v1/skills?includeContext=true` lists them: the same reach of the copilot.
+ * An API from before the parameter ignores it and sends only skills; an entry of a level this CLI does not know is dropped, not the list.
+ */
 export async function remoteIndex(client: NexoClient): Promise<readonly RemoteSkillEntry[]> {
-    const response: ApiResponse = await client.request({ method: 'GET', path: '/v1/skills' });
+    const response: ApiResponse = await client.request({ method: 'GET', path: '/v1/skills', query: { includeContext: 'true' } });
     const skills: unknown = isRecord(response.body) ? response.body.skills : null;
-    if (!Array.isArray(skills) || !skills.every(isEntry)) {
+    if (!Array.isArray(skills) || !(skills as readonly unknown[]).every(isShape)) {
         throw new Error('Resposta inesperada de /v1/skills.');
     }
-    return skills.map(entryOf);
+    return (skills as readonly unknown[]).filter(isEntry).map(entryOf);
 }
 
 export async function remoteSkill(client: NexoClient, name: string): Promise<RemoteSkill> {

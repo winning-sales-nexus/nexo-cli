@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { CredentialsStore } from '../src/config/credentials-store.js';
 import type { CliContext } from '../src/context.js';
 import type { FetchFunction } from '../src/http/nexo-client.js';
-import { pollPause } from '../src/commands/brain-import.js';
+import { normalizedName, pollPause } from '../src/commands/brain-import.js';
 import { run } from '../src/run.js';
 
 const API: string = 'https://mcp-nexo.winningsales.com.br';
@@ -255,6 +255,24 @@ describe('nexo brain import', () => {
         expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
 
         expect(h.calls.filter((call: Call) => call.method === 'PUT')).toHaveLength(3);
+    });
+
+    it('stops with a clear error, sending nothing, when a name does not match the file of that position', async () => {
+        const opened: Record<string, unknown> = round('uploading', []);
+        opened.files = [...(opened.files as Record<string, unknown>[])].reverse();
+        const h: Harness = harness({ ...routesFor(round('completed', [])), 'POST /v1/knowledge/imports': { status: 201, body: opened } });
+
+        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).not.toBe(0);
+
+        expect(h.err()).toContain('A rodada voltou com SKILL.md na posição 1');
+        expect(h.calls.filter((call: Call) => call.method === 'PUT')).toHaveLength(0);
+    });
+
+    it('normalizes a name the way the API does: empty, . and .. segments out, backslash as slash', () => {
+        expect(normalizedName('\\lead.md')).toBe('lead.md');
+        expect(normalizedName('a\\\\b.md')).toBe('a/b.md');
+        expect(normalizedName('a\\..\\b.md')).toBe('a/b.md');
+        expect(normalizedName(' ./a//./b.md ')).toBe('a/b.md');
     });
 
     it('does not follow a symbolic link and says it was ignored', async () => {

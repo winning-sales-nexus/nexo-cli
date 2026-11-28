@@ -314,6 +314,17 @@ async function upload(context: CliContext, url: string, local: LocalImportFile):
     }
 }
 
+/** The name the API gives back may differ in writing only (spaces around, `\\` for `/`, empty, `.` and `..` segments dropped like the API does, accents composed or not). */
+export function normalizedName(name: string): string {
+    const parts: readonly string[] = name
+        .trim()
+        .normalize('NFC')
+        .replaceAll('\\', '/')
+        .split('/')
+        .filter((part: string) => part !== '' && part !== '.' && part !== '..');
+    return parts.length === 0 ? name.trim().normalize('NFC') : parts.join('/');
+}
+
 async function sendFiles(context: CliContext, round: Round, files: readonly LocalImportFile[]): Promise<void> {
     if (round.files.length !== files.length) {
         throw new CliError(
@@ -324,6 +335,13 @@ async function sendFiles(context: CliContext, round: Round, files: readonly Loca
     }
     for (const [index, target] of round.files.entries()) {
         const local: LocalImportFile | undefined = files[index];
+        if (local !== undefined && normalizedName(target.fileName) !== normalizedName(local.fileName)) {
+            throw new CliError(
+                `A rodada voltou com ${target.fileName} na posição ${String(index + 1)}, e nessa posição mandei ${local.fileName}.`,
+                EXIT_CODES.failure,
+                'Nada foi enviado a partir daí. Rode o comando de novo.'
+            );
+        }
         if (target.upload === null || local === undefined) {
             continue;
         }
