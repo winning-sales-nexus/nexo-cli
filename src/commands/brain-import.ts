@@ -430,15 +430,30 @@ function printSummary(context: CliContext, round: Round): void {
     }
 }
 
+/** The API names a piece by file only for a context stretch; a skill or a unit comes with its own name, so the file goes in front when the name does not start with it. */
+function whereIn(item: SummaryItem): string {
+    const name: string = item.name.trim();
+    if (name === '') {
+        return item.fileName;
+    }
+    return name.startsWith(item.fileName) ? name : `${item.fileName} - ${name}`;
+}
+
+function refusedLabel(reason: string | null): string {
+    if (reason === 'read_in_part') {
+        return 'lido só em parte';
+    }
+    return reason === null ? 'não passou numa conferência' : `não passou numa conferência (${reason})`;
+}
+
 function itemLine(item: SummaryItem): string {
     const cited: string = item.cited === null ? '' : `, ${item.cited.title} (${item.cited.level})`;
     if (item.verdict === 'blocked') {
         const why: string = item.reason === null ? 'ficou de fora' : (BLOCKED_REASONS[item.reason] ?? item.reason);
-        return `  ficou de fora: ${item.name} (${why})${cited}`;
+        return `  ficou de fora: ${whereIn(item)} (${why})`;
     }
     if (item.verdict === 'refused') {
-        const which: string = item.reason === null ? 'não passou numa conferência' : `não passou na conferência ${item.reason}`;
-        return `  ${which}: ${item.fileName} - ${item.name}${cited}`;
+        return `  ${refusedLabel(item.reason)}: ${whereIn(item)}${cited}`;
     }
     const label: string = VERDICT_LABELS[item.verdict] ?? item.verdict;
     const reason: string = item.reason === null ? '' : `, motivo: ${item.reason}`;

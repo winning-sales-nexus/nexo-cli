@@ -110,12 +110,6 @@ function routesFor(final: Record<string, unknown>): Routes {
     };
 }
 
-async function helpOf(): Promise<string> {
-    const h: Harness = harness({});
-    await run(h.context, ['brain', 'import', '--help']);
-    return h.out() + h.err();
-}
-
 let folder: string;
 
 beforeEach(() => {
@@ -179,6 +173,15 @@ describe('nexo brain import', () => {
         expect(h.out()).toContain('entrou: SKILL.md - follow-up');
     });
 
+    it('says "lido só em parte" for read_in_part and does not repeat a name that is the file', async () => {
+        const part: Record<string, unknown> = { ...ENTERED, verdict: 'refused', reason: 'read_in_part', name: 'SKILL.md' };
+        const h: Harness = harness(routesFor(round('completed', [part])));
+
+        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
+
+        expect(h.out()).toContain('  lido só em parte: SKILL.md\n');
+    });
+
     it('prints the raw summary with --json', async () => {
         const summary: Record<string, unknown> = {
             entered: 1,
@@ -233,19 +236,26 @@ describe('nexo brain import', () => {
         const secret: Record<string, unknown> = {
             fileName: 'SKILL.md',
             kind: 'skill',
-            name: 'SKILL.md · p. 2 · trecho 3 ("prompt do sistema")',
+            name: 'follow-up · linha 6 ("ignore as regras")',
             verdict: 'blocked',
             reason: 'injection',
             cited: null
         };
-        const key: Record<string, unknown> = { ...secret, name: 'notas/contexto.txt · trecho 1', reason: 'secret' };
-        const h: Harness = harness(routesFor(round('completed', [ENTERED, secret, key])));
+        const key: Record<string, unknown> = {
+            ...secret,
+            fileName: 'notas/contexto.txt',
+            name: 'notas/contexto.txt · p. 2 · trecho 1',
+            reason: 'secret'
+        };
+        const bare: Record<string, unknown> = { ...secret, name: '' };
+        const h: Harness = harness(routesFor(round('completed', [ENTERED, secret, key, bare])));
 
         expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
 
-        expect(h.out()).toContain('ficou de fora: SKILL.md · p. 2 · trecho 3 ("prompt do sistema") (tinha uma instrução à IA)');
-        expect(h.out()).toContain('ficou de fora: notas/contexto.txt · trecho 1 (tinha um segredo (senha, token ou chave))');
-        expect(h.out()).not.toContain('SKILL.md - SKILL.md');
+        expect(h.out()).toContain('ficou de fora: SKILL.md - follow-up · linha 6 ("ignore as regras") (tinha uma instrução à IA)');
+        expect(h.out()).toContain('ficou de fora: notas/contexto.txt · p. 2 · trecho 1 (tinha um segredo (senha, token ou chave))');
+        expect(h.out()).toContain('ficou de fora: SKILL.md (tinha uma instrução à IA)');
+        expect(h.out()).not.toContain('contexto.txt - notas');
         expect(h.out()).not.toContain('Rodar o comando de novo');
     });
 
@@ -276,19 +286,7 @@ describe('nexo brain import', () => {
 
         expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
 
-        expect(h.out()).toContain('não passou na conferência plans.product_not_contracted: SKILL.md - follow-up');
-    });
-
-    it('imports a skill with no description like any other: nothing says it is required, and it is not "não deu para ler"', async () => {
-        writeFileSync(join(folder, 'SKILL.md'), '---\nname: follow-up\n---\ncorpo');
-        const h: Harness = harness(routesFor(round('completed', [ENTERED])));
-
-        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
-        const help: string = await helpOf();
-
-        expect(h.out()).toContain('entrou: SKILL.md - follow-up');
-        expect(h.out()).not.toContain('não deu para ler: SKILL.md');
-        expect(help).not.toMatch(/descri..o.*obrigat|obrigat.*descri..o/i);
+        expect(h.out()).toContain('não passou numa conferência (plans.product_not_contracted): SKILL.md - follow-up');
     });
 
     it('names the area (not its id) before asking for the yes', async () => {

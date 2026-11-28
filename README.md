@@ -275,7 +275,6 @@ nexo artifacts get <artefato> --version-number 2     # uma versão, com o link p
 nexo brain areas                              # as áreas da empresa (o id vai em --area)
 nexo brain import <pasta> --scope company     # importa uma pasta de projeto do Claude (só admin); --scope area --area <área> para uma área
 nexo brain import <pasta> --scope company --yes --json   # sem perguntar, com o resumo cru (o que entrou, o que ficou de fora e por quê)
-nexo brain import <pasta> ...                     # um trecho barrado (segredo ou instrução à IA) aparece com arquivo, página e trecho, uma linha cada; rodar de novo relê o que ficou de fora por contradizer, sem duplicar o que já entrou; skill sem descrição entra, o Cérebro escreve
 nexo brain moments                            # os momentos que aceitam skill nova
 nexo brain list area --scope <área>           # as skills de um nível (area, team, company ou person; a pessoal é só sua)
 nexo brain create area --area <área> --objective "Follow-up curto" --moment follow_up_draft \
@@ -292,7 +291,9 @@ nexo brain blind-test <skill-pessoal>         # dois textos A e B, sem dizer qua
 nexo brain choose <comparação> a              # a escolha às cegas; só então mostra qual tinha a skill
 ```
 
-Ninguém envia o texto da skill: a CLI só manda a **ideia** (objetivo, momento da lista, o que fazer sempre, o que nunca fazer, um exemplo) e o Cérebro escreve o `SKILL.md`. Não há opção para nome, descrição nem corpo. A skill nasce em teste e só liga depois do teste "não piora" e da escolha às cegas. `edit` muda um item por vez (`--add-*`, `--update-*` com `"atual => novo"`, `--remove-*`, em `always` ou `never`) e nenhuma outra linha muda; a edição que tira item ou encolhe a skill em mais de 30% volta 409 e só passa com `--confirm-shrink`, depois do sim da pessoa. Os erros da API (hierarquia, texto recusado, nome repetido, falta de permissão) aparecem com a explicação. Só admin, com o escopo `calibration:write` para escrever. Atende também por `nexo cerebro`. A API pública cobre empresa (criar e editar), área e time; a skill pessoal e a biblioteca de modelos da Winning ainda não têm rota no `/v1`.
+No import, um trecho barrado (segredo ou instrução à IA) sai em uma linha, com o arquivo e o trecho; rodar de novo relê o que ficou de fora por contradizer, sem duplicar o que já entrou.
+
+Ninguém envia o texto da skill: a CLI só manda a **ideia** (objetivo, momento da lista, o que fazer sempre, o que nunca fazer, um exemplo) e o Cérebro escreve o `SKILL.md`. Não há opção para nome, descrição nem corpo. A skill nasce em teste e só liga depois de provar que ajuda. `edit` muda um item por vez (`--add-*`, `--update-*` com `"atual => novo"`, `--remove-*`, em `always` ou `never`) e nenhuma outra linha muda; a edição que tira item ou encolhe a skill em mais de 30% volta 409 e só passa com `--confirm-shrink`, depois do sim da pessoa. Os erros da API (hierarquia, texto recusado, nome repetido, falta de permissão) aparecem com a explicação. Só admin, com o escopo `calibration:write` para escrever. Atende também por `nexo cerebro`. A API pública cobre empresa (criar e editar), área e time; a skill pessoal e a biblioteca de modelos da Winning ainda não têm rota no `/v1`.
 
 ## Modelos de mensagem e o e-mail com a marca
 
