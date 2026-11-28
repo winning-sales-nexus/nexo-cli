@@ -69,6 +69,9 @@ const HINT_BY_STATUS: Readonly<Record<number, string>> = {
 const HINT_BY_TYPE: Readonly<Record<string, string | null>> = {
     'public_api.platform_company_required': 'Escolha uma empresa: `nexo companies` lista, `nexo use <empresa>` escolhe.',
     'public_api.platform_connection_only': 'Só a conexão de plataforma (login do admin da empresa do Nexo) escolhe empresa.',
+    'plans.module_requires_missing': 'Libere antes o módulo exigido, ou rode de novo com --with-required para liberar os dois juntos.',
+    'plans.module_has_dependents': 'Tire antes o módulo que depende deste, que vem na mensagem.',
+    'platform_admin.platform_company_capabilities_fixed': 'Escolha a empresa de um cliente: `nexo companies` lista.',
     'agents.writing_budget': null,
     'core.too_many_attempts': 'Espere alguns minutos: o limite é por pessoa e por empresa, somado ao do app.',
     'copilot.confirmation_stale': 'O modelo mudou depois da prévia: rode o comando de novo e confirme.',

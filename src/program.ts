@@ -25,6 +25,8 @@ import { login } from './commands/login.js';
 import type { LoginOptions } from './commands/login.js';
 import { logout } from './commands/logout.js';
 import { whoami } from './commands/whoami.js';
+import { listFeatures, setFeature } from './commands/features.js';
+import type { FeatureOnOptions } from './commands/features.js';
 import { companies, useCompany } from './commands/platform.js';
 import type { UseOptions } from './commands/platform.js';
 import type { CliContext, GlobalOptions } from './context.js';
@@ -82,6 +84,37 @@ function addPlatformCommands(program: Command, context: CliContext): void {
         .option('--none', 'sai da empresa escolhida')
         .action(async (target: string | undefined, _options: UseOptions, command: Command) => {
             await useCompany(context, target, command.optsWithGlobals());
+        });
+    addFeatureCommands(program, context);
+}
+
+function addFeatureCommands(program: Command, context: CliContext): void {
+    const features: Command = program
+        .command('features')
+        .description('Funções de uma empresa: ver, liberar e tirar, sem mexer no contrato nem na cobrança (só com login de plataforma)');
+    features
+        .command('list')
+        .description('Lista as funções da empresa, se ela tem cada uma e de onde veio')
+        .argument('<empresa>', 'id da empresa, ou parte do nome')
+        .action(async (target: string, _options: GlobalOptions, command: Command) => {
+            await listFeatures(context, target, command.optsWithGlobals());
+        });
+    features
+        .command('on')
+        .description('Libera uma função só para esta empresa; sobrevive a troca de plano')
+        .argument('<empresa>', 'id da empresa, ou parte do nome')
+        .argument('<função>', 'chave da função, como `nexo features list` mostra')
+        .option('--with-required', 'libera junto os módulos que esta função exige')
+        .action(async (target: string, feature: string, _options: FeatureOnOptions, command: Command) => {
+            await setFeature(context, target, feature, true, command.optsWithGlobals());
+        });
+    features
+        .command('off')
+        .description('Tira uma função desta empresa; sobrevive a troca de plano')
+        .argument('<empresa>', 'id da empresa, ou parte do nome')
+        .argument('<função>', 'chave da função, como `nexo features list` mostra')
+        .action(async (target: string, feature: string, _options: GlobalOptions, command: Command) => {
+            await setFeature(context, target, feature, false, command.optsWithGlobals());
         });
 }
 

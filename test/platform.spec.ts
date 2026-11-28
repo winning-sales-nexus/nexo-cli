@@ -243,3 +243,73 @@ describe('the choose-a-company error', () => {
         expect(h.err()).toContain('`nexo use <empresa>`');
     });
 });
+
+function featuresOf(capabilities: readonly unknown[]): unknown {
+    return { company: { id: ACOPLAST, name: 'Acoplast', suspended: false }, capabilities };
+}
+
+const FORECAST_OFF: unknown = { capability: 'forecast', displayName: 'Previsão', allowed: false, source: 'none' };
+const FORECAST_ON: unknown = { capability: 'forecast', displayName: 'Previsão', allowed: true, source: 'granted' };
+
+function featuresApi(after: unknown, problem?: Response): (call: Call) => Response {
+    return (call: Call): Response => {
+        if (call.path.startsWith('/v1/platform/companies?') || call.path === '/v1/platform/companies') {
+            return platformApi(call);
+        }
+        if (call.method === 'GET') {
+            return json(200, featuresOf([FORECAST_OFF]));
+        }
+        return problem ?? json(200, featuresOf([after]));
+    };
+}
+
+describe('nexo features', () => {
+    it('lists the features of a company found by name, with where each came from', async () => {
+        const h: Harness = harness(featuresApi(FORECAST_ON));
+
+        expect(await run(h.context, ['features', 'list', 'acopl'])).toBe(0);
+
+        expect(h.calls.at(-1)).toEqual({ method: 'GET', path: `/v1/platform/companies/${ACOPLAST}/capabilities`, body: null });
+        expect(h.out()).toContain(`Acoplast (${ACOPLAST})`);
+        expect(h.out()).toContain('[ ] forecast  Previsão  (fora do plano)');
+    });
+
+    it('frees a feature, and asks the required modules along with --with-required', async () => {
+        const h: Harness = harness(featuresApi(FORECAST_ON));
+
+        expect(await run(h.context, ['features', 'on', ACOPLAST, 'forecast'])).toBe(0);
+
+        expect(h.calls.at(-1)).toMatchObject({ method: 'PUT', path: `/v1/platform/companies/${ACOPLAST}/capabilities/forecast` });
+        expect(JSON.parse(h.calls.at(-1)?.body ?? '{}')).toEqual({ allowed: true });
+        expect(h.out()).toContain('Liberada em Acoplast: [x] forecast  Previsão  (liberada à mão)');
+
+        const together: Harness = harness(featuresApi(FORECAST_ON));
+        expect(await run(together.context, ['features', 'on', ACOPLAST, 'forecast', '--with-required'])).toBe(0);
+        expect(JSON.parse(together.calls.at(-1)?.body ?? '{}')).toEqual({ allowed: true, withRequired: true });
+    });
+
+    it('takes a feature away', async () => {
+        const h: Harness = harness(featuresApi({ ...(FORECAST_OFF as object), source: 'revoked' }));
+
+        expect(await run(h.context, ['features', 'off', ACOPLAST, 'forecast'])).toBe(0);
+
+        expect(JSON.parse(h.calls.at(-1)?.body ?? '{}')).toEqual({ allowed: false });
+        expect(h.out()).toContain('Tirada em Acoplast: [ ] forecast  Previsão  (tirada à mão)');
+    });
+
+    it('says how to go on when a required module is missing', async () => {
+        const refused: Response = json(409, {
+            type: 'plans.module_requires_missing',
+            title: 'ModuleRequirementsMissingError',
+            status: 409,
+            detail: 'Para ligar Painéis no Nexo, ligue antes Registros. Se preferir, ligue os módulos juntos.',
+            meta: { product: 'crm_dashboards' }
+        });
+        const h: Harness = harness(featuresApi(FORECAST_ON, refused));
+
+        expect(await run(h.context, ['features', 'on', ACOPLAST, 'crm_dashboards'])).not.toBe(0);
+
+        expect(h.err()).toContain('ligue antes Registros');
+        expect(h.err()).toContain('--with-required');
+    });
+});

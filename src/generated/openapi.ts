@@ -288,6 +288,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/deals/{dealId}/facts/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia da correção de um fato do contexto
+         * @description Primeiro passo: o fato como está, como fica e o confirmation.token. Não muda nada. Corrige um fato que o Nexo leu nas conversas (um combinado, uma objeção, um concorrente ou um item de uma call), pelo subjectKey que a linha do contexto traz: descartar, "não foi dito", corrigir o texto ou a data de um combinado, ou reabrir. É a mesma palavra que a pessoa dá na tela do negócio, para quem alcança e edita o negócio: o estado é recompilado na hora, a palavra fica no histórico e nada sobe para o CRM. Um fato sem subjectKey não se corrige aqui: registre uma nota de contexto. Exige o escopo deals:write, que nenhum token recebe por padrão.
+         */
+        post: operations["DealFactCorrectionPublicController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/deals/{dealId}/facts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Corrigir o fato da prévia
+         * @description Segundo passo: aplica a correção exatamente como a prévia mostrou, com o confirmation.token dela; o token de um fato que mudou depois da prévia é recusado. Corrige um fato que o Nexo leu nas conversas (um combinado, uma objeção, um concorrente ou um item de uma call), pelo subjectKey que a linha do contexto traz: descartar, "não foi dito", corrigir o texto ou a data de um combinado, ou reabrir. É a mesma palavra que a pessoa dá na tela do negócio, para quem alcança e edita o negócio: o estado é recompilado na hora, a palavra fica no histórico e nada sobe para o CRM. Um fato sem subjectKey não se corrige aqui: registre uma nota de contexto. Exige o escopo deals:write.
+         */
+        post: operations["DealFactCorrectionPublicController_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/conversations": {
         parameters: {
             query?: never;
@@ -1152,6 +1192,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/company/context/changes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia de uma mudança no contexto da empresa
+         * @description Primeiro passo para mudar o contexto da empresa (empresa, ICP, persona, proposta de valor, posicionamento, oferta e prova): o que sai, o que entra e o confirmation.token. Não grava nada. Exige o escopo context:write, que nenhum token recebe por padrão, e é só de administradores. Os campos e as listas de cada bloco vêm de GET /v1/company/context; uma mudança é um campo (campo_mudar, com o texto inteiro novo), um item de lista que entra (item_somar) ou sai (item_tirar), ou o rascunho do bloco confirmado como está (bloco_confirmar). Um bloco que a empresa já confirmou só muda com confirmaBlocoConfirmado: true, e a prévia avisa disso. Exemplo, trocar o diagnóstico de 30 para 60 minutos: {"bloco":"oferta","acao":"campo_mudar","campo":"offerings.0.whatItIs","valor":"Diagnóstico de 60 minutos ..."}; listar os cursos: um item_somar em offerings por curso, com o objeto da oferta em valor.
+         */
+        post: operations["CompanyContextChangesPublicController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/company/context/changes/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gravar a mudança do contexto da prévia
+         * @description Segundo passo, depois do sim da pessoa: grava exatamente o pedido da prévia, com o confirmation.token dela. Sem o token nada grava. Grava uma versão nova do bloco e guarda a anterior; o campo escrito por aqui conta como escrito por um admin. O token vale uma vez e só para o mesmo pedido: um bloco que mudou depois da prévia é recusado. Cada gravação fica na atividade da empresa. Exige o escopo context:write, que nenhum token recebe por padrão, e é só de administradores. Os campos e as listas de cada bloco vêm de GET /v1/company/context; uma mudança é um campo (campo_mudar, com o texto inteiro novo), um item de lista que entra (item_somar) ou sai (item_tirar), ou o rascunho do bloco confirmado como está (bloco_confirmar). Um bloco que a empresa já confirmou só muda com confirmaBlocoConfirmado: true, e a prévia avisa disso. Exemplo, trocar o diagnóstico de 30 para 60 minutos: {"bloco":"oferta","acao":"campo_mudar","campo":"offerings.0.whatItIs","valor":"Diagnóstico de 60 minutos ..."}; listar os cursos: um item_somar em offerings por curso, com o objeto da oferta em valor.
+         */
+        post: operations["CompanyContextChangesPublicController_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/calibration": {
         parameters: {
             query?: never;
@@ -1391,9 +1471,29 @@ export interface paths {
         head?: never;
         /**
          * Editar um item
-         * @description Gera uma revisão nova; o item passa a ser origem "editado" e nunca mais é sobrescrito pela compilação. Reconfere os desvios de alinhamento abertos que citam o item. Só administradores, como a Base de conhecimento nas Regras do Nexo; o perfil é relido a cada chamada, e para mudar o token precisa do escopo calibration:write.
+         * @description Troca o texto, os campos da regra, o tema (themeId) ou o tipo (type). Mudar só o tema não gera revisão; o resto gera uma, e o item passa a ser origem "editado" e nunca mais é sobrescrito pela compilação. Reconfere os desvios de alinhamento abertos que citam o item. Só administradores, como a Base de conhecimento nas Regras do Nexo; o perfil é relido a cada chamada, e para mudar o token precisa do escopo calibration:write.
          */
         patch: operations["KnowledgeItemsPublicController_edit"];
+        trace?: never;
+    };
+    "/v1/knowledge/items/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mover itens de tema
+         * @description Passa vários itens (até 100) para um tema, como o editar da tela faz com um. Mudar de tema não gera revisão. Se um id não existe, nenhum item muda. Só administradores, como a Base de conhecimento nas Regras do Nexo; o perfil é relido a cada chamada, e para mudar o token precisa do escopo calibration:write.
+         */
+        post: operations["KnowledgeItemsPublicController_move"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/knowledge/items/{itemId}/disable": {
@@ -1602,6 +1702,54 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/themes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Temas da base de conhecimento
+         * @description Os temas que organizam a base, na ordem em que foram criados, com as contagens de arquivos, fontes web e itens. O id serve ao themeId de um item (criar, editar, mover). Só administradores, como a Base de conhecimento nas Regras do Nexo; o perfil é relido a cada chamada, e para mudar o token precisa do escopo calibration:write.
+         */
+        get: operations["KnowledgeThemesPublicController_list"];
+        put?: never;
+        /**
+         * Criar um tema
+         * @description Cria um tema com nome único na empresa (sem diferenciar maiúsculas e minúsculas), como na tela. Só administradores, como a Base de conhecimento nas Regras do Nexo; o perfil é relido a cada chamada, e para mudar o token precisa do escopo calibration:write.
+         */
+        post: operations["KnowledgeThemesPublicController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/themes/{themeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Excluir um tema vazio
+         * @description Só exclui o tema sem arquivos, fontes web nem itens; senão recusa com 409 (mova o conteúdo antes). Só administradores, como a Base de conhecimento nas Regras do Nexo; o perfil é relido a cada chamada, e para mudar o token precisa do escopo calibration:write.
+         */
+        delete: operations["KnowledgeThemesPublicController_remove"];
+        options?: never;
+        head?: never;
+        /**
+         * Renomear um tema
+         * @description Troca o nome; os arquivos e itens do tema continuam nele. Só administradores, como a Base de conhecimento nas Regras do Nexo; o perfil é relido a cada chamada, e para mudar o token precisa do escopo calibration:write.
+         */
+        patch: operations["KnowledgeThemesPublicController_rename"];
         trace?: never;
     };
     "/v1/meetings/{meetingId}/summary": {
@@ -2311,7 +2459,7 @@ export interface paths {
         put?: never;
         /**
          * Cadastrar um produto
-         * @description Cria um produto com origem no Nexo, em real. Todo o time lê o catálogo; cadastrar, editar e remover é de administradores e líderes de vendas, com o escopo calibration:write. A importação automática fica no app, onde a pessoa marca os produtos numa prévia; uma planilha se importa pelas ferramentas catalog_import_*.
+         * @description Cria um produto com origem no Nexo, em real. Só o nome é obrigatório: sem unitPriceInCents, ou com null, o produto fica sem preço no catálogo. Em vez do preço único, pode levar uma tabela de faixas (priceTiers); preço único e faixas juntos são recusados. Todo o time lê o catálogo; cadastrar, editar e remover é de administradores e líderes de vendas, com o escopo calibration:write. A importação automática fica no app, onde a pessoa marca os produtos numa prévia; uma planilha se importa pelas ferramentas catalog_import_*.
          */
         post: operations["ProductCatalogPublicController_create"];
         delete?: never;
@@ -2329,7 +2477,7 @@ export interface paths {
         };
         /**
          * Um produto do catálogo
-         * @description Todo o time lê o catálogo; cadastrar, editar e remover é de administradores e líderes de vendas, com o escopo calibration:write. A importação automática fica no app, onde a pessoa marca os produtos numa prévia; uma planilha se importa pelas ferramentas catalog_import_*.
+         * @description Com quantity, devolve também priceForQuantity: o preço dessa quantidade, achado pelo Nexo na tabela de faixas (ou o preço único vezes a quantidade). Acima da última faixa com teto, ou sem preço, priceForQuantity é null e priceForQuantityReason diz por quê. Todo o time lê o catálogo; cadastrar, editar e remover é de administradores e líderes de vendas, com o escopo calibration:write. A importação automática fica no app, onde a pessoa marca os produtos numa prévia; uma planilha se importa pelas ferramentas catalog_import_*.
          */
         get: operations["ProductCatalogPublicController_get"];
         put?: never;
@@ -2343,7 +2491,7 @@ export interface paths {
         head?: never;
         /**
          * Editar um produto
-         * @description Muda só os campos enviados. Num produto importado, mudar nome, código, descrição curta, preço ou recorrência o marca como "editado no Nexo". Todo o time lê o catálogo; cadastrar, editar e remover é de administradores e líderes de vendas, com o escopo calibration:write. A importação automática fica no app, onde a pessoa marca os produtos numa prévia; uma planilha se importa pelas ferramentas catalog_import_*.
+         * @description Muda só os campos enviados. priceTiers ausente mantém a tabela de faixas, null a tira e um objeto a substitui inteira; para trocar de preço único para faixas (ou o contrário) mande o novo e null no antigo no mesmo pedido, senão a resposta é 422. Num produto importado, mudar nome, código, descrição curta, preço, faixas ou recorrência o marca como "editado no Nexo". Todo o time lê o catálogo; cadastrar, editar e remover é de administradores e líderes de vendas, com o escopo calibration:write. A importação automática fica no app, onde a pessoa marca os produtos numa prévia; uma planilha se importa pelas ferramentas catalog_import_*.
          */
         patch: operations["ProductCatalogPublicController_change"];
         trace?: never;
@@ -3189,7 +3337,7 @@ export interface paths {
         };
         /**
          * Fechar a call: o que falta
-         * @description Os passos que faltam resolver desta call. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
+         * @description Os passos que faltam resolver desta call. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. Aprovar campos ou o resumo pede também poder editar o negócio da call; quem só vê responde 403. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
          */
         get: operations["MeetingClosuresPublicController_read"];
         put?: never;
@@ -3211,7 +3359,7 @@ export interface paths {
         put?: never;
         /**
          * Prévia das tarefas da call
-         * @description Não grava nada. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
+         * @description Não grava nada. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. Aprovar campos ou o resumo pede também poder editar o negócio da call; quem só vê responde 403. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
          */
         post: operations["MeetingClosuresPublicController_previewTasks"];
         delete?: never;
@@ -3231,7 +3379,7 @@ export interface paths {
         put?: never;
         /**
          * Decidir as tarefas da call
-         * @description Com o confirmation.token da prévia. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
+         * @description Com o confirmation.token da prévia. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. Aprovar campos ou o resumo pede também poder editar o negócio da call; quem só vê responde 403. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
          */
         post: operations["MeetingClosuresPublicController_decideTasks"];
         delete?: never;
@@ -3251,7 +3399,7 @@ export interface paths {
         put?: never;
         /**
          * Prévia dos campos da call
-         * @description Não grava nada. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
+         * @description Não grava nada. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. Aprovar campos ou o resumo pede também poder editar o negócio da call; quem só vê responde 403. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
          */
         post: operations["MeetingClosuresPublicController_previewFields"];
         delete?: never;
@@ -3271,7 +3419,7 @@ export interface paths {
         put?: never;
         /**
          * Aprovar os campos da call
-         * @description Com o confirmation.token da prévia. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
+         * @description Com o confirmation.token da prévia. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. Aprovar campos ou o resumo pede também poder editar o negócio da call; quem só vê responde 403. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
          */
         post: operations["MeetingClosuresPublicController_approveFields"];
         delete?: never;
@@ -3291,7 +3439,7 @@ export interface paths {
         put?: never;
         /**
          * Prévia da aprovação do resumo da call
-         * @description Não grava nada. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
+         * @description Não grava nada. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. Aprovar campos ou o resumo pede também poder editar o negócio da call; quem só vê responde 403. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
          */
         post: operations["MeetingClosuresPublicController_previewSummary"];
         delete?: never;
@@ -3311,7 +3459,7 @@ export interface paths {
         put?: never;
         /**
          * Aprovar o resumo da call
-         * @description Com o confirmation.token da prévia. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
+         * @description Com o confirmation.token da prévia. A visibilidade é a da reunião: o vendedor só vê e decide nas próprias calls; outra responde 404. Aprovar campos ou o resumo pede também poder editar o negócio da call; quem só vê responde 403. As escritas exigem o escopo deals:write, que nenhum token recebe por padrão, e sempre passam por uma prévia com confirmação.
          */
         post: operations["MeetingClosuresPublicController_approveSummary"];
         delete?: never;
@@ -4412,6 +4560,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/attendance-agents/{role}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Configuração do agente de atendimento
+         * @description Devolve a configuração do papel (sdr ou cs), a mesma da aba Configurações do agente: interruptor, trava do Agente CS quando nenhum perfil tem Atendimento CS, casos, reunião, janela de envio e nome. Exige o escopo access:admin e o módulo Agentes de atendimento na empresa e no perfil; o perfil é relido a cada chamada: ler pede a permissão de ver os agentes de atendimento e mudar pede a de editar, as mesmas da aba Configurações do agente.
+         */
+        get: operations["AttendanceAgentsPublicController_view"];
+        /**
+         * Salvar a configuração da prévia
+         * @description Segundo passo: grava exatamente a configuração da prévia, com o confirmation.token dela, e deixa o token como autor na auditoria. Ligar o Agente CS exige Atendimento CS em ao menos um perfil; desligar fecha na hora as atribuições abertas do agente no chat. O token de um agente que mudou depois da prévia é recusado. Exige o escopo access:admin e o módulo Agentes de atendimento na empresa e no perfil; o perfil é relido a cada chamada: ler pede a permissão de ver os agentes de atendimento e mudar pede a de editar, as mesmas da aba Configurações do agente.
+         */
+        put: operations["AttendanceAgentsPublicController_save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/admin/attendance-agents/{role}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia de salvar a configuração do agente
+         * @description Primeiro passo para mudar o agente: a configuração de hoje, como fica, o que muda em português (por exemplo, "liga o Agente SDR; ele passa a atender fora do horário") e o confirmation.token. Passa pelas mesmas validações e travas da tela e não muda nada. O corpo é a configuração inteira, com o nome. Exige o escopo access:admin e o módulo Agentes de atendimento na empresa e no perfil; o perfil é relido a cada chamada: ler pede a permissão de ver os agentes de atendimento e mudar pede a de editar, as mesmas da aba Configurações do agente.
+         */
+        post: operations["AttendanceAgentsPublicController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/meeting-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * O meu horário para reuniões
+         * @description Devolve os dias e as faixas em que o agente pode marcar reunião na agenda de quem o token representa, no fuso da empresa. Sem horário próprio vale a janela de envio da empresa (source company). Exige o módulo Agentes de atendimento na empresa e no perfil de quem chama, como a aba Reunião do app; o perfil é relido a cada chamada.
+         */
+        get: operations["MeetingHoursPublicController_mine"];
+        /**
+         * Salvar o meu horário da prévia
+         * @description Segundo passo: grava exatamente o horário da prévia, com o confirmation.token dela. O token só garante que o horário não mudou desde a prévia; ele não prova quem a pediu e não é de uso único. O horário é o de quem o token representa: ninguém muda o horário de outra pessoa, nem pela tela nem por aqui. Qualquer perfil com o módulo muda o próprio, sem permissão de edição à parte. Exige o módulo Agentes de atendimento na empresa e no perfil de quem chama, como a aba Reunião do app; o perfil é relido a cada chamada.
+         */
+        put: operations["MeetingHoursPublicController_save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/users/{userId}/meeting-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * O horário para reuniões de um vendedor
+         * @description Leitura do horário de outra pessoa, como a tela faz: o escopo de Time do perfil decide de quem (Todos qualquer pessoa, Do time o time e os de baixo, Meus só a própria); fora do alcance responde 404. Não há escrita por aqui. Exige o módulo Agentes de atendimento na empresa e no perfil de quem chama, como a aba Reunião do app; o perfil é relido a cada chamada.
+         */
+        get: operations["MeetingHoursPublicController_ofUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/meeting-hours/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia de mudar o meu horário para reuniões
+         * @description Primeiro passo: o horário de hoje, como fica, o que muda em português e o confirmation.token. Passa pelas mesmas validações da tela e não muda nada. days com os dias e as faixas vira o horário próprio; days null volta ao horário da empresa. O horário é o de quem o token representa: ninguém muda o horário de outra pessoa, nem pela tela nem por aqui. Qualquer perfil com o módulo muda o próprio, sem permissão de edição à parte. Exige o módulo Agentes de atendimento na empresa e no perfil de quem chama, como a aba Reunião do app; o perfil é relido a cada chamada.
+         */
+        post: operations["MeetingHoursPublicController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/brain/areas": {
         parameters: {
             query?: never;
@@ -4576,6 +4832,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/brain/company-skills/{skillId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aprovar uma skill da empresa em tentativa
+         * @description Registra a aprovação do admin. A skill passa a valer para a empresa toda só quando o teste "não piora" deixou esta versão passar (agora, se já deixou); até lá segue em tentativa. Passando de 8 skills valendo no mesmo papel, responde 409. Só o admin; escrever pede o escopo calibration:write. O papel é relido a cada chamada.
+         */
+        post: operations["BrainPublicController_approveCompany"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/brain/company-skills/{skillId}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Corrigir uma skill da empresa em tentativa e aprová-la
+         * @description O admin reescreve a linha de quando usar e o procedimento da tentativa; o texto passa pela mesma barreira das propostas e, passando, a skill é aprovada no mesmo passo. Só o admin; escrever pede o escopo calibration:write. O papel é relido a cada chamada.
+         */
+        post: operations["BrainPublicController_correctCompany"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/brain/company-skills/{skillId}/retest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pedir de novo o teste de uma skill da empresa em tentativa
+         * @description Põe o teste "não piora" na fila, em segundo plano; o limite de duas tentativas por semana e o mínimo de casos continuam valendo, e ele pode parar de novo com o motivo em gateStop. Só o admin; escrever pede o escopo calibration:write. O papel é relido a cada chamada.
+         */
+        post: operations["BrainPublicController_retestCompany"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/brain/skills/turned-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * As skills desligadas
+         * @description As skills da empresa, de área e de time desligadas e não religadas, com o dia e quem desligou; é de onde vem o id para ligar de novo. Só o admin; escrever pede o escopo calibration:write. O papel é relido a cada chamada.
+         */
+        get: operations["BrainPublicController_listTurnedOff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/brain/skills/{skillId}/turn-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desligar uma skill da empresa, de área ou de time
+         * @description A skill sai do alcance de todos na hora e guarda o texto e as versões; o histórico diz quem desligou. Religar a traz de volta igual. Só o admin; escrever pede o escopo calibration:write. O papel é relido a cada chamada.
+         */
+        post: operations["BrainPublicController_turnOff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/brain/skills/{skillId}/turn-on": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ligar de novo uma skill desligada
+         * @description Só volta a skill que foi desligada (não a apagada), com o mesmo texto e as mesmas versões, se o nome ainda estiver livre no lugar dela. Só o admin; escrever pede o escopo calibration:write. O papel é relido a cada chamada.
+         */
+        post: operations["BrainPublicController_turnOn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/brain/skills/moments": {
         parameters: {
             query?: never;
@@ -4585,7 +4961,7 @@ export interface paths {
         };
         /**
          * Os momentos que a entrevista de skill aceita
-         * @description Os momentos para os quais uma skill pode ser escrita, só os que têm o teste "não piora" funcionando. Vale para qualquer pessoa.
+         * @description Os momentos para os quais uma skill pode ser escrita, só os que têm o teste "não piora" funcionando. Vale para qualquer pessoa. O momento attendance_agent_turn (o turno do Agente de atendimento) só vale para skill da empresa.
          */
         get: operations["BrainPublicController_moments"];
         put?: never;
@@ -5206,10 +5582,18 @@ export interface paths {
         get: operations["ConnectorsPublicController_get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Apagar o conector
+         * @description Passo 2 de 2: aplica, uma vez, exatamente o que a prévia mostrou, com seu confirmationToken. Apagar é uma exclusão lógica sem desapagar: daqui em diante toda leitura do conector responde 404.
+         */
+        delete: operations["ConnectorChangesPublicController_remove"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Renomear um conector
+         * @description Troca o nome e/ou a descrição, sem prévia: o que roda não muda. Um nome vazio é recusado; uma descrição vazia a apaga. Os nomes não são únicos, como na criação.
+         */
+        patch: operations["ConnectorsPublicController_update"];
         trace?: never;
     };
     "/v1/connect/connectors/{connectorId}/versions": {
@@ -5493,7 +5877,7 @@ export interface paths {
         };
         /**
          * Webhook do conector
-         * @description Onde o outro sistema chama e como assina: sha256= e o HMAC-SHA256 de "<timestamp>.<body>" com o segredo. Diz se há um segredo gravado, nunca o valor.
+         * @description O endereço que o outro sistema chama, com POST, e como o manifesto declara que a chamada é do outro sistema (auth, da versão publicada, que confere as chamadas agora, e authInEdit, da versão em edição: o tipo, o cabeçalho e os nomes dos segredos, nunca um valor). O token no endereço é a credencial do webhook: quem tem o endereço pode chamá-lo, então trate o endereço como um segredo e nunca o cole em lugar público. Lê-lo pede só o escopo de leitura, então toda chave que lê conectores carrega a credencial; trocar o token (a prévia e o apply deste mesmo caminho) é uma escrita.
          */
         get: operations["ConnectorAccessPublicController_webhook"];
         put?: never;
@@ -5504,7 +5888,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/connect/connectors/{connectorId}/webhook/secret": {
+    "/v1/connect/connectors/{connectorId}/webhook/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Últimas entregas do webhook
+         * @description Cada chamada que o outro sistema fez ao webhook, das mais novas: quando chegou, o tipo de conteúdo, o tamanho e o desfecho. ran e waiting são lidos da execução que a entrega abriu (waiting: ela espera a vez na empresa); refused e discarded trazem o motivo e não abrem execução. O corpo e os cabeçalhos de credencial nunca voltam: a execução guarda a chamada para o código dela.
+         */
+        get: operations["ConnectorAccessPublicController_webhookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/connectors/{connectorId}/webhook/token/preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -5512,12 +5916,32 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        put?: never;
         /**
-         * Gravar o segredo do webhook
-         * @description O segredo com que o outro sistema assina as chamadas, gerado do seu lado (openssl rand -hex 32) e dado aos dois. Só escrita: guardado cifrado, nunca devolvido por nenhuma rota, nunca visto pelo código, pela IA ou pelos logs. Gravar outro anula o anterior na hora.
+         * Prévia de trocar o token do webhook
+         * @description O endereço do webhook é a credencial dele: trocar o token faz o endereço anterior parar de valer na hora, e o outro sistema precisa chamar o novo. Passo 1 de 2: diz o que muda, em português, e devolve confirmation.token. Não muda nada. Mostre as mudanças à pessoa e, só depois de um sim, mande o token para o apply, em até 10 minutos.
          */
-        put: operations["ConnectorAccessPublicController_webhookSecret"];
-        post?: never;
+        post: operations["ConnectorAccessPublicController_webhookTokenPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/connectors/{connectorId}/webhook/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trocar o token do webhook
+         * @description Passo 2 de 2: aplica, uma vez, o que a prévia mostrou, com seu confirmationToken. O endereço anterior para de valer na hora e a resposta traz o novo, que é a credencial do webhook. A mudança fica no registro de auditoria.
+         */
+        post: operations["ConnectorAccessPublicController_webhookTokenRenew"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5644,6 +6068,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connect/connectors/{connectorId}/delete/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia de apagar o conector
+         * @description Só se apaga um conector pausado ou em rascunho, e não há volta: ele some das listas e não roda mais, o webhook responde 404, o e-mail para de receber, a autorização do OAuth e os segredos deixam de valer. As execuções, as versões e a auditoria ficam guardadas. Passo 1 de 2: diz o que muda, em português, e devolve confirmation.token. Não muda nada. Mostre as mudanças à pessoa e, só depois de um sim, mande o token para o apply, em até 10 minutos.
+         */
+        post: operations["ConnectorChangesPublicController_deletePreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/connect/connectors/{connectorId}/hosts/approve/preview": {
         parameters: {
             query?: never;
@@ -5655,7 +6099,7 @@ export interface paths {
         put?: never;
         /**
          * Prévia de aprovar hosts novos
-         * @description Um ensaio chama só hosts a que uma pessoa disse sim: este é esse sim, para hosts que a versão em edição declara. Um host aprovado recebe as chamadas com os segredos, então confira se cada um pertence ao sistema que o conector integra. Só com uma chave da API que uma pessoa criou no Nexo com o escopo connectors:hosts, nunca pelo MCP; sem ela a rota responde 403 (public_api.insufficient_scope ou connect.hosts_approval_not_allowed) e a pessoa aprova na tela do conector, no link que GET /v1/connect/connectors/{connectorId} devolve. Passo 1 de 2: diz o que muda, em português, e devolve confirmation.token. Não muda nada. Mostre as mudanças à pessoa e, só depois de um sim, mande o token para o apply, em até 10 minutos.
+         * @description Um ensaio chama só hosts a que uma pessoa disse sim: este é esse sim, para hosts que a versão em edição declara. Um host aprovado recebe as chamadas com os segredos, então confira se cada um pertence ao sistema que o conector integra. Com uma chave da API que uma pessoa criou no Nexo com o escopo connectors:hosts; nenhum token OAuth (MCP ou CLI) tem esse escopo, então a rota responde 403 (public_api.insufficient_scope ou connect.hosts_approval_not_allowed) e a pessoa aprova na tela do conector, no link que GET /v1/connect/connectors/{connectorId} devolve: pelo MCP, connector_hosts_approve pede e confere o resultado; pela CLI, nexo connect hosts approve abre a tela e espera. Passo 1 de 2: diz o que muda, em português, e devolve confirmation.token. Não muda nada. Mostre as mudanças à pessoa e, só depois de um sim, mande o token para o apply, em até 10 minutos.
          */
         post: operations["ConnectorChangesPublicController_hostsPreview"];
         delete?: never;
@@ -5675,9 +6119,49 @@ export interface paths {
         put?: never;
         /**
          * Aprovar hosts novos
-         * @description Passo 2 de 2: aplica, uma vez, exatamente o que a prévia mostrou, com seu confirmationToken. Mande os mesmos hosts que a prévia tinha. Só com uma chave da API que uma pessoa criou no Nexo com o escopo connectors:hosts, nunca pelo MCP; sem ela a rota responde 403 (public_api.insufficient_scope ou connect.hosts_approval_not_allowed) e a pessoa aprova na tela do conector, no link que GET /v1/connect/connectors/{connectorId} devolve.
+         * @description Passo 2 de 2: aplica, uma vez, exatamente o que a prévia mostrou, com seu confirmationToken. Mande os mesmos hosts que a prévia tinha. Com uma chave da API que uma pessoa criou no Nexo com o escopo connectors:hosts; nenhum token OAuth (MCP ou CLI) tem esse escopo, então a rota responde 403 (public_api.insufficient_scope ou connect.hosts_approval_not_allowed) e a pessoa aprova na tela do conector, no link que GET /v1/connect/connectors/{connectorId} devolve: pelo MCP, connector_hosts_approve pede e confere o resultado; pela CLI, nexo connect hosts approve abre a tela e espera.
          */
         post: operations["ConnectorChangesPublicController_hostsApprove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/connectors/{connectorId}/operation-examples/discard/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia de descartar o exemplo de uma operação
+         * @description O exemplo que uma operação guardou do último ensaio limpo (os args e um trecho da saída, que as operações do ERP devolvem) é apagado, e só o próximo ensaio limpo dessa operação traz um de volta. Passo 1 de 2: diz o que muda, em português, e devolve confirmation.token. Não muda nada. Mostre as mudanças à pessoa e, só depois de um sim, mande o token para o apply, em até 10 minutos.
+         */
+        post: operations["ConnectorChangesPublicController_operationExampleDiscardPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/connectors/{connectorId}/operation-examples/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Descartar o exemplo de uma operação
+         * @description Passo 2 de 2: aplica, uma vez, exatamente o que a prévia mostrou, com o confirmationToken dela. Mande a mesma operação da prévia.
+         */
+        post: operations["ConnectorChangesPublicController_operationExampleDiscard"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5695,7 +6179,7 @@ export interface paths {
         put?: never;
         /**
          * Ensaiar a versão em edição
-         * @description Abre um ensaio (dry run) da versão em edição: lê o outro sistema de verdade e não grava nada, nem no Nexo nem lá (as escritas viram requisições planejadas). sample lê só as primeiras fatias; full lê a fonte inteira, em fatias, e pode levar muitos minutos. Consulte a execução até o status sair de running: um ensaio limpo é o que Publicar pede.
+         * @description Abre um ensaio (dry run) da versão em edição: lê o outro sistema de verdade e não grava nada, nem no Nexo nem lá (as escritas viram requisições planejadas). sample lê só as primeiras fatias; full lê a fonte inteira, em fatias, e pode levar muitos minutos. Consulte a execução até o status sair de running: um ensaio limpo é o que Publicar pede. Num conector com operations, diga a operação e os args de exemplo: o código os lê em ctx.input (contrato 2) e a saída é conferida com a da operação; um conector só com operations fica ensaiado quando cada operação teve um ensaio limpo.
          */
         post: operations["ConnectorRunsPublicController_rehearse"];
         delete?: never;
@@ -5728,6 +6212,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connect/connectors/{connectorId}/initial-load": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Disparar a carga inicial
+         * @description Abre a carga inicial da versão publicada, disparada à mão e nunca pelo cron: uma execução ao vivo (gatilho initial_load) cujo código lê ctx.input.initialLoad = true. Só essa execução pode ler uma resposta longa de um sistema atrás do agente local em páginas: o código manda o cabeçalho x-nexo-agent-page (path=<caminho da lista>&offset=<n>&limit=<n>, limit até 10000), e o agente faz a chamada uma vez (até 6 minutos e 120 MiB), guarda a resposta na máquina do cliente e entrega cada página (202 com carregando enquanto carrega: chame de novo), apagando-a depois da última. O cron e as operações seguem com os limites de sempre. Pede o conector ligado; uma execução por vez; a execução registra quem disparou.
+         */
+        post: operations["ConnectorRunsPublicController_initialLoad"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/connect/connectors/{connectorId}/runs/{runId}": {
         parameters: {
             query?: never;
@@ -5737,7 +6241,7 @@ export interface paths {
         };
         /**
          * Uma execução, passo a passo
-         * @description Cada chamada e cada log da execução, em ordem, dados pessoais mascarados; o erro com a linha do TypeScript da versão que rodou e o registro recusado; as requisições que um ensaio só planejou; até quando dá para desfazer. Os passos ficam 30 dias; os contadores, para sempre.
+         * @description Cada chamada e cada log da execução, em ordem, dados pessoais mascarados; o erro com a linha do TypeScript da versão que rodou e o registro recusado; as requisições que um ensaio só planejou; a saída de uma operação ou chamada (o que uma consulta leu, o que uma ação planejou gravar); plannedQuarantine, cada registro que um ensaio mandaria para a quarentena com o motivo (os 50 primeiros e o total); até quando dá para desfazer. Os passos ficam 30 dias; os contadores, para sempre.
          */
         get: operations["ConnectorRunsPublicController_detail"];
         put?: never;
@@ -5842,6 +6346,86 @@ export interface paths {
          * @description Passo 2 de 2: aplica, uma vez, exatamente o que a prévia mostrou, com seu confirmationToken. A escrita vai uma vez, exatamente como foi guardada; depois o conector escreve nesse host sem perguntar, até uma versão publicada chamar um host novo. O que vai para o outro sistema não tem desfazer. Um 502 connect.held_write_relay_failed não foi mandado: tente de novo; connect.held_write_send_uncertain pode ter chegado: confira lá, nunca é repetido.
          */
         post: operations["ConnectorRunsPublicController_externalWriteConfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/connectors/{connectorId}/write-hosts/confirm/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia de confirmar a escrita num host
+         * @description Uma ação das operações grava só num host confirmado para escrita, e um conector só de operações nunca guarda uma primeira escrita para confirmar: isto confirma a escrita num host que o conector declara, sem escrita guardada. Depois, as ações gravam lá depois do sim de quem pede, e as execuções dos gatilhos mandam suas escritas para lá sem guardá-las. Passo 1 de 2: o que muda e confirmation.token; não muda nada.
+         */
+        post: operations["ConnectorRunsPublicController_writeHostConfirmPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/connectors/{connectorId}/write-hosts/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirmar a escrita num host
+         * @description Passo 2 de 2: aplica, uma vez, exatamente o que a prévia mostrou, com seu confirmationToken. Mande o mesmo host que a prévia tinha.
+         */
+        post: operations["ConnectorRunsPublicController_writeHostConfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/connectors/{connectorId}/write-hosts/revoke/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévia de revogar a escrita num host
+         * @description Tira a confirmação de escrita num host: as ações voltam a recusá-lo, e a primeira escrita de uma execução de gatilho nele fica guardada para uma pessoa. Passo 1 de 2: o que muda e confirmation.token; não muda nada.
+         */
+        post: operations["ConnectorRunsPublicController_writeHostRevokePreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/connectors/{connectorId}/write-hosts/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revogar a escrita num host
+         * @description Passo 2 de 2: aplica, uma vez, exatamente o que a prévia mostrou, com seu confirmationToken. Mande o mesmo host que a prévia tinha.
+         */
+        post: operations["ConnectorRunsPublicController_writeHostRevoke"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6087,6 +6671,134 @@ export interface paths {
          */
         post: operations["ConnectAgentsPublicController_revoke"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/erp/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ERP operations the person may use
+         * @description The queries and actions the connectors of the company declare, only of connectors on and published, only the ones the profile of the person reaches (the admin sees all; an operation without profiles is the admin’s). Each comes with what it asks and what it returns.
+         */
+        get: operations["ErpOperationsPublicController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/erp/operations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One ERP operation, with its example
+         * @description The operation the id names, in the shape of the listing, with exemplo: the args its last clean rehearsal used and a cut of what it returned (the first items of each list, short texts), personal data masked and no secret; null when it has none. The listing leaves the examples out so it does not grow.
+         */
+        get: operations["ErpOperationsPublicController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/erp/operations/{id}/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run an ERP query
+         * @description Runs a query operation as the person who asked and returns its output, checked against the manifest.
+         */
+        post: operations["ErpOperationsPublicController_query"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/erp/operations/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview an ERP action
+         * @description Step 1 of 2. Runs the action as a dry run: what it reads comes from the other system, what it would write is only planned and listed. Returns confirmation.token when the action may write.
+         */
+        post: operations["ErpOperationsPublicController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/erp/operations/{id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply an ERP action
+         * @description Step 2 of 2. Runs for real, once, the action the preview showed, with the same args and its confirmation.token (10 minutes). It writes to the other system, so it asks the deals:write scope. The same token again answers what the first one did, with repetida true.
+         */
+        post: operations["ErpOperationsPublicController_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/connectors/{connectorId}/operations/{key}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Notas de uma operação
+         * @description As notas que a empresa escreveu numa operação da versão publicada e nos campos dela: a da operação primeiro, depois as dos campos, com quem escreveu cada uma e quando. Notas do que a versão não declara mais não aparecem.
+         */
+        get: operations["ConnectorOperationNotesPublicController_list"];
+        /**
+         * Gravar a nota de uma operação ou de um campo
+         * @description Grava a nota, ou troca a que está lá, para a empresa toda, sem versão nova do conector. Mostre à pessoa o texto de antes e o de depois, e grave só depois do sim. A nota continua valendo nas versões seguintes do conector.
+         */
+        put: operations["ConnectorOperationNotesPublicController_save"];
+        post?: never;
+        /**
+         * Apagar a nota de uma operação ou de um campo
+         * @description Tira a nota e devolve o que havia. A auditoria guarda a mudança.
+         */
+        delete: operations["ConnectorOperationNotesPublicController_remove"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6519,6 +7231,46 @@ export interface paths {
          * @description A conexão volta ao estado sem empresa: só responde quem sou eu e as rotas de escolher a empresa. A saída fica na auditoria da plataforma. Sem empresa escolhida, não muda nada. Só existe numa conexão de plataforma, a do admin da empresa do Nexo pela CLI ou pelos MCPs; para qualquer outro token, responde 404.
          */
         delete: operations["PlatformConnectionPublicController_leave"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/companies/{companyId}/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Funções de uma empresa
+         * @description Cada função do catálogo, se a empresa tem e de onde veio: do plano, liberada ou tirada à mão, ou aberta por um add-on pago. Lê a empresa pelo id, com ou sem empresa escolhida na conexão. Só existe numa conexão de plataforma, a do admin da empresa do Nexo pela CLI ou pelos MCPs; para qualquer outro token, responde 404.
+         */
+        get: operations["PlatformConnectionPublicController_capabilities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/companies/{companyId}/capabilities/{capability}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Liberar ou tirar uma função de uma empresa
+         * @description Libera ou tira uma função só desta empresa, como a tela da plataforma: o contrato e a cobrança ficam como estão, e o que muda aqui sobrevive a uma troca de plano. Um módulo precisa dos módulos que ele exige: liberar sem eles volta 409 com `meta.requires`, a não ser com `withRequired`, que libera todos juntos; tirar um módulo que outro módulo ligado exige volta 409 com `meta.dependents`. A mudança fica na auditoria da plataforma, com o operador da conexão. Só existe numa conexão de plataforma, a do admin da empresa do Nexo pela CLI ou pelos MCPs; para qualquer outro token, responde 404.
+         */
+        put: operations["PlatformConnectionPublicController_changeCapability"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -7962,7 +8714,7 @@ export interface operations {
                 pipelineScope?: "analyzed" | "all";
                 /** @description Só os negócios nesta etapa */
                 stageId?: string;
-                /** @description Só os negócios cuja etapa está nesta fase padronizada. O Nexo ainda conta em cinco fases: connection vale como prospecting, solution_demo e validation como discovery, closing como negotiation */
+                /** @description Só os negócios cuja etapa conta nesta fase padronizada, nos trechos da empresa. Enquanto a empresa não separa uma fase da vizinha, as duas contam juntas na primeira do bloco (connection em prospecting; solution_demo e validation em discovery; closing em negotiation); depois que separa, cada uma traz só os negócios dela */
                 phase?: "prospecting" | "connection" | "qualification" | "discovery" | "solution_demo" | "validation" | "proposal" | "negotiation" | "closing";
                 /** @description Só os negócios nesta faixa de temperatura (leitura); sem estado compilado não entra */
                 temperature?: "cold" | "warm" | "hot";
@@ -8004,7 +8756,7 @@ export interface operations {
                             stageId: string | null;
                             /** @description Nome da etapa atual registrada */
                             stageLabel: string | null;
-                            /** @description Fase padronizada da etapa; nula quando a etapa não foi mapeada */
+                            /** @description Fase padronizada em que a etapa conta, nos trechos da empresa; nula quando a etapa não foi mapeada */
                             phase: string | null;
                             /** @description Valor do negócio, em centavos */
                             amountInCents: number | null;
@@ -8952,6 +9704,11 @@ export interface operations {
                             city: string | null;
                             state: string | null;
                             country: string | null;
+                            /**
+                             * @description Quem ligou esta empresa ao negócio: `do sistema de vendas` (o CRM), `deduzida pelo Nexo` ou `deduzida pelo Nexo` (o Nexo deduziu, com o porquê em links.account) ou `ligada à mão no Nexo` (uma pessoa)
+                             * @enum {string}
+                             */
+                            linkedBy: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
                             /** @description Site of the company as a recorded fact, from the standard field or from any field that holds one */
                             site: {
                                 domain: string;
@@ -9181,6 +9938,55 @@ export interface operations {
                             /** @description Quantos negócios passaram pela etapa nos últimos 12 meses: a base da conta */
                             teamBase: number;
                         }[];
+                        /** @description As ligações do negócio com a empresa e os contatos, cada uma com a origem. Sem ligação deduzida, todas vêm do CRM */
+                        links: {
+                            /** @description A empresa do negócio, resolvida: a do CRM; sem ela, a que o Nexo deduziu. Nula sem empresa */
+                            account: {
+                                /** @description Id da conta ou do contato ligado ao negócio */
+                                id: string;
+                                /** @description Nome da conta ou do contato */
+                                name: string | null;
+                                /**
+                                 * @description Quem disse a ligação: `do sistema de vendas` (o CRM), `deduzida pelo Nexo` (o Nexo deduziu por regra), `deduzida pelo Nexo` (o Nexo deduziu e o modelo desempatou) ou `ligada à mão no Nexo` (uma pessoa ligou ou trocou)
+                                 * @enum {string}
+                                 */
+                                origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                                /** @description Código do motivo da ligação (por exemplo, `sales_system`, `manual` ou o da regra que deduziu) */
+                                reason: string;
+                                /** @description Confiança da ligação, de 0 a 1; 1 para o CRM e para a ligação feita à mão */
+                                confidence: number;
+                                /** @description O fato curto que explica o porquê (por exemplo, o domínio `acme.com.br`); nulo quando não há */
+                                basis: string | null;
+                                /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                                candidates: {
+                                    id: string;
+                                    name: string;
+                                }[];
+                            } | null;
+                            /** @description Os contatos do negócio: os do CRM mais os que o Nexo acrescentou (quem participou das conversas) */
+                            contacts: {
+                                /** @description Id da conta ou do contato ligado ao negócio */
+                                id: string;
+                                /** @description Nome da conta ou do contato */
+                                name: string | null;
+                                /**
+                                 * @description Quem disse a ligação: `do sistema de vendas` (o CRM), `deduzida pelo Nexo` (o Nexo deduziu por regra), `deduzida pelo Nexo` (o Nexo deduziu e o modelo desempatou) ou `ligada à mão no Nexo` (uma pessoa ligou ou trocou)
+                                 * @enum {string}
+                                 */
+                                origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                                /** @description Código do motivo da ligação (por exemplo, `sales_system`, `manual` ou o da regra que deduziu) */
+                                reason: string;
+                                /** @description Confiança da ligação, de 0 a 1; 1 para o CRM e para a ligação feita à mão */
+                                confidence: number;
+                                /** @description O fato curto que explica o porquê (por exemplo, o domínio `acme.com.br`); nulo quando não há */
+                                basis: string | null;
+                                /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                                candidates: {
+                                    id: string;
+                                    name: string;
+                                }[];
+                            }[];
+                        };
                         people: {
                             key: string;
                             name: string | null;
@@ -9523,6 +10329,8 @@ export interface operations {
                             statement: string;
                             amountInCents: number | null;
                             date: string | null;
+                            person?: string | null;
+                            replacesPerson?: string | null;
                             evidence: {
                                 /**
                                  * @description Canal da conversa: reunião gravada, sessão de WhatsApp, ou nota, ligação, e-mail e WhatsApp (whatsapp_note) anotados no negócio
@@ -10291,6 +11099,8 @@ export interface operations {
                                 statement: string;
                                 amountInCents: number | null;
                                 date: string | null;
+                                person?: string | null;
+                                replacesPerson?: string | null;
                                 evidence: {
                                     /**
                                      * @description Canal da conversa: reunião gravada, sessão de WhatsApp, ou nota, ligação, e-mail e WhatsApp (whatsapp_note) anotados no negócio
@@ -11767,6 +12577,33 @@ export interface operations {
                             /** @description The fact that decided the attribution, when there is one */
                             reason: string | null;
                         }[];
+                        /** @description What the Cérebro recalls for the reading of this deal, in the two layers the analysis receives; absent when it recalls nothing */
+                        memoria?: {
+                            /** @description What the Cérebro always brings to this reading: the standards, the vision and the preferences */
+                            sempre: {
+                                /** @description Id of the item in its own source (the Base, the skills, the notes of the case...) */
+                                id: string;
+                                /** @description What the item is: base, preferencia, nota_do_caso, visao_da_empresa, identidade_visual or skill */
+                                tipo: string;
+                                titulo: string;
+                                /** @description The text of the item, when it came whole */
+                                texto?: string;
+                                /** @description A skill still in test (Tentativa) */
+                                emTeste?: boolean;
+                            }[];
+                            /** @description What the Cérebro chose for this deal: the Base, the cases and the skills, whole or as an index line */
+                            escolhido: {
+                                /** @description Id of the item in its own source (the Base, the skills, the notes of the case...) */
+                                id: string;
+                                /** @description What the item is: base, preferencia, nota_do_caso, visao_da_empresa, identidade_visual or skill */
+                                tipo: string;
+                                titulo: string;
+                                /** @description The text of the item, when it came whole */
+                                texto?: string;
+                                /** @description A skill still in test (Tentativa) */
+                                emTeste?: boolean;
+                            }[];
+                        };
                     };
                 };
             };
@@ -12243,6 +13080,447 @@ export interface operations {
             };
         };
     };
+    DealFactCorrectionPublicController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do negócio no Nexo */
+                dealId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description O subjectKey do fato, como a linha do contexto o traz (um combinado, "objection:<código>", "competitor:<nome>" ou o item de uma call). Sem ele o fato não se corrige aqui: a resposta orienta registrar uma nota de contexto */
+                    subjectKey?: string;
+                    /**
+                     * @description discard: não era um fato (o combinado sai da lista); not_said: o cliente não disse isso (a objeção, o concorrente ou o item sai da leitura); correct: troca o texto ou a data de um combinado; reopen: desfaz a palavra da pessoa e volta a valer a leitura. Só no combinado: confirm (a leitura está certa), fulfilled (foi feito), closed (acabou sem ser feito). Só na objeção em aberto: handling (em tratamento) e not_applicable (não se aplica)
+                     * @enum {string}
+                     */
+                    action: "discard" | "not_said" | "correct" | "reopen" | "confirm" | "fulfilled" | "closed" | "handling" | "not_applicable";
+                    /** @description O texto certo do combinado, só em correct */
+                    what?: string;
+                    /** @description A data certa do combinado, AAAA-MM-DD, só em correct */
+                    dueDate?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O fato como está, como fica e a confirmação */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Id do negócio */
+                        dealId: string;
+                        /** @description O subjectKey do fato */
+                        subjectKey: string;
+                        /**
+                         * @description O que é o fato: combinado, objeção, concorrente ou item de uma call
+                         * @enum {string}
+                         */
+                        kind: "commitment" | "objection" | "competitor" | "call_item";
+                        /** @description O título do cartão */
+                        title: string;
+                        /** @description O fato como está e como fica, linha a linha */
+                        details: string[];
+                        /** @description O que a confirmação leva */
+                        confirmation: {
+                            /** @description Vai na confirmação; vale enquanto o fato não mudar */
+                            token: string;
+                        };
+                    };
+                };
+            };
+            /** @description Entrada inválida (detalhes do zod em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Negócio fora do alcance do perfil, ou fato que a leitura não tem mais */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Fato sem subjectKey, ou ação que não vale para ele */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    DealFactCorrectionPublicController_apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do negócio no Nexo */
+                dealId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description O subjectKey do fato, como a linha do contexto o traz (um combinado, "objection:<código>", "competitor:<nome>" ou o item de uma call). Sem ele o fato não se corrige aqui: a resposta orienta registrar uma nota de contexto */
+                    subjectKey?: string;
+                    /**
+                     * @description discard: não era um fato (o combinado sai da lista); not_said: o cliente não disse isso (a objeção, o concorrente ou o item sai da leitura); correct: troca o texto ou a data de um combinado; reopen: desfaz a palavra da pessoa e volta a valer a leitura. Só no combinado: confirm (a leitura está certa), fulfilled (foi feito), closed (acabou sem ser feito). Só na objeção em aberto: handling (em tratamento) e not_applicable (não se aplica)
+                     * @enum {string}
+                     */
+                    action: "discard" | "not_said" | "correct" | "reopen" | "confirm" | "fulfilled" | "closed" | "handling" | "not_applicable";
+                    /** @description O texto certo do combinado, só em correct */
+                    what?: string;
+                    /** @description A data certa do combinado, AAAA-MM-DD, só em correct */
+                    dueDate?: string;
+                    /** @description O confirmation.token da prévia deste mesmo pedido */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O fato corrigido */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Id do negócio */
+                        dealId: string;
+                        /** @description O subjectKey do fato */
+                        subjectKey: string;
+                        /**
+                         * @description O que é o fato
+                         * @enum {string}
+                         */
+                        kind: "commitment" | "objection" | "competitor" | "call_item";
+                        /**
+                         * @description A ação aplicada
+                         * @enum {string}
+                         */
+                        action: "discard" | "not_said" | "correct" | "reopen" | "confirm" | "fulfilled" | "closed" | "handling" | "not_applicable";
+                        /** @description Como o fato ficou; o estado do negócio já foi recompilado */
+                        now: string;
+                        /** @description Em "não foi dito", os valores que o fato já levou ao CRM e que continuam lá (nada se apaga no CRM); vazio nas outras ações */
+                        recordValues: {
+                            /** @description O campo do Nexo que o item preencheu (lossReason, competitor, riskReason) */
+                            concept: string;
+                            /** @description O valor que está no CRM */
+                            value: (string | number | boolean) | null;
+                            /** @description Por que a regra propôs o valor, nas palavras dela: diz de onde ele veio */
+                            reason: string | null;
+                            /** @description Quando o valor chegou ao CRM */
+                            writtenAt: string | null;
+                            /** @description true no motivo de risco: é texto livre da IA lido numa conversa do item, então pode citar o item, sem certeza de que veio dele */
+                            mayCite: boolean;
+                        }[];
+                    };
+                };
+            };
+            /** @description Entrada inválida */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Negócio fora do alcance do perfil, ou fato que a leitura não tem mais */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O fato mudou depois da prévia */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Fato sem subjectKey, ou ação que não vale para ele */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
     ConversationsPublicController_list: {
         parameters: {
             query?: {
@@ -12515,7 +13793,7 @@ export interface operations {
                                  * @enum {string}
                                  */
                                 code: "price" | "timing" | "authority" | "implementation" | "competitor" | "status_quo" | "trust_risk" | "scope_fit" | "contract_terms" | "other";
-                                /** @description The buyer's or rep's own words, summarized in Brazilian Portuguese without changing the meaning. */
+                                /** @description One short, direct sentence in Brazilian Portuguese, at most 70 characters: who, what and when, in the buyer's or rep's words and without changing the meaning. Never a long quote. */
                                 statement: string;
                                 /**
                                  * @description raised when it first appears here; revisited when someone brings back something from before.
@@ -12537,7 +13815,7 @@ export interface operations {
                             pains: {
                                 /** @enum {string} */
                                 code: "revenue_loss" | "lack_of_visibility" | "manual_work" | "tool_limitation" | "cost" | "quality_errors" | "growth_capacity" | "compliance_risk" | "people_dependency" | "other";
-                                /** @description The buyer's or rep's own words, summarized in Brazilian Portuguese without changing the meaning. */
+                                /** @description One short, direct sentence in Brazilian Portuguese, at most 70 characters: who, what and when, in the buyer's or rep's words and without changing the meaning. Never a long quote. */
                                 statement: string;
                                 /** @description Ids of the transcript excerpts (e1, e2...) that say this. Only ids that exist in the transcript; at least one. */
                                 excerptRefs: string[];
@@ -12547,7 +13825,7 @@ export interface operations {
                                 owner: "rep" | "buyer";
                                 /** @description Participant id (p1, p2...) from the participant list. */
                                 speakerRef: string;
-                                /** @description What was promised, e.g. "enviar simulação com três cenários". */
+                                /** @description What was promised, in one short sentence of at most 70 characters, e.g. "enviar simulação com três cenários". */
                                 what: string;
                                 /** @description The due date as said ("até sexta"), or null. */
                                 dueText: string | null;
@@ -12603,6 +13881,7 @@ export interface operations {
                             }[];
                             /** @description A concrete step both sides agreed on. An open-ended or conditional ending ("se fizer sentido a gente conversa") is not one. */
                             nextStep: {
+                                /** @description The step in one short sentence of at most 70 characters. */
                                 description: string;
                                 /** @enum {string} */
                                 owner: "rep" | "buyer" | "both" | "none";
@@ -12619,25 +13898,29 @@ export interface operations {
                                  * @enum {string}
                                  */
                                 kind: "approver" | "approval_step" | "decision_date" | "spending_limit" | "budget" | "decision_criteria" | "buyer_deadline";
-                                /** @description The buyer's or rep's own words, summarized in Brazilian Portuguese without changing the meaning. */
+                                /** @description One short, direct sentence in Brazilian Portuguese, at most 70 characters: who, what and when, in the buyer's or rep's words and without changing the meaning. Never a long quote. */
                                 statement: string;
                                 /** @description Only for spending_limit and budget, when an amount is said; in cents. */
                                 amountInCents: number | null;
                                 /** @description Only for decision_date and buyer_deadline, when a date is said. */
                                 date: string | null;
+                                /** @description Only for approver: the approving person, name only, as short as said ("Carlos", "Ana"); null when no one is named. */
+                                person?: string | null;
+                                /** @description Only for approver: the name of the person this one replaces as approver when the text says so ("o Carlos saiu, agora quem aprova é a Ana" gives person Ana, replacesPerson Carlos); null otherwise. */
+                                replacesPerson?: string | null;
                                 /** @description Ids of the transcript excerpts (e1, e2...) that say this. Only ids that exist in the transcript; at least one. */
                                 excerptRefs: string[];
                             }[];
                             buyingSignals: {
                                 /** @enum {string} */
                                 kind: "asked_for_proposal" | "asked_implementation_details" | "asked_for_reference" | "sizing_the_deal" | "brought_new_stakeholder" | "requested_next_step" | "asked_contract";
-                                /** @description The buyer's or rep's own words, summarized in Brazilian Portuguese without changing the meaning. */
+                                /** @description One short, direct sentence in Brazilian Portuguese, at most 70 characters: who, what and when, in the buyer's or rep's words and without changing the meaning. Never a long quote. */
                                 statement: string;
                                 /** @description Ids of the transcript excerpts (e1, e2...) that say this. Only ids that exist in the transcript; at least one. */
                                 excerptRefs: string[];
                             }[];
                             postponements: {
-                                /** @description Why it was pushed back. When the buyer gives a reason ("esse mês complicou"), also return it in objections (timing or the matching code). */
+                                /** @description Why it was pushed back, in one short sentence of at most 70 characters. When the buyer gives a reason ("esse mês complicou"), also return it in objections (timing or the matching code). */
                                 reason: string;
                                 newDate: string | null;
                                 /** @enum {string} */
@@ -12649,7 +13932,7 @@ export interface operations {
                                 name: string;
                                 /** @enum {string} */
                                 kind: "competitor" | "partner" | "reference" | "other";
-                                /** @description For competitor only: how it was compared ("30% mais barato"). */
+                                /** @description For competitor only: how it was compared, in a few words ("30% mais barato"). */
                                 comparison: string | null;
                                 /** @description Ids of the transcript excerpts (e1, e2...) that say this. Only ids that exist in the transcript; at least one. */
                                 excerptRefs: string[];
@@ -12669,7 +13952,7 @@ export interface operations {
                                  * @enum {string}
                                  */
                                 topic: "discount" | "minimum_price" | "deadline" | "payment_terms" | "integration" | "scope" | "implementation";
-                                /** @description What the rep offered or promised, e.g. "8% de desconto com contrato anual". */
+                                /** @description What the rep offered or promised, in one short sentence of at most 70 characters, e.g. "8% de desconto com contrato anual". */
                                 statement: string;
                                 /** @description Company-side participant who offered it. */
                                 speakerRef: string;
@@ -12701,7 +13984,7 @@ export interface operations {
                                  * @enum {string}
                                  */
                                 channel: "referral" | "partner" | "event" | "social_media" | "content" | "ads" | "outbound" | "other";
-                                /** @description The buyer's or rep's own words, summarized in Brazilian Portuguese without changing the meaning. */
+                                /** @description One short, direct sentence in Brazilian Portuguese, at most 70 characters: who, what and when, in the buyer's or rep's words and without changing the meaning. Never a long quote. */
                                 statement: string;
                                 /** @description Who referred them or which event, partner or profile, when said ("o João da Conecta", "a palestra do RD Summit"); null otherwise. */
                                 referrer: string | null;
@@ -12712,7 +13995,7 @@ export interface operations {
                             salesTeam?: {
                                 /** @description Number of people selling on the customer side, when a number is said ("somos 12 vendedores"); null when only described. */
                                 size: number | null;
-                                /** @description The buyer's or rep's own words, summarized in Brazilian Portuguese without changing the meaning. */
+                                /** @description One short, direct sentence in Brazilian Portuguese, at most 70 characters: who, what and when, in the buyer's or rep's words and without changing the meaning. Never a long quote. */
                                 statement: string;
                                 /** @description Ids of the transcript excerpts (e1, e2...) that say this. Only ids that exist in the transcript; at least one. */
                                 excerptRefs: string[];
@@ -24060,6 +25343,17 @@ export interface operations {
                                 warning: string;
                             } | null;
                         } | null;
+                        /** @description Alerta da conferência com o contexto; nunca bloqueia: o sim registra o valor mesmo assim. Nulo quando nada destoa */
+                        alert: {
+                            /** @description O que não combina com o contexto do registro */
+                            message: string;
+                            /** @description A linha do contexto com que conflita */
+                            line: string;
+                            /** @description A pergunta que fica para a pessoa */
+                            question: string;
+                            /** @description O que fazer se a pessoa responder com um fato novo */
+                            guide: string;
+                        } | null;
                         confirmation: {
                             /** @description Enviado de volta para registrar exatamente este valor; vale um registro, uma vez */
                             token: string;
@@ -27299,6 +28593,377 @@ export interface operations {
             };
         };
     };
+    CompanyContextChangesPublicController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description O bloco do contexto: empresa, icp, persona, proposta_de_valor, posicionamento, oferta ou prova
+                     * @enum {string}
+                     */
+                    bloco: "empresa" | "icp" | "persona" | "proposta_de_valor" | "posicionamento" | "oferta" | "prova";
+                    /**
+                     * @description campo_mudar troca o valor de um campo; item_somar acrescenta um item a uma lista; item_tirar tira um item de uma lista; bloco_confirmar confirma o rascunho do bloco como está
+                     * @enum {string}
+                     */
+                    acao: "campo_mudar" | "item_somar" | "item_tirar" | "bloco_confirmar";
+                    /** @description O caminho do campo no bloco, com pontos e posições a partir de 0, como o contexto da empresa o mostra: offerings.0.timelineMechanism (oferta), offerings (a lista de ofertas), personas.0.painPoints (persona), headline (proposta_de_valor). Obrigatório, menos em bloco_confirmar */
+                    campo?: string;
+                    /** @description O valor novo do campo, como a pessoa disse, com os números dela sem converter. Em item_somar, o item: um texto, ou o objeto inteiro de uma oferta ou persona */
+                    valor?: string | number | boolean | unknown[] | {
+                        [key: string]: unknown;
+                    };
+                    /** @description O item que sai, em item_tirar: a posição na lista (a primeira é 0) ou o texto exato dele */
+                    item?: number | string;
+                    /** @description true só depois de a pessoa dizer que quer mudar um bloco que a empresa já confirmou; sem isso a prévia de um bloco confirmado volta recusada */
+                    confirmaBlocoConfirmado?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description O cartão da mudança e a confirmação */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description O título do cartão */
+                        title: string;
+                        /** @description O que sai e o que entra, linha a linha; avisa quando o bloco já foi confirmado pela empresa */
+                        details: string[];
+                        /** @description O que a gravação leva */
+                        confirmation: {
+                            /** @description Vai na gravação; vale uma vez e só enquanto o bloco não mudar */
+                            token: string;
+                            /** @description Quando o token expira, em ISO 8601 */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Entrada fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O pedido foi recusado: campo que não existe, valor fora do formato do bloco, bloco confirmado sem a palavra, leitura do site em andamento */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    CompanyContextChangesPublicController_apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description O bloco do contexto: empresa, icp, persona, proposta_de_valor, posicionamento, oferta ou prova
+                     * @enum {string}
+                     */
+                    bloco: "empresa" | "icp" | "persona" | "proposta_de_valor" | "posicionamento" | "oferta" | "prova";
+                    /**
+                     * @description campo_mudar troca o valor de um campo; item_somar acrescenta um item a uma lista; item_tirar tira um item de uma lista; bloco_confirmar confirma o rascunho do bloco como está
+                     * @enum {string}
+                     */
+                    acao: "campo_mudar" | "item_somar" | "item_tirar" | "bloco_confirmar";
+                    /** @description O caminho do campo no bloco, com pontos e posições a partir de 0, como o contexto da empresa o mostra: offerings.0.timelineMechanism (oferta), offerings (a lista de ofertas), personas.0.painPoints (persona), headline (proposta_de_valor). Obrigatório, menos em bloco_confirmar */
+                    campo?: string;
+                    /** @description O valor novo do campo, como a pessoa disse, com os números dela sem converter. Em item_somar, o item: um texto, ou o objeto inteiro de uma oferta ou persona */
+                    valor?: string | number | boolean | unknown[] | {
+                        [key: string]: unknown;
+                    };
+                    /** @description O item que sai, em item_tirar: a posição na lista (a primeira é 0) ou o texto exato dele */
+                    item?: number | string;
+                    /** @description true só depois de a pessoa dizer que quer mudar um bloco que a empresa já confirmou; sem isso a prévia de um bloco confirmado volta recusada */
+                    confirmaBlocoConfirmado?: boolean;
+                    /** @description O confirmation.token da prévia deste mesmo pedido; vale uma vez */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description A mudança gravada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description O que o Nexo diz depois da gravação */
+                        message: string;
+                    };
+                };
+            };
+            /** @description Entrada fora do formato, ou sem o confirmationToken (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O bloco mudou depois da prévia (copilot.confirmation_stale) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O pedido foi recusado, ou o token é de outro pedido, ou expirou */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
     CalibrationPublicController_list: {
         parameters: {
             query?: never;
@@ -29680,7 +31345,7 @@ export interface operations {
                 /** @description Esta listagem não aceita ordenação */
                 orderBy?: string[];
                 /** @description Só os itens deste tipo */
-                type?: "rule" | "practice" | "product_fact" | "price" | "proof";
+                type?: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                 /** @description Só os itens pendentes (precisam de alguém) */
                 needsYou?: boolean;
             };
@@ -29710,9 +31375,24 @@ export interface operations {
                              * @description Tipo do item
                              * @enum {string}
                              */
-                            type: "rule" | "practice" | "product_fact" | "price" | "proof";
+                            type: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                             /** @description Texto curto do item */
                             text: string;
+                            /**
+                             * Format: uuid
+                             * @description Id do tema do item
+                             */
+                            themeId: string;
+                            /** @description Tema do item */
+                            theme: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id do tema
+                                 */
+                                id: string;
+                                /** @description Nome do tema */
+                                name: string;
+                            };
                             /**
                              * @description De onde veio o item
                              * @enum {string}
@@ -29939,7 +31619,7 @@ export interface operations {
                      * @description Tipo do item
                      * @enum {string}
                      */
-                    type: "rule" | "practice" | "product_fact" | "price" | "proof";
+                    type: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                     /** @description Texto curto do item */
                     text: string;
                     /** @description Campos estruturados, obrigatórios quando type é rule */
@@ -29958,6 +31638,11 @@ export interface operations {
                         /** @description Quem aprova uma exceção, ou null */
                         approver: string | null;
                     } | null;
+                    /**
+                     * Format: uuid
+                     * @description Id do tema em que o item entra; sem ele, o tema padrão da base
+                     */
+                    themeId?: string;
                 };
             };
         };
@@ -29980,9 +31665,24 @@ export interface operations {
                          * @description Tipo do item
                          * @enum {string}
                          */
-                        type: "rule" | "practice" | "product_fact" | "price" | "proof";
+                        type: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                         /** @description Texto curto do item */
                         text: string;
+                        /**
+                         * Format: uuid
+                         * @description Id do tema do item
+                         */
+                        themeId: string;
+                        /** @description Tema do item */
+                        theme: {
+                            /**
+                             * Format: uuid
+                             * @description Id do tema
+                             */
+                            id: string;
+                            /** @description Nome do tema */
+                            name: string;
+                        };
                         /**
                          * @description De onde veio o item
                          * @enum {string}
@@ -30325,6 +32025,16 @@ export interface operations {
                         /** @description Quem aprova uma exceção, ou null */
                         approver: string | null;
                     };
+                    /**
+                     * Format: uuid
+                     * @description Novo tema do item (GET /v1/knowledge/themes lista os temas)
+                     */
+                    themeId?: string;
+                    /**
+                     * @description Novo tipo do item; sair de rule apaga os campos da regra, e a revisão fica registrada como a de um texto
+                     * @enum {string}
+                     */
+                    type?: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                 };
             };
         };
@@ -30347,9 +32057,24 @@ export interface operations {
                          * @description Tipo do item
                          * @enum {string}
                          */
-                        type: "rule" | "practice" | "product_fact" | "price" | "proof";
+                        type: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                         /** @description Texto curto do item */
                         text: string;
+                        /**
+                         * Format: uuid
+                         * @description Id do tema do item
+                         */
+                        themeId: string;
+                        /** @description Tema do item */
+                        theme: {
+                            /**
+                             * Format: uuid
+                             * @description Id do tema
+                             */
+                            id: string;
+                            /** @description Nome do tema */
+                            name: string;
+                        };
                         /**
                          * @description De onde veio o item
                          * @enum {string}
@@ -30525,7 +32250,323 @@ export interface operations {
                     };
                 };
             };
-            /** @description Item inexistente */
+            /** @description Item ou tema inexistente */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Tipo incoerente com a regra (rule sem campos de regra, ou campos de regra com outro tipo), ou texto que lê como ordem à IA */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    KnowledgeItemsPublicController_move: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ids dos itens que mudam de tema (até 100) */
+                    itemIds: string[];
+                    /**
+                     * Format: uuid
+                     * @description Id do tema de destino
+                     */
+                    themeId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Itens movidos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id do tema de destino
+                         */
+                        themeId: string;
+                        /** @description Quantos itens ficaram no tema */
+                        moved: number;
+                        /** @description Os itens, como ficaram */
+                        items: {
+                            /**
+                             * Format: uuid
+                             * @description Id do item
+                             */
+                            id: string;
+                            /** @description Versão do item */
+                            version: number;
+                            /**
+                             * @description Tipo do item
+                             * @enum {string}
+                             */
+                            type: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
+                            /** @description Texto curto do item */
+                            text: string;
+                            /**
+                             * Format: uuid
+                             * @description Id do tema do item
+                             */
+                            themeId: string;
+                            /** @description Tema do item */
+                            theme: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id do tema
+                                 */
+                                id: string;
+                                /** @description Nome do tema */
+                                name: string;
+                            };
+                            /**
+                             * @description De onde veio o item
+                             * @enum {string}
+                             */
+                            origin: "material" | "manual" | "edited" | "team";
+                            /**
+                             * @description Situação do item
+                             * @enum {string}
+                             */
+                            status: "in_use" | "pending" | "disabled" | "superseded";
+                            /**
+                             * @description Por que está pendente, ou null
+                             * @enum {string|null}
+                             */
+                            pendingReason: "conflict" | "ambiguous" | "proof" | null;
+                            /** @description O outro lado do conflito, quando pendingReason é conflict */
+                            conflictWith: {
+                                /** Format: uuid */
+                                id: string;
+                                text: string;
+                                source: {
+                                    /**
+                                     * Format: uuid
+                                     * @description Id do material de origem
+                                     */
+                                    materialId: string;
+                                    /** @description Nome do material */
+                                    materialName: string;
+                                    /** @description Nome do arquivo */
+                                    fileName: string;
+                                    /** @description Índice da página de origem */
+                                    page: number | null;
+                                    /** @description Rótulo da página ("p. 3" ou "aba Preços") */
+                                    pageLabel: string | null;
+                                    /** @description Trecho literal que sustenta o item */
+                                    excerpt: string;
+                                } | null;
+                            } | null;
+                            /** @description Campos estruturados, só para type rule */
+                            rule: {
+                                /**
+                                 * @description Assunto da regra comercial
+                                 * @enum {string}
+                                 */
+                                subject: "discount" | "minimum_price" | "deadline" | "payment_terms" | "integration" | "scope" | "implementation";
+                                /** @description Condição que ativa a regra, ou null */
+                                condition: string | null;
+                                /** @description Valor do limite, ou null */
+                                limit: string | null;
+                                /** @description Exceção conhecida, ou null */
+                                exception: string | null;
+                                /** @description Quem aprova uma exceção, ou null */
+                                approver: string | null;
+                            } | null;
+                            /** @description Materiais e trechos que sustentam o item */
+                            sources: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id do material de origem
+                                 */
+                                materialId: string;
+                                /** @description Nome do material */
+                                materialName: string;
+                                /** @description Nome do arquivo */
+                                fileName: string;
+                                /** @description Índice da página de origem */
+                                page: number | null;
+                                /** @description Rótulo da página ("p. 3" ou "aba Preços") */
+                                pageLabel: string | null;
+                                /** @description Trecho literal que sustenta o item */
+                                excerpt: string;
+                            }[];
+                            /** @description Verdadeiro quando nenhuma fonte ativa sustenta mais o item */
+                            withoutMaterial: boolean;
+                            /** @description A resposta do time no chat que gerou o item, ou null */
+                            chatSource: {
+                                /**
+                                 * Format: uuid
+                                 * @description Quem do time respondeu
+                                 */
+                                answeredByUserId: string;
+                                /** @description Nome de quem respondeu */
+                                answeredByName: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description Quando a pessoa respondeu
+                                 */
+                                answeredAt: string;
+                                /** @description Nome do contato, só para quem alcança o chat */
+                                contactName: string | null;
+                                /** @description Verdadeiro quando quem vê alcança o chat */
+                                reachable: boolean;
+                            } | null;
+                            /**
+                             * Format: date-time
+                             * @description Quando o item mudou pela última vez
+                             */
+                            updatedAt: string;
+                            /** @description Reservado para o contador de uso (entrega futura) */
+                            usage: unknown;
+                        }[];
+                    };
+                };
+            };
+            /** @description Payload inválido (detalhes do zod em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Item ou tema inexistente */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -30605,9 +32646,24 @@ export interface operations {
                          * @description Tipo do item
                          * @enum {string}
                          */
-                        type: "rule" | "practice" | "product_fact" | "price" | "proof";
+                        type: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                         /** @description Texto curto do item */
                         text: string;
+                        /**
+                         * Format: uuid
+                         * @description Id do tema do item
+                         */
+                        themeId: string;
+                        /** @description Tema do item */
+                        theme: {
+                            /**
+                             * Format: uuid
+                             * @description Id do tema
+                             */
+                            id: string;
+                            /** @description Nome do tema */
+                            name: string;
+                        };
                         /**
                          * @description De onde veio o item
                          * @enum {string}
@@ -30839,9 +32895,24 @@ export interface operations {
                          * @description Tipo do item
                          * @enum {string}
                          */
-                        type: "rule" | "practice" | "product_fact" | "price" | "proof";
+                        type: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                         /** @description Texto curto do item */
                         text: string;
+                        /**
+                         * Format: uuid
+                         * @description Id do tema do item
+                         */
+                        themeId: string;
+                        /** @description Tema do item */
+                        theme: {
+                            /**
+                             * Format: uuid
+                             * @description Id do tema
+                             */
+                            id: string;
+                            /** @description Nome do tema */
+                            name: string;
+                        };
                         /**
                          * @description De onde veio o item
                          * @enum {string}
@@ -31085,9 +33156,24 @@ export interface operations {
                          * @description Tipo do item
                          * @enum {string}
                          */
-                        type: "rule" | "practice" | "product_fact" | "price" | "proof";
+                        type: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                         /** @description Texto curto do item */
                         text: string;
+                        /**
+                         * Format: uuid
+                         * @description Id do tema do item
+                         */
+                        themeId: string;
+                        /** @description Tema do item */
+                        theme: {
+                            /**
+                             * Format: uuid
+                             * @description Id do tema
+                             */
+                            id: string;
+                            /** @description Nome do tema */
+                            name: string;
+                        };
                         /**
                          * @description De onde veio o item
                          * @enum {string}
@@ -31369,9 +33455,24 @@ export interface operations {
                              * @description Tipo do item
                              * @enum {string}
                              */
-                            type: "rule" | "practice" | "product_fact" | "price" | "proof";
+                            type: "rule" | "practice" | "product_fact" | "price" | "proof" | "standard";
                             /** @description Texto curto do item */
                             text: string;
+                            /**
+                             * Format: uuid
+                             * @description Id do tema do item
+                             */
+                            themeId: string;
+                            /** @description Tema do item */
+                            theme: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id do tema
+                                 */
+                                id: string;
+                                /** @description Nome do tema */
+                                name: string;
+                            };
                             /**
                              * @description De onde veio o item
                              * @enum {string}
@@ -33071,6 +35172,628 @@ export interface operations {
             };
             /** @description Material inexistente ou já removido */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    KnowledgeThemesPublicController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lista de temas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Temas da base de conhecimento da empresa */
+                        data: {
+                            /**
+                             * Format: uuid
+                             * @description Id do tema
+                             */
+                            id: string;
+                            /** @description Nome do tema */
+                            name: string;
+                            /** @description Arquivos guardados neste tema */
+                            materialCount: number;
+                            /** @description Fontes web ativas neste tema */
+                            webSourceCount: number;
+                            /** @description Itens não excluídos neste tema (bate com GET /knowledge/items?themeId=...) */
+                            itemCount: number;
+                            /**
+                             * Format: date-time
+                             * @description Quando o tema foi criado
+                             */
+                            createdAt: string;
+                            /**
+                             * Format: date-time
+                             * @description Quando o tema mudou pela última vez
+                             */
+                            updatedAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    KnowledgeThemesPublicController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Nome do tema na base de conhecimento */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Tema criado */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id do tema
+                         */
+                        id: string;
+                        /** @description Nome do tema */
+                        name: string;
+                        /** @description Arquivos guardados neste tema */
+                        materialCount: number;
+                        /** @description Fontes web ativas neste tema */
+                        webSourceCount: number;
+                        /** @description Itens não excluídos neste tema (bate com GET /knowledge/items?themeId=...) */
+                        itemCount: number;
+                        /**
+                         * Format: date-time
+                         * @description Quando o tema foi criado
+                         */
+                        createdAt: string;
+                        /**
+                         * Format: date-time
+                         * @description Quando o tema mudou pela última vez
+                         */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Payload inválido (detalhes do zod em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Já existe um tema vivo com esse nome */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    KnowledgeThemesPublicController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do tema */
+                themeId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Tema inexistente ou já excluído */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O tema ainda tem arquivos ou itens */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    KnowledgeThemesPublicController_rename: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do tema */
+                themeId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Nome do tema na base de conhecimento */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Tema renomeado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id do tema
+                         */
+                        id: string;
+                        /** @description Nome do tema */
+                        name: string;
+                        /** @description Arquivos guardados neste tema */
+                        materialCount: number;
+                        /** @description Fontes web ativas neste tema */
+                        webSourceCount: number;
+                        /** @description Itens não excluídos neste tema (bate com GET /knowledge/items?themeId=...) */
+                        itemCount: number;
+                        /**
+                         * Format: date-time
+                         * @description Quando o tema foi criado
+                         */
+                        createdAt: string;
+                        /**
+                         * Format: date-time
+                         * @description Quando o tema mudou pela última vez
+                         */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description Payload inválido (detalhes do zod em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Tema inexistente */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Já existe outro tema vivo com esse nome */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -35424,7 +38147,7 @@ export interface operations {
                                 /** @description Cargo do contato */
                                 jobTitle: string | null;
                             } | null;
-                            /** @description A conta do contato; nula sem cadastro de contato ou sem conta */
+                            /** @description A conta do contato (a do CRM ou a que o Nexo deduziu, com a origem); nula sem cadastro de contato ou sem conta */
                             account: {
                                 /**
                                  * Format: uuid
@@ -35435,6 +38158,27 @@ export interface operations {
                                 name: string;
                                 /** @description Domínio do site da conta */
                                 domain: string | null;
+                                /**
+                                 * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                                 * @enum {string}
+                                 */
+                                origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                                /** @description O código do motivo da ligação */
+                                reason: string;
+                                /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                                confidence: number;
+                                /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                                basis: string | null;
+                                /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                                candidates: {
+                                    /**
+                                     * Format: uuid
+                                     * @description Id da opção
+                                     */
+                                    id: string;
+                                    /** @description Nome da opção */
+                                    name: string;
+                                }[];
                             } | null;
                             /** @description A última conversa vista com o contato; nula sem conversa */
                             lastConversation: {
@@ -35685,7 +38429,7 @@ export interface operations {
                              */
                             linkOrigin: "auto" | "conversation" | "manual" | "registered";
                         } | null;
-                        /** @description A conta do contato; nula sem cadastro de contato ou sem conta */
+                        /** @description A conta do contato (a do CRM ou a que o Nexo deduziu, com a origem); nula sem cadastro de contato ou sem conta */
                         account: {
                             /**
                              * Format: uuid
@@ -35696,6 +38440,27 @@ export interface operations {
                             name: string;
                             /** @description Domínio do site da conta */
                             domain: string | null;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
                         } | null;
                         /** @description A última conversa com o contato, de qualquer pessoa do time; nula sem conversa */
                         lastConversation: {
@@ -35799,6 +38564,35 @@ export interface operations {
                             /** @description Dono do negócio */
                             ownerName: string | null;
                         })[];
+                        /** @description Como cada negócio do contato foi ligado a ele (o CRM, o Nexo ou uma pessoa); só os negócios que a pessoa vê */
+                        dealLinks: {
+                            /**
+                             * Format: uuid
+                             * @description Id da outra ponta da ligação, no Nexo
+                             */
+                            id: string;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
+                        }[];
                         /** @description "Contexto adicional do contato": nota do time, que fica só no Nexo; nula sem nota */
                         note: {
                             /** @description O texto da nota */
@@ -36067,10 +38861,10 @@ export interface operations {
                              */
                             moment: "first_contact" | "discovery" | "evaluation" | "proposal" | "negotiation" | null;
                             /**
-                             * @description A fase padronizada da etapa do CRM em que o negócio estava na data da conversa, de onde o momento sai; nula sem negócio, com o negócio de outro vendedor (nome nulo), com o negócio ganho ou perdido ou com a etapa sem fase
+                             * @description A fase padronizada da etapa do CRM em que o negócio estava na data da conversa, nos trechos da empresa (Fechamento onde ela separou), de onde o momento sai; nula sem negócio, com o negócio de outro vendedor (nome nulo), com o negócio ganho ou perdido ou com a etapa sem fase
                              * @enum {string|null}
                              */
-                            phase: "prospecting" | "qualification" | "discovery" | "proposal" | "negotiation" | null;
+                            phase: "prospecting" | "connection" | "qualification" | "discovery" | "solution_demo" | "validation" | "proposal" | "negotiation" | "closing" | null;
                             /**
                              * @description Conversa sem negócio que a triagem achou ser venda possível (prospecção) ou cliente pedindo atendimento (CS), com triagem em dia; nula com negócio ou sem essa triagem
                              * @enum {string|null}
@@ -37322,7 +40116,7 @@ export interface operations {
                              */
                             linkOrigin: "auto" | "conversation" | "manual" | "registered";
                         } | null;
-                        /** @description A conta do contato; nula sem cadastro de contato ou sem conta */
+                        /** @description A conta do contato (a do CRM ou a que o Nexo deduziu, com a origem); nula sem cadastro de contato ou sem conta */
                         account: {
                             /**
                              * Format: uuid
@@ -37333,6 +40127,27 @@ export interface operations {
                             name: string;
                             /** @description Domínio do site da conta */
                             domain: string | null;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
                         } | null;
                         /** @description A última conversa com o contato, de qualquer pessoa do time; nula sem conversa */
                         lastConversation: {
@@ -37436,6 +40251,35 @@ export interface operations {
                             /** @description Dono do negócio */
                             ownerName: string | null;
                         })[];
+                        /** @description Como cada negócio do contato foi ligado a ele (o CRM, o Nexo ou uma pessoa); só os negócios que a pessoa vê */
+                        dealLinks: {
+                            /**
+                             * Format: uuid
+                             * @description Id da outra ponta da ligação, no Nexo
+                             */
+                            id: string;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
+                        }[];
                         /** @description "Contexto adicional do contato": nota do time, que fica só no Nexo; nula sem nota */
                         note: {
                             /** @description O texto da nota */
@@ -37736,7 +40580,7 @@ export interface operations {
                              */
                             linkOrigin: "auto" | "conversation" | "manual" | "registered";
                         } | null;
-                        /** @description A conta do contato; nula sem cadastro de contato ou sem conta */
+                        /** @description A conta do contato (a do CRM ou a que o Nexo deduziu, com a origem); nula sem cadastro de contato ou sem conta */
                         account: {
                             /**
                              * Format: uuid
@@ -37747,6 +40591,27 @@ export interface operations {
                             name: string;
                             /** @description Domínio do site da conta */
                             domain: string | null;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
                         } | null;
                         /** @description A última conversa com o contato, de qualquer pessoa do time; nula sem conversa */
                         lastConversation: {
@@ -37850,6 +40715,35 @@ export interface operations {
                             /** @description Dono do negócio */
                             ownerName: string | null;
                         })[];
+                        /** @description Como cada negócio do contato foi ligado a ele (o CRM, o Nexo ou uma pessoa); só os negócios que a pessoa vê */
+                        dealLinks: {
+                            /**
+                             * Format: uuid
+                             * @description Id da outra ponta da ligação, no Nexo
+                             */
+                            id: string;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
+                        }[];
                         /** @description "Contexto adicional do contato": nota do time, que fica só no Nexo; nula sem nota */
                         note: {
                             /** @description O texto da nota */
@@ -38156,7 +41050,7 @@ export interface operations {
                              */
                             linkOrigin: "auto" | "conversation" | "manual" | "registered";
                         } | null;
-                        /** @description A conta do contato; nula sem cadastro de contato ou sem conta */
+                        /** @description A conta do contato (a do CRM ou a que o Nexo deduziu, com a origem); nula sem cadastro de contato ou sem conta */
                         account: {
                             /**
                              * Format: uuid
@@ -38167,6 +41061,27 @@ export interface operations {
                             name: string;
                             /** @description Domínio do site da conta */
                             domain: string | null;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
                         } | null;
                         /** @description A última conversa com o contato, de qualquer pessoa do time; nula sem conversa */
                         lastConversation: {
@@ -38270,6 +41185,35 @@ export interface operations {
                             /** @description Dono do negócio */
                             ownerName: string | null;
                         })[];
+                        /** @description Como cada negócio do contato foi ligado a ele (o CRM, o Nexo ou uma pessoa); só os negócios que a pessoa vê */
+                        dealLinks: {
+                            /**
+                             * Format: uuid
+                             * @description Id da outra ponta da ligação, no Nexo
+                             */
+                            id: string;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
+                        }[];
                         /** @description "Contexto adicional do contato": nota do time, que fica só no Nexo; nula sem nota */
                         note: {
                             /** @description O texto da nota */
@@ -38676,6 +41620,8 @@ export interface operations {
             query?: {
                 /** @description all: "Todas"; open_deal: "Com negócio aberto"; no_open_deal: "Sem negócio aberto" (só negócios fechados, ou nenhum); talking_no_deal: "Sem negócio" (com conversa com um contato da conta no período, ou nos últimos 30 dias sem from, e sem negócio aberto) */
                 filter?: "all" | "open_deal" | "no_open_deal" | "talking_no_deal";
+                /** @description activity: a atividade mais nova primeiro (padrão); won_revenue: a maior receita ganha primeiro, só dos negócios da própria conta (CRM e ligações do Nexo) que quem lê vê, somados sem separar a moeda; a atividade desempata */
+                order?: "activity" | "won_revenue";
                 /** @description Busca pelo nome ou pelo domínio da conta, sem diferenciar maiúsculas e acentos */
                 q?: string;
                 /** @description Página, a partir de 1 */
@@ -38732,6 +41678,21 @@ export interface operations {
                             };
                             /** @description Quantos contatos cadastrados a conta tem */
                             contacts: number;
+                            /** @description A receita ganha da conta e das duplicadas dela (o grupo), por moeda, só dos negócios ganhos que quem lê vê, do CRM e dos ligados pelo Nexo; vazio sem nenhum */
+                            wonInCents: {
+                                /** @description Moeda do negócio (ISO 4217) */
+                                currency: string;
+                                /** @description Soma dos negócios ganhos nessa moeda, em centavos */
+                                amountInCents: number;
+                            }[];
+                            /** @description Quantas compras (negócios ganhos) o grupo tem, só as que quem lê vê */
+                            wonDeals: number;
+                            /** @description Negócios abertos do grupo que quem lê vê */
+                            openDeals: number;
+                            /** @description Recompra: o grupo tem 2 ou mais negócios ganhos que quem lê vê */
+                            repeatBuyer: boolean;
+                            /** @description Quantas contas entraram nos números: a própria mais as duplicadas que quem lê alcança; 1 quando não há duplicada */
+                            groupAccounts: number;
                             /**
                              * Format: date-time
                              * @description A atividade mais nova: a última atividade registrada de um negócio da conta (a criação, sem ela) ou a última conversa com um contato dela; nula sem nenhuma
@@ -39068,10 +42029,22 @@ export interface operations {
                                 /** @description Soma dos negócios ganhos que a pessoa vê */
                                 wonInCents: number;
                             }[];
-                            /** @description Quantos contatos cadastrados a conta tem */
+                            /** @description Quantos contatos a conta tem, os do CRM e os que o Nexo ligou a ela, com as contas do mesmo grupo */
                             contacts: number;
+                            /** @description Quantos cadastros do CRM entraram nos números: a conta mais as duplicadas que quem lê alcança; 1 quando não há duplicada */
+                            groupAccounts: number;
+                            /** @description As conversas com os contatos da conta (só a existência: o conteúdo segue a regra de cada canal) */
+                            conversations: {
+                                /** @description Quantas conversas os contatos da conta que a pessoa alcança têm, com ou sem negócio aberto */
+                                total: number;
+                                /**
+                                 * Format: date-time
+                                 * @description Quando foi a conversa mais nova; nulo sem conversa
+                                 */
+                                lastAt: string | null;
+                            };
                         };
-                        /** @description Os negócios da conta, atuais e passados, os abertos primeiro; os de outro vendedor só pela existência, com o dono nulo quando canSeeDetails é false */
+                        /** @description Os negócios da conta, atuais e passados, os abertos primeiro; os de outro vendedor só pela existência, com o dono nulo quando canSeeDetails é false. Inclui os que o Nexo ligou à conta e os das contas do mesmo grupo */
                         deals: ({
                             /**
                              * Format: uuid
@@ -39139,6 +42112,64 @@ export interface operations {
                             /** @description Dono do negócio */
                             ownerName: string | null;
                         })[];
+                        /** @description Como cada negócio da conta foi ligado a ela (o CRM, o Nexo ou uma pessoa); só os negócios que a pessoa vê */
+                        dealLinks: {
+                            /**
+                             * Format: uuid
+                             * @description Id da outra ponta da ligação, no Nexo
+                             */
+                            id: string;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
+                        }[];
+                        /** @description Como cada contato da conta foi ligado a ela (o CRM, o Nexo ou uma pessoa); só os contatos que a pessoa alcança */
+                        contactLinks: {
+                            /**
+                             * Format: uuid
+                             * @description Id da outra ponta da ligação, no Nexo
+                             */
+                            id: string;
+                            /**
+                             * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
+                        }[];
                     };
                 };
             };
@@ -39320,7 +42351,7 @@ export interface operations {
                                 /** @description Cargo do contato */
                                 jobTitle: string | null;
                             } | null;
-                            /** @description A conta do contato; nula sem cadastro de contato ou sem conta */
+                            /** @description A conta do contato (a do CRM ou a que o Nexo deduziu, com a origem); nula sem cadastro de contato ou sem conta */
                             account: {
                                 /**
                                  * Format: uuid
@@ -39331,6 +42362,27 @@ export interface operations {
                                 name: string;
                                 /** @description Domínio do site da conta */
                                 domain: string | null;
+                                /**
+                                 * @description Quem fez a ligação: do sistema de vendas (o CRM diz), deduzida pelo Nexo (o Nexo deduziu por regra), deduzida pelo Nexo (o Nexo deduziu e o modelo desempatou) ou ligada à mão no Nexo (uma pessoa)
+                                 * @enum {string}
+                                 */
+                                origin: "do sistema de vendas" | "deduzida pelo Nexo" | "ligada à mão no Nexo";
+                                /** @description O código do motivo da ligação */
+                                reason: string;
+                                /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                                confidence: number;
+                                /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                                basis: string | null;
+                                /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                                candidates: {
+                                    /**
+                                     * Format: uuid
+                                     * @description Id da opção
+                                     */
+                                    id: string;
+                                    /** @description Nome da opção */
+                                    name: string;
+                                }[];
                             } | null;
                             /** @description A última conversa vista com o contato; nula sem conversa */
                             lastConversation: {
@@ -44073,8 +47125,8 @@ export interface operations {
                              * @enum {string}
                              */
                             unit: "unit" | "month" | "hour" | "license" | "square_meter" | "other";
-                            /** @description Preço unitário em centavos */
-                            unitPriceInCents: number;
+                            /** @description Preço unitário em centavos. Null: sem preço no catálogo, que não é R$ 0,00; 0 é um preço de verdade */
+                            unitPriceInCents: number | null;
                             /**
                              * @description Moeda do preço
                              * @enum {string}
@@ -44141,6 +47193,28 @@ export interface operations {
                                 /** @description Valor do atributo; num atributo de opção, o rótulo da opção (Jatobá) */
                                 value: string;
                             }[];
+                            /** @description Tabela de faixas de preço do produto. Null: produto sem faixas, que usa o preço único */
+                            priceTiers: {
+                                /**
+                                 * @description Como o valor se aplica: flat (preço fechado, o valor é o total da faixa) ou per_unit (preço unitário, o valor é de cada unidade e o Nexo multiplica pela quantidade)
+                                 * @enum {string}
+                                 */
+                                mode: "flat" | "per_unit";
+                                /**
+                                 * @description O que se conta, como fornecedores ou documentos. Opcional
+                                 * @default null
+                                 */
+                                measure: string | null;
+                                /** @description As faixas, da menor para a maior: de 1 a 200. Só a última pode ter upTo null */
+                                tiers: {
+                                    /** @description Teto da faixa, inclusive: a faixa vale até essa quantidade. Null: faixa sem teto, só a última pode ser */
+                                    upTo: number | null;
+                                    /** @description Valor da faixa em centavos de real. No modo flat é o total da faixa; no per_unit, o valor de cada unidade */
+                                    amountInCents: number;
+                                }[];
+                            } | null;
+                            /** @description O menor valor das faixas, em centavos, para mostrar "a partir de". Calculado na leitura. Null: produto sem faixas */
+                            fromPriceInCents: number | null;
                         }[];
                         pagination: {
                             /** @description Current page (1-based) */
@@ -44310,8 +47384,11 @@ export interface operations {
                      * @enum {string}
                      */
                     unit?: "unit" | "month" | "hour" | "license" | "square_meter" | "other";
-                    /** @description Preço unitário em centavos de real. Os valores do documento sempre saem daqui, nunca da IA */
-                    unitPriceInCents: number;
+                    /**
+                     * @description Preço unitário em centavos de real (R$ 1.200,00 é 120000). Opcional: null quer dizer sem preço no catálogo, que é diferente de 0 (0 é um preço de verdade, como o de um item gratuito). Na criação, ausente: sem preço. Na alteração, ausente mantém o preço e null o tira
+                     * @default null
+                     */
+                    unitPriceInCents?: number | null;
                     /**
                      * @description Recorrência da cobrança: one_time (único), monthly (mensal), quarterly (trimestral), semiannual (semestral) ou yearly (anual)
                      * @default one_time
@@ -44333,6 +47410,26 @@ export interface operations {
                      * @default true
                      */
                     active?: boolean;
+                    /** @description Tabela de faixas de preço no lugar do preço único. Ausente mantém a tabela, null tira, um objeto substitui a tabela inteira. Um produto tem preço único ou faixas, nunca os dois: para trocar de um para o outro, mande o novo e null no antigo no mesmo pedido */
+                    priceTiers?: {
+                        /**
+                         * @description Como o valor se aplica: flat (preço fechado, o valor é o total da faixa) ou per_unit (preço unitário, o valor é de cada unidade e o Nexo multiplica pela quantidade)
+                         * @enum {string}
+                         */
+                        mode: "flat" | "per_unit";
+                        /**
+                         * @description O que se conta, como fornecedores ou documentos. Opcional
+                         * @default null
+                         */
+                        measure?: string | null;
+                        /** @description As faixas, da menor para a maior: de 1 a 200. Só a última pode ter upTo null */
+                        tiers: {
+                            /** @description Teto da faixa, inclusive: a faixa vale até essa quantidade. Null: faixa sem teto, só a última pode ser */
+                            upTo: number | null;
+                            /** @description Valor da faixa em centavos de real. No modo flat é o total da faixa; no per_unit, o valor de cada unidade */
+                            amountInCents: number;
+                        }[];
+                    } | null;
                 };
             };
         };
@@ -44362,8 +47459,8 @@ export interface operations {
                          * @enum {string}
                          */
                         unit: "unit" | "month" | "hour" | "license" | "square_meter" | "other";
-                        /** @description Preço unitário em centavos */
-                        unitPriceInCents: number;
+                        /** @description Preço unitário em centavos. Null: sem preço no catálogo, que não é R$ 0,00; 0 é um preço de verdade */
+                        unitPriceInCents: number | null;
                         /**
                          * @description Moeda do preço
                          * @enum {string}
@@ -44430,6 +47527,44 @@ export interface operations {
                             /** @description Valor do atributo; num atributo de opção, o rótulo da opção (Jatobá) */
                             value: string;
                         }[];
+                        /** @description Tabela de faixas de preço do produto. Null: produto sem faixas, que usa o preço único */
+                        priceTiers: {
+                            /**
+                             * @description Como o valor se aplica: flat (preço fechado, o valor é o total da faixa) ou per_unit (preço unitário, o valor é de cada unidade e o Nexo multiplica pela quantidade)
+                             * @enum {string}
+                             */
+                            mode: "flat" | "per_unit";
+                            /**
+                             * @description O que se conta, como fornecedores ou documentos. Opcional
+                             * @default null
+                             */
+                            measure: string | null;
+                            /** @description As faixas, da menor para a maior: de 1 a 200. Só a última pode ter upTo null */
+                            tiers: {
+                                /** @description Teto da faixa, inclusive: a faixa vale até essa quantidade. Null: faixa sem teto, só a última pode ser */
+                                upTo: number | null;
+                                /** @description Valor da faixa em centavos de real. No modo flat é o total da faixa; no per_unit, o valor de cada unidade */
+                                amountInCents: number;
+                            }[];
+                        } | null;
+                        /** @description O menor valor das faixas, em centavos, para mostrar "a partir de". Calculado na leitura. Null: produto sem faixas */
+                        fromPriceInCents: number | null;
+                        /** @description O preço da quantidade pedida em quantity. Null: sem quantity no pedido, ou sem preço (veja priceForQuantityReason) */
+                        priceForQuantity: {
+                            /** @description A quantidade pedida */
+                            quantity: number;
+                            /** @description Teto da faixa achada. Null: faixa sem teto, ou produto de preço único */
+                            tierUpTo: number | null;
+                            /** @description Valor de cada unidade, em centavos: no modo per_unit e no preço único. Null no modo flat */
+                            unitAmountInCents: number | null;
+                            /** @description O total dessa quantidade, em centavos, calculado pelo Nexo */
+                            totalInCents: number;
+                        } | null;
+                        /**
+                         * @description Por que não há priceForQuantity com quantity: above_last_tier (acima da última faixa com teto), no_price (produto sem preço) ou total_too_large (o total passa do maior valor que o Nexo calcula com exatidão). Null: há preço, ou sem quantity
+                         * @enum {string|null}
+                         */
+                        priceForQuantityReason: "above_last_tier" | "no_price" | "total_too_large" | null;
                     };
                 };
             };
@@ -44505,6 +47640,30 @@ export interface operations {
                     };
                 };
             };
+            /** @description Preço único e faixas juntos (product_catalog.price_and_tiers): um produto tem um ou outro. Para trocar, mande o novo e null no antigo no mesmo pedido */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
             /** @description Limite de chamadas da empresa ou do token atingido */
             429: {
                 headers: {
@@ -44533,7 +47692,9 @@ export interface operations {
     };
     ProductCatalogPublicController_get: {
         parameters: {
-            query?: never;
+            query?: {
+                quantity?: unknown;
+            };
             header?: never;
             path: {
                 /** @description Id do produto no catálogo */
@@ -44568,8 +47729,8 @@ export interface operations {
                          * @enum {string}
                          */
                         unit: "unit" | "month" | "hour" | "license" | "square_meter" | "other";
-                        /** @description Preço unitário em centavos */
-                        unitPriceInCents: number;
+                        /** @description Preço unitário em centavos. Null: sem preço no catálogo, que não é R$ 0,00; 0 é um preço de verdade */
+                        unitPriceInCents: number | null;
                         /**
                          * @description Moeda do preço
                          * @enum {string}
@@ -44636,6 +47797,68 @@ export interface operations {
                             /** @description Valor do atributo; num atributo de opção, o rótulo da opção (Jatobá) */
                             value: string;
                         }[];
+                        /** @description Tabela de faixas de preço do produto. Null: produto sem faixas, que usa o preço único */
+                        priceTiers: {
+                            /**
+                             * @description Como o valor se aplica: flat (preço fechado, o valor é o total da faixa) ou per_unit (preço unitário, o valor é de cada unidade e o Nexo multiplica pela quantidade)
+                             * @enum {string}
+                             */
+                            mode: "flat" | "per_unit";
+                            /**
+                             * @description O que se conta, como fornecedores ou documentos. Opcional
+                             * @default null
+                             */
+                            measure: string | null;
+                            /** @description As faixas, da menor para a maior: de 1 a 200. Só a última pode ter upTo null */
+                            tiers: {
+                                /** @description Teto da faixa, inclusive: a faixa vale até essa quantidade. Null: faixa sem teto, só a última pode ser */
+                                upTo: number | null;
+                                /** @description Valor da faixa em centavos de real. No modo flat é o total da faixa; no per_unit, o valor de cada unidade */
+                                amountInCents: number;
+                            }[];
+                        } | null;
+                        /** @description O menor valor das faixas, em centavos, para mostrar "a partir de". Calculado na leitura. Null: produto sem faixas */
+                        fromPriceInCents: number | null;
+                        /** @description O preço da quantidade pedida em quantity. Null: sem quantity no pedido, ou sem preço (veja priceForQuantityReason) */
+                        priceForQuantity: {
+                            /** @description A quantidade pedida */
+                            quantity: number;
+                            /** @description Teto da faixa achada. Null: faixa sem teto, ou produto de preço único */
+                            tierUpTo: number | null;
+                            /** @description Valor de cada unidade, em centavos: no modo per_unit e no preço único. Null no modo flat */
+                            unitAmountInCents: number | null;
+                            /** @description O total dessa quantidade, em centavos, calculado pelo Nexo */
+                            totalInCents: number;
+                        } | null;
+                        /**
+                         * @description Por que não há priceForQuantity com quantity: above_last_tier (acima da última faixa com teto), no_price (produto sem preço) ou total_too_large (o total passa do maior valor que o Nexo calcula com exatidão). Null: há preço, ou sem quantity
+                         * @enum {string|null}
+                         */
+                        priceForQuantityReason: "above_last_tier" | "no_price" | "total_too_large" | null;
+                    };
+                };
+            };
+            /** @description Payload inválido (detalhes do zod em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
                     };
                 };
             };
@@ -44873,8 +48096,8 @@ export interface operations {
                      * @enum {string}
                      */
                     unit?: "unit" | "month" | "hour" | "license" | "square_meter" | "other";
-                    /** @description Preço unitário em centavos de real. Os valores do documento sempre saem daqui, nunca da IA */
-                    unitPriceInCents?: number;
+                    /** @description Preço unitário em centavos de real (R$ 1.200,00 é 120000). Opcional: null quer dizer sem preço no catálogo, que é diferente de 0 (0 é um preço de verdade, como o de um item gratuito). Na criação, ausente: sem preço. Na alteração, ausente mantém o preço e null o tira */
+                    unitPriceInCents?: number | null;
                     /**
                      * @description Recorrência da cobrança: one_time (único), monthly (mensal), quarterly (trimestral), semiannual (semestral) ou yearly (anual)
                      * @enum {string}
@@ -44886,6 +48109,26 @@ export interface operations {
                     taxLabel?: string | null;
                     /** @description Produto disponível para os agentes. Inativo continua no catálogo, mas não entra em documento novo */
                     active?: boolean;
+                    /** @description Tabela de faixas de preço no lugar do preço único. Ausente mantém a tabela, null tira, um objeto substitui a tabela inteira. Um produto tem preço único ou faixas, nunca os dois: para trocar de um para o outro, mande o novo e null no antigo no mesmo pedido */
+                    priceTiers?: {
+                        /**
+                         * @description Como o valor se aplica: flat (preço fechado, o valor é o total da faixa) ou per_unit (preço unitário, o valor é de cada unidade e o Nexo multiplica pela quantidade)
+                         * @enum {string}
+                         */
+                        mode: "flat" | "per_unit";
+                        /**
+                         * @description O que se conta, como fornecedores ou documentos. Opcional
+                         * @default null
+                         */
+                        measure?: string | null;
+                        /** @description As faixas, da menor para a maior: de 1 a 200. Só a última pode ter upTo null */
+                        tiers: {
+                            /** @description Teto da faixa, inclusive: a faixa vale até essa quantidade. Null: faixa sem teto, só a última pode ser */
+                            upTo: number | null;
+                            /** @description Valor da faixa em centavos de real. No modo flat é o total da faixa; no per_unit, o valor de cada unidade */
+                            amountInCents: number;
+                        }[];
+                    } | null;
                 };
             };
         };
@@ -44915,8 +48158,8 @@ export interface operations {
                          * @enum {string}
                          */
                         unit: "unit" | "month" | "hour" | "license" | "square_meter" | "other";
-                        /** @description Preço unitário em centavos */
-                        unitPriceInCents: number;
+                        /** @description Preço unitário em centavos. Null: sem preço no catálogo, que não é R$ 0,00; 0 é um preço de verdade */
+                        unitPriceInCents: number | null;
                         /**
                          * @description Moeda do preço
                          * @enum {string}
@@ -44983,6 +48226,44 @@ export interface operations {
                             /** @description Valor do atributo; num atributo de opção, o rótulo da opção (Jatobá) */
                             value: string;
                         }[];
+                        /** @description Tabela de faixas de preço do produto. Null: produto sem faixas, que usa o preço único */
+                        priceTiers: {
+                            /**
+                             * @description Como o valor se aplica: flat (preço fechado, o valor é o total da faixa) ou per_unit (preço unitário, o valor é de cada unidade e o Nexo multiplica pela quantidade)
+                             * @enum {string}
+                             */
+                            mode: "flat" | "per_unit";
+                            /**
+                             * @description O que se conta, como fornecedores ou documentos. Opcional
+                             * @default null
+                             */
+                            measure: string | null;
+                            /** @description As faixas, da menor para a maior: de 1 a 200. Só a última pode ter upTo null */
+                            tiers: {
+                                /** @description Teto da faixa, inclusive: a faixa vale até essa quantidade. Null: faixa sem teto, só a última pode ser */
+                                upTo: number | null;
+                                /** @description Valor da faixa em centavos de real. No modo flat é o total da faixa; no per_unit, o valor de cada unidade */
+                                amountInCents: number;
+                            }[];
+                        } | null;
+                        /** @description O menor valor das faixas, em centavos, para mostrar "a partir de". Calculado na leitura. Null: produto sem faixas */
+                        fromPriceInCents: number | null;
+                        /** @description O preço da quantidade pedida em quantity. Null: sem quantity no pedido, ou sem preço (veja priceForQuantityReason) */
+                        priceForQuantity: {
+                            /** @description A quantidade pedida */
+                            quantity: number;
+                            /** @description Teto da faixa achada. Null: faixa sem teto, ou produto de preço único */
+                            tierUpTo: number | null;
+                            /** @description Valor de cada unidade, em centavos: no modo per_unit e no preço único. Null no modo flat */
+                            unitAmountInCents: number | null;
+                            /** @description O total dessa quantidade, em centavos, calculado pelo Nexo */
+                            totalInCents: number;
+                        } | null;
+                        /**
+                         * @description Por que não há priceForQuantity com quantity: above_last_tier (acima da última faixa com teto), no_price (produto sem preço) ou total_too_large (o total passa do maior valor que o Nexo calcula com exatidão). Null: há preço, ou sem quantity
+                         * @enum {string|null}
+                         */
+                        priceForQuantityReason: "above_last_tier" | "no_price" | "total_too_large" | null;
                     };
                 };
             };
@@ -45060,6 +48341,30 @@ export interface operations {
             };
             /** @description Produto inexistente ou removido */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Preço único e faixas juntos (product_catalog.price_and_tiers): um produto tem um ou outro. Para trocar, mande o novo e null no antigo no mesmo pedido */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -45361,6 +48666,21 @@ export interface operations {
                             taxLabel: string | null;
                             /** @description Ativo: o título da coluna lida. Null: não tem */
                             active: string | null;
+                            /**
+                             * @description Faixa (até): o título da coluna lida. Null: não tem
+                             * @default null
+                             */
+                            tierUpTo: string | null;
+                            /**
+                             * @description Modo da faixa: o título da coluna lida. Null: não tem
+                             * @default null
+                             */
+                            tierMode: string | null;
+                            /**
+                             * @description O que se conta: o título da coluna lida. Null: não tem
+                             * @default null
+                             */
+                            tierMeasure: string | null;
                         };
                         /** @description Contagem por ação */
                         summary: {
@@ -45418,38 +48738,96 @@ export interface operations {
                                 taxLabel?: string;
                                 /** @description Ativo */
                                 active?: boolean;
+                                /** @description A tabela de faixas que as linhas do mesmo produto formaram, no lugar do preço único. Ausente: produto de preço único */
+                                priceTiers?: {
+                                    /**
+                                     * @description Como o valor se aplica: flat (preço fechado, o valor é o total da faixa) ou per_unit (preço unitário, o valor é de cada unidade e o Nexo multiplica pela quantidade)
+                                     * @enum {string}
+                                     */
+                                    mode: "flat" | "per_unit";
+                                    /**
+                                     * @description O que se conta, como fornecedores ou documentos. Opcional
+                                     * @default null
+                                     */
+                                    measure: string | null;
+                                    /** @description As faixas, da menor para a maior: de 1 a 200. Só a última pode ter upTo null */
+                                    tiers: {
+                                        /** @description Teto da faixa, inclusive: a faixa vale até essa quantidade. Null: faixa sem teto, só a última pode ser */
+                                        upTo: number | null;
+                                        /** @description Valor da faixa em centavos de real. No modo flat é o total da faixa; no per_unit, o valor de cada unidade */
+                                        amountInCents: number;
+                                    }[];
+                                };
                             };
                             /** @description update: os campos que mudam, com o antes e o depois */
                             changes: {
                                 /**
-                                 * @description Campo
+                                 * @description Campo; priceTiers é a tabela de faixas inteira
                                  * @enum {string}
                                  */
-                                field: "name" | "code" | "shortDescription" | "longDescription" | "unit" | "unitPriceInCents" | "recurrence" | "taxRateInBasisPoints" | "taxLabel" | "active";
-                                /** @description Valor no catálogo */
-                                before: string | number | boolean | unknown;
-                                /** @description Valor da planilha */
-                                after: string | number | boolean | unknown;
+                                field: "name" | "code" | "shortDescription" | "longDescription" | "unit" | "unitPriceInCents" | "recurrence" | "taxRateInBasisPoints" | "taxLabel" | "active" | "priceTiers";
+                                /** @description Valor no catálogo (a tabela de faixas de antes, em priceTiers) */
+                                before: string | number | boolean | {
+                                    /**
+                                     * @description Como o valor se aplica: flat (preço fechado, o valor é o total da faixa) ou per_unit (preço unitário, o valor é de cada unidade e o Nexo multiplica pela quantidade)
+                                     * @enum {string}
+                                     */
+                                    mode: "flat" | "per_unit";
+                                    /**
+                                     * @description O que se conta, como fornecedores ou documentos. Opcional
+                                     * @default null
+                                     */
+                                    measure: string | null;
+                                    /** @description As faixas, da menor para a maior: de 1 a 200. Só a última pode ter upTo null */
+                                    tiers: {
+                                        /** @description Teto da faixa, inclusive: a faixa vale até essa quantidade. Null: faixa sem teto, só a última pode ser */
+                                        upTo: number | null;
+                                        /** @description Valor da faixa em centavos de real. No modo flat é o total da faixa; no per_unit, o valor de cada unidade */
+                                        amountInCents: number;
+                                    }[];
+                                } | unknown;
+                                /** @description Valor da planilha (a tabela de faixas de depois, em priceTiers) */
+                                after: string | number | boolean | {
+                                    /**
+                                     * @description Como o valor se aplica: flat (preço fechado, o valor é o total da faixa) ou per_unit (preço unitário, o valor é de cada unidade e o Nexo multiplica pela quantidade)
+                                     * @enum {string}
+                                     */
+                                    mode: "flat" | "per_unit";
+                                    /**
+                                     * @description O que se conta, como fornecedores ou documentos. Opcional
+                                     * @default null
+                                     */
+                                    measure: string | null;
+                                    /** @description As faixas, da menor para a maior: de 1 a 200. Só a última pode ter upTo null */
+                                    tiers: {
+                                        /** @description Teto da faixa, inclusive: a faixa vale até essa quantidade. Null: faixa sem teto, só a última pode ser */
+                                        upTo: number | null;
+                                        /** @description Valor da faixa em centavos de real. No modo flat é o total da faixa; no per_unit, o valor de cada unidade */
+                                        amountInCents: number;
+                                    }[];
+                                } | unknown;
                             }[];
                             /**
-                             * @description skip: missing_name (sem nome), missing_price (produto novo sem preço), invalid_price (preço que não é número), invalid_field (texto longo demais), duplicate_in_sheet (repete um código ou nome de linha acima, ou cai no mesmo produto de uma linha acima), ambiguous_match (mais de um produto com esse código ou nome), unchanged (igual ao catálogo)
+                             * @description skip: missing_name (sem nome), invalid_price (preço que não é número), invalid_field (texto longo demais), invalid_tiers (faixa que não dá para ler, tetos repetidos, linha de faixa sem preço ou mais de 200 faixas), price_and_tiers (preço único para um produto que tem faixas: troque a planilha para faixas ou tire as faixas do produto antes), duplicate_in_sheet (repete um código ou nome de linha acima, ou cai no mesmo produto de uma linha acima), ambiguous_match (mais de um produto com esse código ou nome), unchanged (igual ao catálogo)
                              * @enum {string|null}
                              */
-                            skipReason: "missing_name" | "missing_price" | "invalid_price" | "invalid_field" | "duplicate_in_sheet" | "ambiguous_match" | "unchanged" | null;
+                            skipReason: "missing_name" | "invalid_price" | "invalid_field" | "invalid_tiers" | "price_and_tiers" | "duplicate_in_sheet" | "ambiguous_match" | "unchanged" | null;
                             /** @description Células que não deram para ler e ficaram de fora da linha: o produto novo fica com o padrão, o existente como está */
                             warnings: {
                                 /**
                                  * @description Campo
                                  * @enum {string}
                                  */
-                                field: "name" | "code" | "shortDescription" | "longDescription" | "unit" | "unitPriceInCents" | "recurrence" | "taxRateInBasisPoints" | "taxLabel" | "active";
+                                field: "name" | "code" | "shortDescription" | "longDescription" | "unit" | "unitPriceInCents" | "recurrence" | "taxRateInBasisPoints" | "taxLabel" | "active" | "tierUpTo" | "tierMode" | "tierMeasure";
                                 /**
-                                 * @description O que não foi reconhecido
+                                 * @description O que não foi reconhecido, ou o aviso de faixa
                                  * @enum {string}
                                  */
-                                code: "unit_not_recognized" | "recurrence_not_recognized" | "tax_not_recognized" | "active_not_recognized" | "too_long";
+                                code: "unit_not_recognized" | "recurrence_not_recognized" | "tax_not_recognized" | "active_not_recognized" | "too_long" | "tier_mode_not_recognized" | "tier_ignored" | "differs_from_first_row";
                                 /** @description O que estava na célula */
                                 value: string;
+                                /** @description Linha da planilha da célula, quando não é a linha do produto (uma linha de faixa depois da primeira) */
+                                rowNumber?: number;
                             }[];
                         }[];
                         /**
@@ -45710,8 +49088,8 @@ export interface operations {
                              * @enum {string}
                              */
                             unit: "unit" | "month" | "hour" | "license" | "square_meter" | "other";
-                            /** @description Preço unitário em centavos */
-                            unitPriceInCents: number;
+                            /** @description Preço unitário em centavos. Null: sem preço no catálogo, que não é R$ 0,00; 0 é um preço de verdade */
+                            unitPriceInCents: number | null;
                             /**
                              * @description Moeda do preço
                              * @enum {string}
@@ -45792,8 +49170,8 @@ export interface operations {
                              * @enum {string}
                              */
                             unit: "unit" | "month" | "hour" | "license" | "square_meter" | "other";
-                            /** @description Preço unitário em centavos */
-                            unitPriceInCents: number;
+                            /** @description Preço unitário em centavos. Null: sem preço no catálogo, que não é R$ 0,00; 0 é um preço de verdade */
+                            unitPriceInCents: number | null;
                             /**
                              * @description Moeda do preço
                              * @enum {string}
@@ -51221,6 +54599,21 @@ export interface operations {
                     }[];
                     /** @description Observações de quem vende para a escrita. Sem o campo, ficam como estão; null apaga */
                     notes?: string | null;
+                    /** @description Os produtos que a pessoa escolheu do catálogo (GET /v1/catalog/products), até 20. Entram como fonte "Catálogo · <produto>" da leitura e da escrita, com a faixa, o valor e o total que o Nexo calcula pela tabela do produto, e a soma por cobrança quando mais de um tem valor; a versão os guarda. O que a pessoa respondeu vence o catálogo. Sem o campo: os da versão atual do documento continuam (nenhum num documento novo); lista vazia tira os produtos */
+                    products?: {
+                        /**
+                         * Format: uuid
+                         * @description O produto do catálogo da empresa; um produto de outra empresa ou removido fica de fora
+                         */
+                        productId: string;
+                        /** @description A faixa escolhida, num produto com faixas. Ausente: nenhuma faixa escolhida, e o Nexo acha a faixa pela quantidade */
+                        tier?: {
+                            /** @description O teto da faixa escolhida, como na tabela do produto; null é a faixa sem teto */
+                            upTo: number | null;
+                        };
+                        /** @description A quantidade, quando a pessoa disse */
+                        quantity?: number;
+                    }[];
                 };
             };
         };
@@ -51318,10 +54711,10 @@ export interface operations {
                                 /** @description A fonte do valor; null no campo em branco */
                                 source: {
                                     /**
-                                     * @description De onde o valor veio: cadastro, negócio, proposta, conta do Nexo, conversa, Base de conhecimento (na proposta) ou quem vende
+                                     * @description De onde o valor veio: cadastro, negócio, proposta, conta do Nexo, conversa, Base de conhecimento (na proposta), catálogo (um produto escolhido ou a soma deles) ou quem vende
                                      * @enum {string}
                                      */
-                                    kind: "client" | "contact" | "company" | "seller" | "deal" | "proposal" | "contract" | "nexo" | "template" | "meeting" | "whatsapp" | "knowledge" | "rep" | "context";
+                                    kind: "client" | "contact" | "company" | "seller" | "deal" | "proposal" | "contract" | "nexo" | "template" | "meeting" | "whatsapp" | "knowledge" | "catalog" | "rep" | "context";
                                     /** @description A fonte como o app mostra, como "Empresa do negócio" ou "Call 04/11" */
                                     label: string;
                                     /** @description O trecho da conversa que sustenta o valor, quando veio de uma */
@@ -51425,10 +54818,10 @@ export interface operations {
                                         /** @description A fonte do valor; null no campo em branco */
                                         source: {
                                             /**
-                                             * @description De onde o valor veio: cadastro, negócio, proposta, conta do Nexo, conversa, Base de conhecimento (na proposta) ou quem vende
+                                             * @description De onde o valor veio: cadastro, negócio, proposta, conta do Nexo, conversa, Base de conhecimento (na proposta), catálogo (um produto escolhido ou a soma deles) ou quem vende
                                              * @enum {string}
                                              */
-                                            kind: "client" | "contact" | "company" | "seller" | "deal" | "proposal" | "contract" | "nexo" | "template" | "meeting" | "whatsapp" | "knowledge" | "rep" | "context";
+                                            kind: "client" | "contact" | "company" | "seller" | "deal" | "proposal" | "contract" | "nexo" | "template" | "meeting" | "whatsapp" | "knowledge" | "catalog" | "rep" | "context";
                                             /** @description A fonte como o app mostra, como "Empresa do negócio" ou "Call 04/11" */
                                             label: string;
                                             /** @description O trecho da conversa que sustenta o valor, quando veio de uma */
@@ -51453,6 +54846,21 @@ export interface operations {
                             }[];
                             /** @description As observações de quem vende */
                             notes: string | null;
+                            /** @description Os produtos escolhidos do catálogo que o questionário leva; ausente sem nenhum */
+                            products?: {
+                                /**
+                                 * Format: uuid
+                                 * @description O produto do catálogo da empresa; um produto de outra empresa ou removido fica de fora
+                                 */
+                                productId: string;
+                                /** @description A faixa escolhida, num produto com faixas. Ausente: nenhuma faixa escolhida, e o Nexo acha a faixa pela quantidade */
+                                tier?: {
+                                    /** @description O teto da faixa escolhida, como na tabela do produto; null é a faixa sem teto */
+                                    upTo: number | null;
+                                };
+                                /** @description A quantidade, quando a pessoa disse */
+                                quantity?: number;
+                            }[];
                             /**
                              * @description A leitura das conversas do negócio: pending (não rodou), done ou unavailable (não deu para ler agora)
                              * @enum {string}
@@ -51718,6 +55126,21 @@ export interface operations {
                     }[];
                     /** @description Observações de quem vende para a escrita. Sem o campo, ficam como estão; null apaga */
                     notes?: string | null;
+                    /** @description Os produtos que a pessoa escolheu do catálogo (GET /v1/catalog/products), até 20. Entram como fonte "Catálogo · <produto>" da leitura e da escrita, com a faixa, o valor e o total que o Nexo calcula pela tabela do produto, e a soma por cobrança quando mais de um tem valor; a versão os guarda. O que a pessoa respondeu vence o catálogo. Sem o campo: os da versão atual do documento continuam (nenhum num documento novo); lista vazia tira os produtos */
+                    products?: {
+                        /**
+                         * Format: uuid
+                         * @description O produto do catálogo da empresa; um produto de outra empresa ou removido fica de fora
+                         */
+                        productId: string;
+                        /** @description A faixa escolhida, num produto com faixas. Ausente: nenhuma faixa escolhida, e o Nexo acha a faixa pela quantidade */
+                        tier?: {
+                            /** @description O teto da faixa escolhida, como na tabela do produto; null é a faixa sem teto */
+                            upTo: number | null;
+                        };
+                        /** @description A quantidade, quando a pessoa disse */
+                        quantity?: number;
+                    }[];
                     /**
                      * @description Só para proposta: os exemplos que a pessoa apontou. Null deixa a escolha com o Nexo (o modelo do questionário e a proposta da empresa que mais se parece com este negócio), ou mantém os da versão atual
                      * @default null
@@ -52009,6 +55432,21 @@ export interface operations {
                     }[];
                     /** @description Observações de quem vende para a escrita. Sem o campo, ficam como estão; null apaga */
                     notes?: string | null;
+                    /** @description Os produtos que a pessoa escolheu do catálogo (GET /v1/catalog/products), até 20. Entram como fonte "Catálogo · <produto>" da leitura e da escrita, com a faixa, o valor e o total que o Nexo calcula pela tabela do produto, e a soma por cobrança quando mais de um tem valor; a versão os guarda. O que a pessoa respondeu vence o catálogo. Sem o campo: os da versão atual do documento continuam (nenhum num documento novo); lista vazia tira os produtos */
+                    products?: {
+                        /**
+                         * Format: uuid
+                         * @description O produto do catálogo da empresa; um produto de outra empresa ou removido fica de fora
+                         */
+                        productId: string;
+                        /** @description A faixa escolhida, num produto com faixas. Ausente: nenhuma faixa escolhida, e o Nexo acha a faixa pela quantidade */
+                        tier?: {
+                            /** @description O teto da faixa escolhida, como na tabela do produto; null é a faixa sem teto */
+                            upTo: number | null;
+                        };
+                        /** @description A quantidade, quando a pessoa disse */
+                        quantity?: number;
+                    }[];
                     /**
                      * @description Só para proposta: os exemplos que a pessoa apontou. Null deixa a escolha com o Nexo (o modelo do questionário e a proposta da empresa que mais se parece com este negócio), ou mantém os da versão atual
                      * @default null
@@ -52319,6 +55757,21 @@ export interface operations {
                     }[];
                     /** @description Observações de quem vende para a escrita. Sem o campo, ficam como estão; null apaga */
                     notes?: string | null;
+                    /** @description Os produtos que a pessoa escolheu do catálogo (GET /v1/catalog/products), até 20. Entram como fonte "Catálogo · <produto>" da leitura e da escrita, com a faixa, o valor e o total que o Nexo calcula pela tabela do produto, e a soma por cobrança quando mais de um tem valor; a versão os guarda. O que a pessoa respondeu vence o catálogo. Sem o campo: os da versão atual do documento continuam (nenhum num documento novo); lista vazia tira os produtos */
+                    products?: {
+                        /**
+                         * Format: uuid
+                         * @description O produto do catálogo da empresa; um produto de outra empresa ou removido fica de fora
+                         */
+                        productId: string;
+                        /** @description A faixa escolhida, num produto com faixas. Ausente: nenhuma faixa escolhida, e o Nexo acha a faixa pela quantidade */
+                        tier?: {
+                            /** @description O teto da faixa escolhida, como na tabela do produto; null é a faixa sem teto */
+                            upTo: number | null;
+                        };
+                        /** @description A quantidade, quando a pessoa disse */
+                        quantity?: number;
+                    }[];
                 };
             };
         };
@@ -52597,6 +56050,21 @@ export interface operations {
                     }[];
                     /** @description Observações de quem vende para a escrita. Sem o campo, ficam como estão; null apaga */
                     notes?: string | null;
+                    /** @description Os produtos que a pessoa escolheu do catálogo (GET /v1/catalog/products), até 20. Entram como fonte "Catálogo · <produto>" da leitura e da escrita, com a faixa, o valor e o total que o Nexo calcula pela tabela do produto, e a soma por cobrança quando mais de um tem valor; a versão os guarda. O que a pessoa respondeu vence o catálogo. Sem o campo: os da versão atual do documento continuam (nenhum num documento novo); lista vazia tira os produtos */
+                    products?: {
+                        /**
+                         * Format: uuid
+                         * @description O produto do catálogo da empresa; um produto de outra empresa ou removido fica de fora
+                         */
+                        productId: string;
+                        /** @description A faixa escolhida, num produto com faixas. Ausente: nenhuma faixa escolhida, e o Nexo acha a faixa pela quantidade */
+                        tier?: {
+                            /** @description O teto da faixa escolhida, como na tabela do produto; null é a faixa sem teto */
+                            upTo: number | null;
+                        };
+                        /** @description A quantidade, quando a pessoa disse */
+                        quantity?: number;
+                    }[];
                     /** @description O documento inteiro em HTML, já escrito, sem lacuna nem marcador. O Nexo limpa (sai script, imagem e recurso externo) e confere todo valor em reais, data, percentual e prazo contra as respostas, as contas do Nexo, o texto fixo do modelo e os pedidos de mudança. Depois da limpeza o documento cabe em 120.000 caracteres */
                     html: string;
                     /**
@@ -57574,7 +61042,11 @@ export interface operations {
                     };
                 };
             };
-            /** @description Papel, escopo do token ou plano não permitem a operação */
+            /**
+             * @description A pessoa vê a call, mas o perfil dela não edita o negócio (review.forbidden)
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -57924,7 +61396,11 @@ export interface operations {
                     };
                 };
             };
-            /** @description Papel, escopo do token ou plano não permitem a operação */
+            /**
+             * @description A pessoa vê a call, mas o perfil dela não edita o negócio (review.forbidden)
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -65199,6 +68675,99 @@ export interface operations {
                         closedAt: string | null;
                         /** Format: date-time */
                         createdAt: string;
+                        /** @description O contato do lead (o do CRM, ou o que o Nexo deduziu, com a origem, o motivo e a confiança); nulo quando não há ou quando o perfil não alcança */
+                        contact: {
+                            /**
+                             * Format: uuid
+                             * @description Id do contato no Nexo
+                             */
+                            id: string;
+                            /** @description Nome do contato */
+                            name: string;
+                            /**
+                             * @description Quem fez a ligação: crm (o CRM diz), rule (o Nexo deduziu por regra), model (o Nexo deduziu e o modelo desempatou) ou manual (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "crm" | "rule" | "model" | "manual";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
+                        } | null;
+                        /** @description A empresa do lead (o do CRM, ou o que o Nexo deduziu, com a origem, o motivo e a confiança); nulo quando não há ou quando o perfil não alcança */
+                        account: {
+                            /**
+                             * Format: uuid
+                             * @description Id da empresa no Nexo
+                             */
+                            id: string;
+                            /** @description Nome da empresa */
+                            name: string;
+                            /**
+                             * @description Quem fez a ligação: crm (o CRM diz), rule (o Nexo deduziu por regra), model (o Nexo deduziu e o modelo desempatou) ou manual (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "crm" | "rule" | "model" | "manual";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
+                        } | null;
+                        /** @description O negócio do lead (o do CRM, ou o que o Nexo deduziu, com a origem, o motivo e a confiança); nulo quando não há ou quando o perfil não alcança */
+                        deal: {
+                            /**
+                             * Format: uuid
+                             * @description Id do negócio no Nexo
+                             */
+                            id: string;
+                            /** @description Nome do negócio */
+                            name: string;
+                            /**
+                             * @description Quem fez a ligação: crm (o CRM diz), rule (o Nexo deduziu por regra), model (o Nexo deduziu e o modelo desempatou) ou manual (uma pessoa)
+                             * @enum {string}
+                             */
+                            origin: "crm" | "rule" | "model" | "manual";
+                            /** @description O código do motivo da ligação */
+                            reason: string;
+                            /** @description Confiança de 0 a 1; 1 quando vem do CRM ou de uma pessoa */
+                            confidence: number;
+                            /** @description O fato curto que explica a ligação deduzida (por exemplo, o domínio do e-mail); nulo quando não há */
+                            basis: string | null;
+                            /** @description As outras opções que o Nexo considerou, para trocar a ligação; vazio quando não houve escolha */
+                            candidates: {
+                                /**
+                                 * Format: uuid
+                                 * @description Id da opção
+                                 */
+                                id: string;
+                                /** @description Nome da opção */
+                                name: string;
+                            }[];
+                        } | null;
                         /** @description As ligações registradas, da mais recente para a mais antiga */
                         calls: {
                             /** Format: uuid */
@@ -65290,6 +68859,18 @@ export interface operations {
                             consentText: string | null;
                             /** Format: date-time */
                             arrivedAt: string;
+                            /** @description Na chegada pela fonte connect, o conector que a trouxe e o sistema dele; null nas outras fontes */
+                            connector: {
+                                /**
+                                 * Format: uuid
+                                 * @description O conector que entregou a chegada
+                                 */
+                                id: string;
+                                /** @description Nome do conector */
+                                name: string;
+                                /** @description Sistema do Connect a que o conector está ligado (a chave, como omie ou activecampaign); null quando o conector não está ligado a um sistema */
+                                system: string | null;
+                            } | null;
                             /** @description Na chegada pela triagem do WhatsApp (whatsapp_triage), o que ela leu da conversa; null nas outras fontes */
                             triage: {
                                 /** @description Empresa que a triagem tirou da conversa */
@@ -71297,6 +74878,1343 @@ export interface operations {
             };
         };
     };
+    AttendanceAgentsPublicController_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Papel do agente de atendimento: sdr ou cs */
+                role: "sdr" | "cs";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A configuração do agente */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Papel do agente de atendimento: sdr ou cs
+                         * @enum {string}
+                         */
+                        role: "sdr" | "cs";
+                        /** @description Nome interno do agente nas conversas para a equipe */
+                        name: string;
+                        /**
+                         * @description Estado do agente: enabled, disabled ou locked
+                         * @enum {string}
+                         */
+                        state: "enabled" | "disabled" | "locked";
+                        /** @description Se o interruptor do agente está ligado */
+                        enabled: boolean;
+                        /** @description true quando o Agente CS não pode ser ligado porque nenhum perfil tem Atendimento CS */
+                        locked: boolean;
+                        /** @description Motivo da trava quando locked é true; null caso contrário */
+                        lockReason: string | null;
+                        /** @description Casos em que o agente atende no WhatsApp */
+                        cases: ("after_hours" | "stalled_queue" | "covered_by_knowledge")[];
+                        /** @description Se o agente marca reunião na agenda do vendedor (sempre false no CS) */
+                        bookMeeting: boolean;
+                        /** @description Duração da reunião marcada pelo Agente SDR, em minutos: 30, 45 ou 60 */
+                        meetingMinutes: number;
+                        /** @description Antecedência mínima da reunião marcada pelo Agente SDR, em minutos: 120 (2 h), 240 (4 h) ou 1440 (1 dia) */
+                        meetingLeadMinutes: number;
+                        /** @description Janela de envio da empresa, lida de OutboundSettings para mostrar quando é fora do horário */
+                        outboundWindow: {
+                            /** @description Abertura da janela de envio da empresa, HH:mm no fuso da empresa */
+                            start: string;
+                            /** @description Fechamento da janela de envio da empresa, HH:mm no fuso da empresa */
+                            end: string;
+                            /** @description Minuto do dia da abertura da janela de envio */
+                            startMinute: number;
+                            /** @description Minuto do dia do fechamento da janela de envio */
+                            endMinute: number;
+                            /** @description Dias da semana em que a janela abre, de 1 (segunda) a 7 (domingo) */
+                            weekdays: number[];
+                        };
+                        /** @description Minutos sem resposta para alerta e fila parada, lidos de OutboundSettings */
+                        unansweredAlertMinutes: number;
+                        /** @description Prévia da apresentação fixa na primeira mensagem, com {{minha_empresa.name}} preenchido */
+                        firstMessagePreview: string;
+                        /** @description Prévia do título da reunião marcada pelo Agente SDR ({{minha_empresa.name}} · primeiro nome) */
+                        meetingTitlePreview: string;
+                        /**
+                         * Format: uuid
+                         * @description Id do usuário de sistema do agente; null antes da primeira gravação
+                         */
+                        userId: string | null;
+                    };
+                };
+            };
+            /** @description Papel inválido (esperado sdr ou cs) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description Exige o escopo access:admin e o módulo Agentes de atendimento na empresa e no perfil; o perfil é relido a cada chamada: ler pede a permissão de ver os agentes de atendimento e mudar pede a de editar, as mesmas da aba Configurações do agente.
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    AttendanceAgentsPublicController_save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Papel do agente de atendimento: sdr ou cs */
+                role: "sdr" | "cs";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Se o agente de atendimento está ligado para o papel */
+                    enabled: boolean;
+                    /** @description Casos habilitados no WhatsApp para o papel */
+                    cases: ("after_hours" | "stalled_queue" | "covered_by_knowledge")[];
+                    /** @description Se o Agente SDR marca reunião na agenda do vendedor; só vale para sdr */
+                    bookMeeting?: boolean;
+                    /** @description Duração da reunião marcada pelo Agente SDR, em minutos: 30, 45 ou 60 */
+                    meetingMinutes?: number;
+                    /** @description Antecedência mínima da reunião marcada pelo Agente SDR, em minutos: 120 (2 h), 240 (4 h) ou 1440 (1 dia) */
+                    meetingLeadMinutes?: number;
+                    /** @description Nome interno do agente nas conversas para a equipe (1 a 30 caracteres; padrão Nexo SDR e Nexo CS) */
+                    name: string;
+                    /** @description O confirmation.token da prévia deste mesmo pedido; vale enquanto o agente estiver como na prévia */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description A configuração salva */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Papel do agente de atendimento: sdr ou cs
+                         * @enum {string}
+                         */
+                        role: "sdr" | "cs";
+                        /** @description Nome interno do agente nas conversas para a equipe */
+                        name: string;
+                        /**
+                         * @description Estado do agente: enabled, disabled ou locked
+                         * @enum {string}
+                         */
+                        state: "enabled" | "disabled" | "locked";
+                        /** @description Se o interruptor do agente está ligado */
+                        enabled: boolean;
+                        /** @description true quando o Agente CS não pode ser ligado porque nenhum perfil tem Atendimento CS */
+                        locked: boolean;
+                        /** @description Motivo da trava quando locked é true; null caso contrário */
+                        lockReason: string | null;
+                        /** @description Casos em que o agente atende no WhatsApp */
+                        cases: ("after_hours" | "stalled_queue" | "covered_by_knowledge")[];
+                        /** @description Se o agente marca reunião na agenda do vendedor (sempre false no CS) */
+                        bookMeeting: boolean;
+                        /** @description Duração da reunião marcada pelo Agente SDR, em minutos: 30, 45 ou 60 */
+                        meetingMinutes: number;
+                        /** @description Antecedência mínima da reunião marcada pelo Agente SDR, em minutos: 120 (2 h), 240 (4 h) ou 1440 (1 dia) */
+                        meetingLeadMinutes: number;
+                        /** @description Janela de envio da empresa, lida de OutboundSettings para mostrar quando é fora do horário */
+                        outboundWindow: {
+                            /** @description Abertura da janela de envio da empresa, HH:mm no fuso da empresa */
+                            start: string;
+                            /** @description Fechamento da janela de envio da empresa, HH:mm no fuso da empresa */
+                            end: string;
+                            /** @description Minuto do dia da abertura da janela de envio */
+                            startMinute: number;
+                            /** @description Minuto do dia do fechamento da janela de envio */
+                            endMinute: number;
+                            /** @description Dias da semana em que a janela abre, de 1 (segunda) a 7 (domingo) */
+                            weekdays: number[];
+                        };
+                        /** @description Minutos sem resposta para alerta e fila parada, lidos de OutboundSettings */
+                        unansweredAlertMinutes: number;
+                        /** @description Prévia da apresentação fixa na primeira mensagem, com {{minha_empresa.name}} preenchido */
+                        firstMessagePreview: string;
+                        /** @description Prévia do título da reunião marcada pelo Agente SDR ({{minha_empresa.name}} · primeiro nome) */
+                        meetingTitlePreview: string;
+                        /**
+                         * Format: uuid
+                         * @description Id do usuário de sistema do agente; null antes da primeira gravação
+                         */
+                        userId: string | null;
+                    };
+                };
+            };
+            /** @description Corpo ou papel inválido (detalhes do zod em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description Exige o escopo access:admin e o módulo Agentes de atendimento na empresa e no perfil; o perfil é relido a cada chamada: ler pede a permissão de ver os agentes de atendimento e mudar pede a de editar, as mesmas da aba Configurações do agente.
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O agente mudou desde a prévia, ou a configuração enviada não é a da prévia: peça a prévia de novo; ou: Tentativa de ligar o Agente CS sem nenhum perfil com Atendimento CS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Caso incompatível com o papel ou reunião marcada no papel CS */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    AttendanceAgentsPublicController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Papel do agente de atendimento: sdr ou cs */
+                role: "sdr" | "cs";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Se o agente de atendimento está ligado para o papel */
+                    enabled: boolean;
+                    /** @description Casos habilitados no WhatsApp para o papel */
+                    cases: ("after_hours" | "stalled_queue" | "covered_by_knowledge")[];
+                    /** @description Se o Agente SDR marca reunião na agenda do vendedor; só vale para sdr */
+                    bookMeeting?: boolean;
+                    /** @description Duração da reunião marcada pelo Agente SDR, em minutos: 30, 45 ou 60 */
+                    meetingMinutes?: number;
+                    /** @description Antecedência mínima da reunião marcada pelo Agente SDR, em minutos: 120 (2 h), 240 (4 h) ou 1440 (1 dia) */
+                    meetingLeadMinutes?: number;
+                    /** @description Nome interno do agente nas conversas para a equipe (1 a 30 caracteres; padrão Nexo SDR e Nexo CS) */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description A prévia e a confirmação */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Papel do agente de atendimento: sdr ou cs
+                         * @enum {string}
+                         */
+                        role: "sdr" | "cs";
+                        /** @description As configurações de hoje */
+                        before: {
+                            /** @description Nome interno do agente nas conversas para a equipe */
+                            name: string;
+                            /** @description Se o interruptor do agente está ligado */
+                            enabled: boolean;
+                            /** @description Casos em que o agente atende no WhatsApp */
+                            cases: ("after_hours" | "stalled_queue" | "covered_by_knowledge")[];
+                            /** @description Se o agente marca reunião na agenda do vendedor (sempre false no CS) */
+                            bookMeeting: boolean;
+                            /** @description Duração da reunião marcada pelo Agente SDR, em minutos: 30, 45 ou 60 */
+                            meetingMinutes: number;
+                            /** @description Antecedência mínima da reunião marcada pelo Agente SDR, em minutos: 120 (2 h), 240 (4 h) ou 1440 (1 dia) */
+                            meetingLeadMinutes: number;
+                        };
+                        /** @description As configurações como ficam depois de salvar */
+                        after: {
+                            /** @description Nome interno do agente nas conversas para a equipe */
+                            name: string;
+                            /** @description Se o interruptor do agente está ligado */
+                            enabled: boolean;
+                            /** @description Casos em que o agente atende no WhatsApp */
+                            cases: ("after_hours" | "stalled_queue" | "covered_by_knowledge")[];
+                            /** @description Se o agente marca reunião na agenda do vendedor (sempre false no CS) */
+                            bookMeeting: boolean;
+                            /** @description Duração da reunião marcada pelo Agente SDR, em minutos: 30, 45 ou 60 */
+                            meetingMinutes: number;
+                            /** @description Antecedência mínima da reunião marcada pelo Agente SDR, em minutos: 120 (2 h), 240 (4 h) ou 1440 (1 dia) */
+                            meetingLeadMinutes: number;
+                        };
+                        /** @description O que muda, em português, uma frase por mudança; vazio quando a configuração já é essa */
+                        changes: string[];
+                        confirmation: {
+                            /** @description Vai na gravação; vale enquanto o agente estiver como na prévia */
+                            token: string;
+                        };
+                    };
+                };
+            };
+            /** @description Corpo ou papel inválido (detalhes do zod em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description Exige o escopo access:admin e o módulo Agentes de atendimento na empresa e no perfil; o perfil é relido a cada chamada: ler pede a permissão de ver os agentes de atendimento e mudar pede a de editar, as mesmas da aba Configurações do agente.
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Tentativa de ligar o Agente CS sem nenhum perfil com Atendimento CS */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Caso incompatível com o papel ou reunião marcada no papel CS */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MeetingHoursPublicController_mine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description O horário em vigor */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description user quando o vendedor definiu o próprio horário; company quando vale a janela de envio da empresa
+                         * @enum {string}
+                         */
+                        source: "user" | "company";
+                        /** @description Dias e faixas em vigor, em ordem de dia da semana */
+                        days: {
+                            /** @description Dia da semana, de 1 (segunda) a 7 (domingo) */
+                            weekday: number;
+                            /** @description De 1 a 2 faixas do dia, sem sobreposição */
+                            ranges: {
+                                /** @description Início da faixa, HH:mm no fuso da empresa */
+                                start: string;
+                                /** @description Fim da faixa, HH:mm no fuso da empresa; depois do início */
+                                end: string;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description Exige o módulo Agentes de atendimento na empresa e no perfil de quem chama, como a aba Reunião do app; o perfil é relido a cada chamada.
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MeetingHoursPublicController_save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Até 7 dias da semana, cada um com suas faixas */
+                    days: {
+                        /** @description Dia da semana, de 1 (segunda) a 7 (domingo) */
+                        weekday: number;
+                        /** @description De 1 a 2 faixas do dia, sem sobreposição */
+                        ranges: {
+                            /** @description Início da faixa, HH:mm no fuso da empresa */
+                            start: string;
+                            /** @description Fim da faixa, HH:mm no fuso da empresa; depois do início */
+                            end: string;
+                        }[];
+                    }[] | null;
+                    /** @description O confirmation.token da prévia deste mesmo pedido; vale enquanto o horário estiver como na prévia */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O horário em vigor depois de salvar */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description user quando o vendedor definiu o próprio horário; company quando vale a janela de envio da empresa
+                         * @enum {string}
+                         */
+                        source: "user" | "company";
+                        /** @description Dias e faixas em vigor, em ordem de dia da semana */
+                        days: {
+                            /** @description Dia da semana, de 1 (segunda) a 7 (domingo) */
+                            weekday: number;
+                            /** @description De 1 a 2 faixas do dia, sem sobreposição */
+                            ranges: {
+                                /** @description Início da faixa, HH:mm no fuso da empresa */
+                                start: string;
+                                /** @description Fim da faixa, HH:mm no fuso da empresa; depois do início */
+                                end: string;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Corpo inválido (detalhes do zod em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description Exige o módulo Agentes de atendimento na empresa e no perfil de quem chama, como a aba Reunião do app; o perfil é relido a cada chamada.
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O horário mudou desde a prévia, ou o pedido enviado não é o da prévia: peça a prévia de novo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Faixa com o fim antes do início, faixa fora do dia ou faixas sobrepostas */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MeetingHoursPublicController_ofUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do vendedor */
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description O horário em vigor do vendedor */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description user quando o vendedor definiu o próprio horário; company quando vale a janela de envio da empresa
+                         * @enum {string}
+                         */
+                        source: "user" | "company";
+                        /** @description Dias e faixas em vigor, em ordem de dia da semana */
+                        days: {
+                            /** @description Dia da semana, de 1 (segunda) a 7 (domingo) */
+                            weekday: number;
+                            /** @description De 1 a 2 faixas do dia, sem sobreposição */
+                            ranges: {
+                                /** @description Início da faixa, HH:mm no fuso da empresa */
+                                start: string;
+                                /** @description Fim da faixa, HH:mm no fuso da empresa; depois do início */
+                                end: string;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description userId não é um uuid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description O perfil não dá Ver em Time. Exige o módulo Agentes de atendimento na empresa e no perfil de quem chama, como a aba Reunião do app; o perfil é relido a cada chamada.
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description A pessoa não está no alcance do escopo de Time */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    MeetingHoursPublicController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Até 7 dias da semana, cada um com suas faixas */
+                    days: {
+                        /** @description Dia da semana, de 1 (segunda) a 7 (domingo) */
+                        weekday: number;
+                        /** @description De 1 a 2 faixas do dia, sem sobreposição */
+                        ranges: {
+                            /** @description Início da faixa, HH:mm no fuso da empresa */
+                            start: string;
+                            /** @description Fim da faixa, HH:mm no fuso da empresa; depois do início */
+                            end: string;
+                        }[];
+                    }[] | null;
+                };
+            };
+        };
+        responses: {
+            /** @description A prévia e a confirmação */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description O horário em vigor hoje */
+                        before: {
+                            /**
+                             * @description user quando o vendedor definiu o próprio horário; company quando vale a janela de envio da empresa
+                             * @enum {string}
+                             */
+                            source: "user" | "company";
+                            /** @description Dias e faixas em vigor, em ordem de dia da semana */
+                            days: {
+                                /** @description Dia da semana, de 1 (segunda) a 7 (domingo) */
+                                weekday: number;
+                                /** @description De 1 a 2 faixas do dia, sem sobreposição */
+                                ranges: {
+                                    /** @description Início da faixa, HH:mm no fuso da empresa */
+                                    start: string;
+                                    /** @description Fim da faixa, HH:mm no fuso da empresa; depois do início */
+                                    end: string;
+                                }[];
+                            }[];
+                        };
+                        /** @description O horário em vigor depois de salvar */
+                        after: {
+                            /**
+                             * @description user quando o vendedor definiu o próprio horário; company quando vale a janela de envio da empresa
+                             * @enum {string}
+                             */
+                            source: "user" | "company";
+                            /** @description Dias e faixas em vigor, em ordem de dia da semana */
+                            days: {
+                                /** @description Dia da semana, de 1 (segunda) a 7 (domingo) */
+                                weekday: number;
+                                /** @description De 1 a 2 faixas do dia, sem sobreposição */
+                                ranges: {
+                                    /** @description Início da faixa, HH:mm no fuso da empresa */
+                                    start: string;
+                                    /** @description Fim da faixa, HH:mm no fuso da empresa; depois do início */
+                                    end: string;
+                                }[];
+                            }[];
+                        };
+                        /** @description O que muda, em português; vazio quando o horário já é esse */
+                        changes: string[];
+                        confirmation: {
+                            /** @description Vai na gravação; vale enquanto o horário estiver como na prévia */
+                            token: string;
+                        };
+                    };
+                };
+            };
+            /** @description Corpo inválido (detalhes do zod em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description Exige o módulo Agentes de atendimento na empresa e no perfil de quem chama, como a aba Reunião do app; o perfil é relido a cada chamada.
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Faixa com o fim antes do início, faixa fora do dia ou faixas sobrepostas */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
     BrainPublicController_areas: {
         parameters: {
             query?: never;
@@ -71487,7 +76405,7 @@ export interface operations {
                             updatedAt: string;
                         }[];
                         /** @description The moments a new skill can be tied to: only the ones that have the does-not-worsen gate working */
-                        momentsOffered: "follow_up_draft"[];
+                        momentsOffered: ("follow_up_draft" | "attendance_agent_turn")[];
                     };
                 };
             };
@@ -71610,7 +76528,7 @@ export interface operations {
                      * @description The moment the skill applies to, chosen from the offered list
                      * @enum {string}
                      */
-                    moment: "follow_up_draft";
+                    moment: "follow_up_draft" | "attendance_agent_turn";
                     /**
                      * @description What to always do
                      * @default []
@@ -72383,7 +77301,7 @@ export interface operations {
                             updatedAt: string;
                         }[];
                         /** @description The moments a new skill can be tied to: only the ones that have the does-not-worsen gate working */
-                        momentsOffered: "follow_up_draft"[];
+                        momentsOffered: ("follow_up_draft" | "attendance_agent_turn")[];
                     };
                 };
             };
@@ -72506,7 +77424,7 @@ export interface operations {
                      * @description The moment the skill applies to, chosen from the offered list
                      * @enum {string}
                      */
-                    moment: "follow_up_draft";
+                    moment: "follow_up_draft" | "attendance_agent_turn";
                     /**
                      * @description What to always do
                      * @default []
@@ -73432,7 +78350,7 @@ export interface operations {
                      * @description The moment the skill applies to, chosen from the offered list
                      * @enum {string}
                      */
-                    moment: "follow_up_draft";
+                    moment: "follow_up_draft" | "attendance_agent_turn";
                     /**
                      * @description What to always do
                      * @default []
@@ -73445,6 +78363,11 @@ export interface operations {
                     never?: string[];
                     /** @description One real example of how it should come out */
                     example: string;
+                    /**
+                     * @description Only for the moment attendance_agent_turn: which agent runs the skill, sdr (default) or cs
+                     * @enum {string}
+                     */
+                    agentRole?: "sdr" | "cs";
                 };
             };
         };
@@ -74222,6 +79145,1211 @@ export interface operations {
             };
         };
     };
+    BrainPublicController_approveCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da skill, como a lista do nível a mostra */
+                skillId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A skill aprovada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id of the company skill
+                         */
+                        id: string;
+                        /**
+                         * @description Who follows the skill: the copilot, the SDR agent or the CS agent
+                         * @enum {string}
+                         */
+                        role: "copiloto" | "sdr" | "cs";
+                        /** @description The role in words: do copiloto, do agente SDR or do agente CS */
+                        roleLabel: string;
+                        /** @description The name the copilot loads it by, always starting with empresa- */
+                        name: string;
+                        /** @description The one line the copilot reads every turn to decide whether to load the skill */
+                        description: string;
+                        /** @description The procedure the copilot follows once it loads the skill */
+                        body: string;
+                        /**
+                         * @description tentative waits for the admin and only its author may use it; active is what the copilot may load for the whole company
+                         * @enum {string}
+                         */
+                        status: "tentative" | "active";
+                        /** @description How many conversations the attendance agents used the skill in; 0 for a skill of the copilot or one nobody used yet */
+                        usedInConversations: number;
+                        /** @description Where the skill came from, read at the distillation */
+                        sources: {
+                            /** @description knowledge_item (an item of the Base), meeting_rules (what the company wrote about a meeting type), won_deal (a deal the company won) or chat_replies (the team replies of a support chat) */
+                            kind: string;
+                            /** @description The id of the source the skill was distilled from */
+                            id: string;
+                            /** @description The type of the Base item (rule, practice), the name of the meeting type, or what the conversation was */
+                            label: string;
+                            /**
+                             * Format: date-time
+                             * @description When the conversation source happened; null for the Base and the meeting rules
+                             */
+                            occurredAt: string | null;
+                            /** @description The chat to open for a chat_replies source; null otherwise */
+                            conversationId: string | null;
+                        }[];
+                        /**
+                         * Format: date-time
+                         * @description When the skill was created
+                         */
+                        proposedAt: string;
+                        /**
+                         * Format: date-time
+                         * @description When an admin approved it; null while nobody approved it
+                         */
+                        decidedAt: string | null;
+                        /**
+                         * Format: uuid
+                         * @description Who approved it; null while nobody approved it
+                         */
+                        decidedByUserId: string | null;
+                        /**
+                         * Format: date-time
+                         * @description When the skill is due for review; null for a skill created before the review date existed
+                         */
+                        reviewAt: string | null;
+                        /** @description What the uses of the skill proved so far, counting only the evidence attributed to the skill */
+                        evidence: {
+                            /** @description How many records had their result attributed to the skill; external and uncertain ones are not counted */
+                            attributed: number;
+                            /** @description How many of the attributed records ended well (deal won or next step done) */
+                            successes: number;
+                            /** @description (1 + successes) / (2 + attributed): one half while there is no evidence */
+                            confidence: number;
+                        };
+                        /** @description The last test of "does not make the answers worse"; null while the skill was never tested */
+                        gate: {
+                            /**
+                             * @description screening only filters; only strong can turn the skill on
+                             * @enum {string}
+                             */
+                            tier: "screening" | "strong";
+                            /**
+                             * @description pass: not worse than no skill (neutral passes); block: worse; inconclusive: too few cases, stays in test
+                             * @enum {string}
+                             */
+                            verdict: "pass" | "block" | "inconclusive";
+                            /** @description How many cases the verdict counts, adding up the attempts of the week */
+                            cases: number;
+                            /** @description Why, in plain words */
+                            summary: string;
+                            /**
+                             * Format: date-time
+                             * @description When the test ran
+                             */
+                            at: string;
+                        } | null;
+                        /** @description Why the test of the current version has no verdict yet (it ran in the background and stopped); null when it did not stop */
+                        gateStop: {
+                            /**
+                             * @description needs_cases: the company has too few new cases; attempts_exhausted: the week is spent; stopped: the AI ceiling or the provider stopped the test; unchecked: a check came back unreadable; form_refused and trigger_refused: the text must be edited; not_applicable: the test only covers the follow-up draft and the skill is for other moments
+                             * @enum {string}
+                             */
+                            status: "needs_cases" | "attempts_exhausted" | "stopped" | "unchecked" | "form_refused" | "trigger_refused" | "not_applicable";
+                            /** @description Where the test stopped: g0 (form), g2 (trigger), screening or strong */
+                            stage: string;
+                            /** @description Why there is no verdict, in plain words, and what happens next */
+                            summary: string;
+                            /** @description true when the test tries again by itself (every day or every week, by the reason); false when the skill must be edited first */
+                            resumes: boolean;
+                            /**
+                             * Format: date-time
+                             * @description When the test stopped
+                             */
+                            at: string;
+                        } | null;
+                        /** @description The example the admin reads before deciding, written by the system; null for a skill that came with none */
+                        example: {
+                            /** @description How the answer comes out with the skill, in a generic situation */
+                            with: string;
+                            /** @description How the same answer would come out without it */
+                            without: string;
+                        } | null;
+                        /** @description Set when the skill, in use, cites a Base item changed after its last version; null otherwise */
+                        stale: {
+                            /**
+                             * Format: date-time
+                             * @description When the review noticed it
+                             */
+                            at: string;
+                            /** @description How many of the cited Base items changed or left the Base */
+                            items: number;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Corpo ou parâmetro fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Nenhuma skill da empresa em tentativa com esse id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description A empresa já tem o máximo de skills valendo neste papel */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    BrainPublicController_correctCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da skill, como a lista do nível a mostra */
+                skillId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The one line of when to use the skill, 30 to 300 characters on a single line */
+                    description: string;
+                    /** @description The procedure, 200 to 4,000 characters, with no link, e-mail, phone or instruction term */
+                    body: string;
+                };
+            };
+        };
+        responses: {
+            /** @description A skill corrigida e aprovada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id of the company skill
+                         */
+                        id: string;
+                        /**
+                         * @description Who follows the skill: the copilot, the SDR agent or the CS agent
+                         * @enum {string}
+                         */
+                        role: "copiloto" | "sdr" | "cs";
+                        /** @description The role in words: do copiloto, do agente SDR or do agente CS */
+                        roleLabel: string;
+                        /** @description The name the copilot loads it by, always starting with empresa- */
+                        name: string;
+                        /** @description The one line the copilot reads every turn to decide whether to load the skill */
+                        description: string;
+                        /** @description The procedure the copilot follows once it loads the skill */
+                        body: string;
+                        /**
+                         * @description tentative waits for the admin and only its author may use it; active is what the copilot may load for the whole company
+                         * @enum {string}
+                         */
+                        status: "tentative" | "active";
+                        /** @description How many conversations the attendance agents used the skill in; 0 for a skill of the copilot or one nobody used yet */
+                        usedInConversations: number;
+                        /** @description Where the skill came from, read at the distillation */
+                        sources: {
+                            /** @description knowledge_item (an item of the Base), meeting_rules (what the company wrote about a meeting type), won_deal (a deal the company won) or chat_replies (the team replies of a support chat) */
+                            kind: string;
+                            /** @description The id of the source the skill was distilled from */
+                            id: string;
+                            /** @description The type of the Base item (rule, practice), the name of the meeting type, or what the conversation was */
+                            label: string;
+                            /**
+                             * Format: date-time
+                             * @description When the conversation source happened; null for the Base and the meeting rules
+                             */
+                            occurredAt: string | null;
+                            /** @description The chat to open for a chat_replies source; null otherwise */
+                            conversationId: string | null;
+                        }[];
+                        /**
+                         * Format: date-time
+                         * @description When the skill was created
+                         */
+                        proposedAt: string;
+                        /**
+                         * Format: date-time
+                         * @description When an admin approved it; null while nobody approved it
+                         */
+                        decidedAt: string | null;
+                        /**
+                         * Format: uuid
+                         * @description Who approved it; null while nobody approved it
+                         */
+                        decidedByUserId: string | null;
+                        /**
+                         * Format: date-time
+                         * @description When the skill is due for review; null for a skill created before the review date existed
+                         */
+                        reviewAt: string | null;
+                        /** @description What the uses of the skill proved so far, counting only the evidence attributed to the skill */
+                        evidence: {
+                            /** @description How many records had their result attributed to the skill; external and uncertain ones are not counted */
+                            attributed: number;
+                            /** @description How many of the attributed records ended well (deal won or next step done) */
+                            successes: number;
+                            /** @description (1 + successes) / (2 + attributed): one half while there is no evidence */
+                            confidence: number;
+                        };
+                        /** @description The last test of "does not make the answers worse"; null while the skill was never tested */
+                        gate: {
+                            /**
+                             * @description screening only filters; only strong can turn the skill on
+                             * @enum {string}
+                             */
+                            tier: "screening" | "strong";
+                            /**
+                             * @description pass: not worse than no skill (neutral passes); block: worse; inconclusive: too few cases, stays in test
+                             * @enum {string}
+                             */
+                            verdict: "pass" | "block" | "inconclusive";
+                            /** @description How many cases the verdict counts, adding up the attempts of the week */
+                            cases: number;
+                            /** @description Why, in plain words */
+                            summary: string;
+                            /**
+                             * Format: date-time
+                             * @description When the test ran
+                             */
+                            at: string;
+                        } | null;
+                        /** @description Why the test of the current version has no verdict yet (it ran in the background and stopped); null when it did not stop */
+                        gateStop: {
+                            /**
+                             * @description needs_cases: the company has too few new cases; attempts_exhausted: the week is spent; stopped: the AI ceiling or the provider stopped the test; unchecked: a check came back unreadable; form_refused and trigger_refused: the text must be edited; not_applicable: the test only covers the follow-up draft and the skill is for other moments
+                             * @enum {string}
+                             */
+                            status: "needs_cases" | "attempts_exhausted" | "stopped" | "unchecked" | "form_refused" | "trigger_refused" | "not_applicable";
+                            /** @description Where the test stopped: g0 (form), g2 (trigger), screening or strong */
+                            stage: string;
+                            /** @description Why there is no verdict, in plain words, and what happens next */
+                            summary: string;
+                            /** @description true when the test tries again by itself (every day or every week, by the reason); false when the skill must be edited first */
+                            resumes: boolean;
+                            /**
+                             * Format: date-time
+                             * @description When the test stopped
+                             */
+                            at: string;
+                        } | null;
+                        /** @description The example the admin reads before deciding, written by the system; null for a skill that came with none */
+                        example: {
+                            /** @description How the answer comes out with the skill, in a generic situation */
+                            with: string;
+                            /** @description How the same answer would come out without it */
+                            without: string;
+                        } | null;
+                        /** @description Set when the skill, in use, cites a Base item changed after its last version; null otherwise */
+                        stale: {
+                            /**
+                             * Format: date-time
+                             * @description When the review noticed it
+                             */
+                            at: string;
+                            /** @description How many of the cited Base items changed or left the Base */
+                            items: number;
+                        } | null;
+                    };
+                };
+            };
+            /** @description Corpo ou parâmetro fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Nenhuma skill da empresa em tentativa com esse id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description A empresa já tem o máximo de skills valendo neste papel */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O texto corrigido não passa na conferência do servidor */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    BrainPublicController_retestCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da skill, como a lista do nível a mostra */
+                skillId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Corpo ou parâmetro fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Nenhuma skill da empresa em tentativa com esse id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    BrainPublicController_listTurnedOff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description As skills desligadas, a mais recente primeiro */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description The skills turned off and not turned on again, newest first */
+                        skills: {
+                            /**
+                             * Format: uuid
+                             * @description Id of the skill, the one to turn on again
+                             */
+                            skillId: string;
+                            /** @description Name of the skill */
+                            name: string;
+                            /**
+                             * @description Where the skill lives
+                             * @enum {string}
+                             */
+                            level: "company" | "area" | "team";
+                            /** @description The company, area or team the skill belongs to */
+                            scopeId: string;
+                            /**
+                             * Format: date-time
+                             * @description When it was turned off
+                             */
+                            turnedOffAt: string;
+                            /**
+                             * Format: uuid
+                             * @description Who turned it off; null when that person left the company
+                             */
+                            turnedOffBy: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    BrainPublicController_turnOff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da skill, como a lista do nível a mostra */
+                skillId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A skill desligada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id of the skill
+                         */
+                        skillId: string;
+                        /** @description true when the skill is in force again, false when it was turned off */
+                        on: boolean;
+                    };
+                };
+            };
+            /** @description Corpo ou parâmetro fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Nenhuma skill do nível com esse id, ou nenhuma área ou time com esse id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    BrainPublicController_turnOn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da skill, como a lista do nível a mostra */
+                skillId: unknown;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A skill em vigor de novo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description Id of the skill
+                         */
+                        skillId: string;
+                        /** @description true when the skill is in force again, false when it was turned off */
+                        on: boolean;
+                    };
+                };
+            };
+            /** @description Corpo ou parâmetro fora do formato (detalhes em meta.errors) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Nenhuma skill desligada com esse id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description O lugar já tem uma skill com esse nome */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
     BrainPublicController_moments: {
         parameters: {
             query?: never;
@@ -74475,7 +80603,7 @@ export interface operations {
                      * @description The moment the skill applies to, chosen from the offered list
                      * @enum {string}
                      */
-                    moment: "follow_up_draft";
+                    moment: "follow_up_draft" | "attendance_agent_turn";
                     /**
                      * @description What to always do
                      * @default []
@@ -83699,6 +89827,13 @@ export interface operations {
                         enabledAt: string | null;
                         /** @description Hosts que a pessoa aprovou antes de publicar: um ensaio chama só estes e os da versão publicada */
                         approvedHosts: string[];
+                        /** @description Quando o cron publicado roda, em português ("a cada 30 minutos", "todo dia às 22:00", "segunda e quinta às 06:00"); null sem cron */
+                        schedule: string | null;
+                        /**
+                         * Format: date-time
+                         * @description Quando o cron roda de novo; null se o conector não estiver ligado ou não tiver cron
+                         */
+                        nextRunAt: string | null;
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -83927,6 +90062,30 @@ export interface operations {
                     };
                 };
             };
+            /** @description core.payload_too_large: o corpo passa de 1 MB (o código vai até 200.000 caracteres ao lado do manifesto). Mande um menor. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
             /** @description connect.invalid_manifest: o manifesto quebra o schema (meta.issues diz onde); connect.invalid_code: o código não compila (meta.issues tem a linha); connect.secret_not_declared. Corrija e envie de novo: nada foi guardado. */
             422: {
                 headers: {
@@ -84030,6 +90189,13 @@ export interface operations {
                             enabledAt: string | null;
                             /** @description Hosts que a pessoa aprovou antes de publicar: um ensaio chama só estes e os da versão publicada */
                             approvedHosts: string[];
+                            /** @description Quando o cron publicado roda, em português ("a cada 30 minutos", "todo dia às 22:00", "segunda e quinta às 06:00"); null sem cron */
+                            schedule: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Quando o cron roda de novo; null se o conector não estiver ligado ou não tiver cron
+                             */
+                            nextRunAt: string | null;
                             /** Format: date-time */
                             createdAt: string;
                             /** Format: date-time */
@@ -84057,6 +90223,408 @@ export interface operations {
                          * @description A tela do conector no Nexo, onde uma pessoa preenche os segredos e aprova hosts novos
                          */
                         link: string;
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com este id na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorChangesPublicController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description O confirmation.token da prévia desta mesma mudança: um uso, 10 minutos */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O conector que foi apagado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description O conector que foi apagado
+                         */
+                        connectorId: string;
+                        /** @description Não há volta: o conector não responde mais */
+                        deleted: boolean;
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com este id na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.pause_before_delete (pause o conector antes), connect.run_in_progress (espere a execução em andamento terminar). connect.confirmation_stale: o conector mudou depois da prévia; peça uma nova prévia. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.confirmation_malformed, connect.confirmation_expired (passou de 10 minutos) ou connect.confirmation_mismatch (um token de outra mudança, conector ou pessoa): peça uma nova prévia e confirme com o token dela. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorsPublicController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description O novo nome do conector; um vazio é recusado */
+                    name?: string;
+                    /** @description A nova descrição; um texto vazio a apaga */
+                    description?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O conector, renomeado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        description: string | null;
+                        /**
+                         * @description draft nunca rodou; enabled roda a versão publicada; paused o mantém parado
+                         * @enum {string}
+                         */
+                        status: "draft" | "enabled" | "paused";
+                        /**
+                         * @description Por que está pausado, quando está; oauth_revoked: o outro sistema recusou renovar o acesso OAuth
+                         * @enum {string|null}
+                         */
+                        pausedReason: "manual" | "failures" | "emergency" | "oauth_revoked" | null;
+                        /** @description Versão em edição: a mais nova. 0 antes de a primeira versão ser escrita */
+                        headSeq: number;
+                        /** @description Versão que roda enquanto ligado. Uma versão mais nova só roda depois de Publicar */
+                        publishedSeq: number | null;
+                        /**
+                         * Format: uuid
+                         * @description O sistema do catálogo de onde ele começou; null quando começou fora do catálogo
+                         */
+                        systemId: string | null;
+                        /**
+                         * Format: uuid
+                         * @description Dono dos registros que o código não atribui a ninguém
+                         */
+                        defaultOwnerUserId: string | null;
+                        /** Format: date-time */
+                        enabledAt: string | null;
+                        /** @description Hosts que a pessoa aprovou antes de publicar: um ensaio chama só estes e os da versão publicada */
+                        approvedHosts: string[];
+                        /** @description Quando o cron publicado roda, em português ("a cada 30 minutos", "todo dia às 22:00", "segunda e quinta às 06:00"); null sem cron */
+                        schedule: string | null;
+                        /**
+                         * Format: date-time
+                         * @description Quando o cron roda de novo; null se o conector não estiver ligado ou não tiver cron
+                         */
+                        nextRunAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** Format: date-time */
+                        updatedAt: string;
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
                     };
                 };
             };
@@ -84440,6 +91008,30 @@ export interface operations {
             };
             /** @description connect.connector_not_found: nenhum conector com este id na empresa. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description core.payload_too_large: o corpo passa de 1 MB (o código vai até 200.000 caracteres ao lado do manifesto). Mande um menor. */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -86594,15 +93186,115 @@ export interface operations {
                     "application/json": {
                         /**
                          * Format: uri
-                         * @description Onde o outro sistema chama, com POST e um corpo JSON
+                         * @description Onde o outro sistema chama, com POST. O token no endereço é a credencial do webhook: quem tem o endereço pode chamá-lo, então trate-o como um segredo; trocar o token (a prévia e o apply) faz o endereço anterior parar de valer na hora
                          */
                         url: string;
-                        /** @description Se há um segredo de assinatura gravado; o valor nunca sai do servidor */
-                        secretSet: boolean;
-                        /** @description Cabeçalho com sha256= e o HMAC-SHA256 do timestamp, um ponto e o corpo */
-                        signatureHeader: string;
-                        /** @description Cabeçalho com o horário Unix da chamada, em segundos; cinco minutos de tolerância */
-                        timestampHeader: string;
+                        /** @description Como o outro sistema prova que a chamada é dele, como a versão publicada declara, que é o que confere as chamadas agora: o tipo, os cabeçalhos e os nomes dos segredos, nunca um valor. Nulo quando nenhuma versão está publicada, ou a publicada não tem gatilho webhook ou não declara auth, e então só o endereço é a prova */
+                        auth: ({
+                            /**
+                             * @description A chamada traz o valor do segredo num cabeçalho
+                             * @enum {string}
+                             */
+                            type: "header";
+                            /** @description Nome do cabeçalho que traz o valor */
+                            header: string;
+                            /** @description Nome do segredo, declarado em secrets, cujo valor o cabeçalho deve trazer */
+                            secret: string;
+                        } | {
+                            /**
+                             * @description A chamada traz um usuário e uma senha, no cabeçalho authorization (HTTP Basic)
+                             * @enum {string}
+                             */
+                            type: "basic";
+                            /** @description Nome do segredo, declarado em secrets, que guarda o usuário */
+                            user: string;
+                            /** @description Nome do segredo, declarado em secrets, que guarda a senha */
+                            secret: string;
+                        } | {
+                            /**
+                             * @description A chamada traz a assinatura do corpo cru, feita com o segredo
+                             * @enum {string}
+                             */
+                            type: "hmac";
+                            /** @description Nome do cabeçalho que traz a assinatura */
+                            header: string;
+                            /** @description Nome do segredo, declarado em secrets, que assina */
+                            secret: string;
+                            /**
+                             * @description sha256 (o padrão) ou sha1
+                             * @enum {string}
+                             */
+                            algorithm?: "sha256" | "sha1";
+                            /**
+                             * @description Como a assinatura é escrita: hex (o padrão) ou base64
+                             * @enum {string}
+                             */
+                            encoding?: "hex" | "base64";
+                            /** @description Texto antes da assinatura no cabeçalho, como sha256= */
+                            prefix?: string;
+                            /**
+                             * @description O que é assinado: body (o padrão) ou timestamp.body, o momento de timestampHeader, um ponto e o corpo
+                             * @enum {string}
+                             */
+                            signed?: "body" | "timestamp.body";
+                            /** @description Cabeçalho com o momento da chamada, em segundos desde 1970; só com timestamp.body, onde é obrigatório */
+                            timestampHeader?: string;
+                            /** @description Quão velho o momento da chamada pode ser, em segundos (300 por padrão); só com timestamp.body */
+                            toleranceSeconds?: number;
+                        }) | null;
+                        /** @description O mesmo, como a versão em edição declara: o que vai conferir as chamadas quando ela for publicada. Nulo quando ela não declara nenhum */
+                        authInEdit: ({
+                            /**
+                             * @description A chamada traz o valor do segredo num cabeçalho
+                             * @enum {string}
+                             */
+                            type: "header";
+                            /** @description Nome do cabeçalho que traz o valor */
+                            header: string;
+                            /** @description Nome do segredo, declarado em secrets, cujo valor o cabeçalho deve trazer */
+                            secret: string;
+                        } | {
+                            /**
+                             * @description A chamada traz um usuário e uma senha, no cabeçalho authorization (HTTP Basic)
+                             * @enum {string}
+                             */
+                            type: "basic";
+                            /** @description Nome do segredo, declarado em secrets, que guarda o usuário */
+                            user: string;
+                            /** @description Nome do segredo, declarado em secrets, que guarda a senha */
+                            secret: string;
+                        } | {
+                            /**
+                             * @description A chamada traz a assinatura do corpo cru, feita com o segredo
+                             * @enum {string}
+                             */
+                            type: "hmac";
+                            /** @description Nome do cabeçalho que traz a assinatura */
+                            header: string;
+                            /** @description Nome do segredo, declarado em secrets, que assina */
+                            secret: string;
+                            /**
+                             * @description sha256 (o padrão) ou sha1
+                             * @enum {string}
+                             */
+                            algorithm?: "sha256" | "sha1";
+                            /**
+                             * @description Como a assinatura é escrita: hex (o padrão) ou base64
+                             * @enum {string}
+                             */
+                            encoding?: "hex" | "base64";
+                            /** @description Texto antes da assinatura no cabeçalho, como sha256= */
+                            prefix?: string;
+                            /**
+                             * @description O que é assinado: body (o padrão) ou timestamp.body, o momento de timestampHeader, um ponto e o corpo
+                             * @enum {string}
+                             */
+                            signed?: "body" | "timestamp.body";
+                            /** @description Cabeçalho com o momento da chamada, em segundos desde 1970; só com timestamp.body, onde é obrigatório */
+                            timestampHeader?: string;
+                            /** @description Quão velho o momento da chamada pode ser, em segundos (300 por padrão); só com timestamp.body */
+                            toleranceSeconds?: number;
+                        }) | null;
                     };
                 };
             };
@@ -86704,9 +93396,13 @@ export interface operations {
             };
         };
     };
-    ConnectorAccessPublicController_webhookSecret: {
+    ConnectorAccessPublicController_webhookDeliveries: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description O próximo valor da página anterior */
+                before?: string;
+                limit?: number;
+            };
             header?: never;
             path: {
                 /** @description Id do conector */
@@ -86714,33 +93410,52 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": {
-                    /** @description O segredo com que o outro sistema assina, com pelo menos 32 caracteres (openssl rand -hex 32). Guardado cifrado, nunca devolvido */
-                    secret: string;
-                };
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description O webhook, com o segredo gravado */
+            /** @description As entregas */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
+                        /** @description Das mais novas; as aceitas vêm das execuções, as outras do registro de recusas e descartes, que fica 30 dias */
+                        deliveries: {
+                            /**
+                             * Format: date-time
+                             * @description Quando a entrega chegou
+                             */
+                            receivedAt: string;
+                            /** @description O tipo de conteúdo que quem chamou mandou, nulo quando não mandou nenhum */
+                            contentType: string | null;
+                            /** @description Tamanho do corpo, em bytes; o corpo em si nunca volta */
+                            sizeBytes: number;
+                            /**
+                             * @description ran: abriu uma execução, que começou; waiting: abriu uma execução que espera a vez na empresa; refused: o auth declarado a rejeitou e nada rodou; discarded: o conector não estava recebendo chamadas, ou o corpo não pôde ser guardado, e nada rodou
+                             * @enum {string}
+                             */
+                            outcome: "ran" | "waiting" | "refused" | "discarded";
+                            /**
+                             * @description Por que nada rodou, nulo quando uma execução foi aberta. refused: missing, mismatch, stale, secret_missing. discarded: not_published, no_webhook_trigger, disabled, paused, unstorable
+                             * @enum {string|null}
+                             */
+                            reason: "not_published" | "no_webhook_trigger" | "disabled" | "paused" | "unstorable" | "missing" | "mismatch" | "stale" | "secret_missing" | null;
+                            /**
+                             * Format: uuid
+                             * @description A execução que a entrega abriu, nula quando nada rodou
+                             */
+                            runId: string | null;
+                            /**
+                             * @description O estado dessa execução agora
+                             * @enum {string|null}
+                             */
+                            runStatus: "waiting" | "running" | "succeeded" | "partial" | "failed" | "timed_out" | null;
+                        }[];
                         /**
-                         * Format: uri
-                         * @description Onde o outro sistema chama, com POST e um corpo JSON
+                         * Format: uuid
+                         * @description Passe como before para ler a próxima página; null no fim
                          */
-                        url: string;
-                        /** @description Se há um segredo de assinatura gravado; o valor nunca sai do servidor */
-                        secretSet: boolean;
-                        /** @description Cabeçalho com sha256= e o HMAC-SHA256 do timestamp, um ponto e o corpo */
-                        signatureHeader: string;
-                        /** @description Cabeçalho com o horário Unix da chamada, em segundos; cinco minutos de tolerância */
-                        timestampHeader: string;
+                        next: string | null;
                     };
                 };
             };
@@ -86866,6 +93581,460 @@ export interface operations {
             };
         };
     };
+    ConnectorAccessPublicController_webhookTokenPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description O que trocar o token muda */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description A mudança da prévia
+                         * @enum {string}
+                         */
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
+                        /**
+                         * Format: uuid
+                         * @description O conector
+                         */
+                        connectorId: string;
+                        /** @description O que muda, em uma linha, em português */
+                        title: string;
+                        /** @description Cada efeito da mudança, em português: mostre à pessoa antes de confirmar */
+                        changes: string[];
+                        /** @description O que o apply pede */
+                        confirmation: {
+                            /** @description Mande como confirmationToken para o apply desta mesma mudança */
+                            token: string;
+                            /**
+                             * Format: date-time
+                             * @description O token vale por 10 minutos
+                             */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com este id na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorAccessPublicController_webhookTokenRenew: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description O confirmation.token da prévia desta mesma mudança: um uso, 10 minutos */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O webhook com o endereço novo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uri
+                         * @description Onde o outro sistema chama, com POST. O token no endereço é a credencial do webhook: quem tem o endereço pode chamá-lo, então trate-o como um segredo; trocar o token (a prévia e o apply) faz o endereço anterior parar de valer na hora
+                         */
+                        url: string;
+                        /** @description Como o outro sistema prova que a chamada é dele, como a versão publicada declara, que é o que confere as chamadas agora: o tipo, os cabeçalhos e os nomes dos segredos, nunca um valor. Nulo quando nenhuma versão está publicada, ou a publicada não tem gatilho webhook ou não declara auth, e então só o endereço é a prova */
+                        auth: ({
+                            /**
+                             * @description A chamada traz o valor do segredo num cabeçalho
+                             * @enum {string}
+                             */
+                            type: "header";
+                            /** @description Nome do cabeçalho que traz o valor */
+                            header: string;
+                            /** @description Nome do segredo, declarado em secrets, cujo valor o cabeçalho deve trazer */
+                            secret: string;
+                        } | {
+                            /**
+                             * @description A chamada traz um usuário e uma senha, no cabeçalho authorization (HTTP Basic)
+                             * @enum {string}
+                             */
+                            type: "basic";
+                            /** @description Nome do segredo, declarado em secrets, que guarda o usuário */
+                            user: string;
+                            /** @description Nome do segredo, declarado em secrets, que guarda a senha */
+                            secret: string;
+                        } | {
+                            /**
+                             * @description A chamada traz a assinatura do corpo cru, feita com o segredo
+                             * @enum {string}
+                             */
+                            type: "hmac";
+                            /** @description Nome do cabeçalho que traz a assinatura */
+                            header: string;
+                            /** @description Nome do segredo, declarado em secrets, que assina */
+                            secret: string;
+                            /**
+                             * @description sha256 (o padrão) ou sha1
+                             * @enum {string}
+                             */
+                            algorithm?: "sha256" | "sha1";
+                            /**
+                             * @description Como a assinatura é escrita: hex (o padrão) ou base64
+                             * @enum {string}
+                             */
+                            encoding?: "hex" | "base64";
+                            /** @description Texto antes da assinatura no cabeçalho, como sha256= */
+                            prefix?: string;
+                            /**
+                             * @description O que é assinado: body (o padrão) ou timestamp.body, o momento de timestampHeader, um ponto e o corpo
+                             * @enum {string}
+                             */
+                            signed?: "body" | "timestamp.body";
+                            /** @description Cabeçalho com o momento da chamada, em segundos desde 1970; só com timestamp.body, onde é obrigatório */
+                            timestampHeader?: string;
+                            /** @description Quão velho o momento da chamada pode ser, em segundos (300 por padrão); só com timestamp.body */
+                            toleranceSeconds?: number;
+                        }) | null;
+                        /** @description O mesmo, como a versão em edição declara: o que vai conferir as chamadas quando ela for publicada. Nulo quando ela não declara nenhum */
+                        authInEdit: ({
+                            /**
+                             * @description A chamada traz o valor do segredo num cabeçalho
+                             * @enum {string}
+                             */
+                            type: "header";
+                            /** @description Nome do cabeçalho que traz o valor */
+                            header: string;
+                            /** @description Nome do segredo, declarado em secrets, cujo valor o cabeçalho deve trazer */
+                            secret: string;
+                        } | {
+                            /**
+                             * @description A chamada traz um usuário e uma senha, no cabeçalho authorization (HTTP Basic)
+                             * @enum {string}
+                             */
+                            type: "basic";
+                            /** @description Nome do segredo, declarado em secrets, que guarda o usuário */
+                            user: string;
+                            /** @description Nome do segredo, declarado em secrets, que guarda a senha */
+                            secret: string;
+                        } | {
+                            /**
+                             * @description A chamada traz a assinatura do corpo cru, feita com o segredo
+                             * @enum {string}
+                             */
+                            type: "hmac";
+                            /** @description Nome do cabeçalho que traz a assinatura */
+                            header: string;
+                            /** @description Nome do segredo, declarado em secrets, que assina */
+                            secret: string;
+                            /**
+                             * @description sha256 (o padrão) ou sha1
+                             * @enum {string}
+                             */
+                            algorithm?: "sha256" | "sha1";
+                            /**
+                             * @description Como a assinatura é escrita: hex (o padrão) ou base64
+                             * @enum {string}
+                             */
+                            encoding?: "hex" | "base64";
+                            /** @description Texto antes da assinatura no cabeçalho, como sha256= */
+                            prefix?: string;
+                            /**
+                             * @description O que é assinado: body (o padrão) ou timestamp.body, o momento de timestampHeader, um ponto e o corpo
+                             * @enum {string}
+                             */
+                            signed?: "body" | "timestamp.body";
+                            /** @description Cabeçalho com o momento da chamada, em segundos desde 1970; só com timestamp.body, onde é obrigatório */
+                            timestampHeader?: string;
+                            /** @description Quão velho o momento da chamada pode ser, em segundos (300 por padrão); só com timestamp.body */
+                            toleranceSeconds?: number;
+                        }) | null;
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com este id na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.confirmation_stale: o conector mudou depois da prévia; peça uma nova prévia. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.confirmation_malformed, connect.confirmation_expired (passou de 10 minutos) ou connect.confirmation_mismatch (um token de outra mudança, conector ou pessoa): peça uma nova prévia e confirme com o token dela. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
     ConnectorChangesPublicController_publishPreview: {
         parameters: {
             query?: never;
@@ -86889,7 +94058,7 @@ export interface operations {
                          * @description A mudança da prévia
                          * @enum {string}
                          */
-                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar";
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
                         /**
                          * Format: uuid
                          * @description O conector
@@ -87008,6 +94177,30 @@ export interface operations {
                     };
                 };
             };
+            /** @description connect.operation_profile_not_found: uma operação cita em profiles um perfil que a empresa não tem, ou arquivado (meta.profiles). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
             /** @description Limite de chamadas da empresa ou do token atingido */
             429: {
                 headers: {
@@ -87092,6 +94285,13 @@ export interface operations {
                         enabledAt: string | null;
                         /** @description Hosts que a pessoa aprovou antes de publicar: um ensaio chama só estes e os da versão publicada */
                         approvedHosts: string[];
+                        /** @description Quando o cron publicado roda, em português ("a cada 30 minutos", "todo dia às 22:00", "segunda e quinta às 06:00"); null sem cron */
+                        schedule: string | null;
+                        /**
+                         * Format: date-time
+                         * @description Quando o cron roda de novo; null se o conector não estiver ligado ou não tiver cron
+                         */
+                        nextRunAt: string | null;
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -87219,7 +94419,11 @@ export interface operations {
                     };
                 };
             };
-            /** @description connect.confirmation_malformed, connect.confirmation_expired (passou de 10 minutos) ou connect.confirmation_mismatch (um token de outra mudança, conector ou pessoa): peça uma nova prévia e confirme com o token dela. */
+            /**
+             * @description connect.operation_profile_not_found: uma operação cita em profiles um perfil que a empresa não tem, ou arquivado (meta.profiles).
+             *
+             *     connect.confirmation_malformed, connect.confirmation_expired (passou de 10 minutos) ou connect.confirmation_mismatch (um token de outra mudança, conector ou pessoa): peça uma nova prévia e confirme com o token dela.
+             */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -87292,7 +94496,7 @@ export interface operations {
                          * @description A mudança da prévia
                          * @enum {string}
                          */
-                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar";
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
                         /**
                          * Format: uuid
                          * @description O conector
@@ -87495,6 +94699,13 @@ export interface operations {
                         enabledAt: string | null;
                         /** @description Hosts que a pessoa aprovou antes de publicar: um ensaio chama só estes e os da versão publicada */
                         approvedHosts: string[];
+                        /** @description Quando o cron publicado roda, em português ("a cada 30 minutos", "todo dia às 22:00", "segunda e quinta às 06:00"); null sem cron */
+                        schedule: string | null;
+                        /**
+                         * Format: date-time
+                         * @description Quando o cron roda de novo; null se o conector não estiver ligado ou não tiver cron
+                         */
+                        nextRunAt: string | null;
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -87695,7 +94906,7 @@ export interface operations {
                          * @description A mudança da prévia
                          * @enum {string}
                          */
-                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar";
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
                         /**
                          * Format: uuid
                          * @description O conector
@@ -87898,6 +95109,13 @@ export interface operations {
                         enabledAt: string | null;
                         /** @description Hosts que a pessoa aprovou antes de publicar: um ensaio chama só estes e os da versão publicada */
                         approvedHosts: string[];
+                        /** @description Quando o cron publicado roda, em português ("a cada 30 minutos", "todo dia às 22:00", "segunda e quinta às 06:00"); null sem cron */
+                        schedule: string | null;
+                        /**
+                         * Format: date-time
+                         * @description Quando o cron roda de novo; null se o conector não estiver ligado ou não tiver cron
+                         */
+                        nextRunAt: string | null;
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -88075,6 +95293,174 @@ export interface operations {
             };
         };
     };
+    ConnectorChangesPublicController_deletePreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description O que apagar muda */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description A mudança da prévia
+                         * @enum {string}
+                         */
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
+                        /**
+                         * Format: uuid
+                         * @description O conector
+                         */
+                        connectorId: string;
+                        /** @description O que muda, em uma linha, em português */
+                        title: string;
+                        /** @description Cada efeito da mudança, em português: mostre à pessoa antes de confirmar */
+                        changes: string[];
+                        /** @description O que o apply pede */
+                        confirmation: {
+                            /** @description Mande como confirmationToken para o apply desta mesma mudança */
+                            token: string;
+                            /**
+                             * Format: date-time
+                             * @description O token vale por 10 minutos
+                             */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com este id na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.pause_before_delete (pause o conector antes), connect.run_in_progress (espere a execução em andamento terminar). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
     ConnectorChangesPublicController_hostsPreview: {
         parameters: {
             query?: never;
@@ -88105,7 +95491,7 @@ export interface operations {
                          * @description A mudança da prévia
                          * @enum {string}
                          */
-                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar";
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
                         /**
                          * Format: uuid
                          * @description O conector
@@ -88334,6 +95720,13 @@ export interface operations {
                         enabledAt: string | null;
                         /** @description Hosts que a pessoa aprovou antes de publicar: um ensaio chama só estes e os da versão publicada */
                         approvedHosts: string[];
+                        /** @description Quando o cron publicado roda, em português ("a cada 30 minutos", "todo dia às 22:00", "segunda e quinta às 06:00"); null sem cron */
+                        schedule: string | null;
+                        /**
+                         * Format: date-time
+                         * @description Quando o cron roda de novo; null se o conector não estiver ligado ou não tiver cron
+                         */
+                        nextRunAt: string | null;
                         /** Format: date-time */
                         createdAt: string;
                         /** Format: date-time */
@@ -88511,6 +95904,415 @@ export interface operations {
             };
         };
     };
+    ConnectorChangesPublicController_operationExampleDiscardPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description A key da operação no manifesto, como a listagem do ERP a devolve */
+                    operation: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O que descartar muda */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description A mudança da prévia
+                         * @enum {string}
+                         */
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
+                        /**
+                         * Format: uuid
+                         * @description O conector
+                         */
+                        connectorId: string;
+                        /** @description O que muda, em uma linha, em português */
+                        title: string;
+                        /** @description Cada efeito da mudança, em português: mostre à pessoa antes de confirmar */
+                        changes: string[];
+                        /** @description O que o apply pede */
+                        confirmation: {
+                            /** @description Mande como confirmationToken para o apply desta mesma mudança */
+                            token: string;
+                            /**
+                             * Format: date-time
+                             * @description O token vale por 10 minutos
+                             */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com este id na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_example_missing: a operação não tem exemplo guardado. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorChangesPublicController_operationExampleDiscard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description A key da operação no manifesto, como a listagem do ERP a devolve */
+                    operation: string;
+                    /** @description O confirmation.token da prévia desta mesma mudança: um uso, 10 minutos */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O exemplo, descartado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description O conector
+                         */
+                        connectorId: string;
+                        /** @description A key da operação cujo exemplo foi descartado */
+                        operation: string;
+                        /** @description Sempre true: o exemplo some até o próximo ensaio limpo da operação */
+                        discarded: boolean;
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com este id na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_example_missing. connect.confirmation_stale: o conector mudou depois da prévia; peça uma nova prévia. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.confirmation_malformed, connect.confirmation_expired (passou de 10 minutos) ou connect.confirmation_mismatch (um token de outra mudança, conector ou pessoa): peça uma nova prévia e confirme com o token dela. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
     ConnectorRunsPublicController_rehearse: {
         parameters: {
             query?: never;
@@ -88530,6 +96332,12 @@ export interface operations {
                      * @enum {string}
                      */
                     scope?: "sample" | "full";
+                    /** @description Key da operação do manifesto a ensaiar, com args; um conector só com operations precisa de uma, e fica ensaiado quando cada operação teve um ensaio limpo */
+                    operation?: string;
+                    /** @description Args de exemplo da operação, conferidos com o manifesto: o código os lê em ctx.input.args */
+                    args?: {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -88548,7 +96356,7 @@ export interface operations {
                         connectorId: string;
                         /**
                          * Format: uuid
-                         * @description A execução: consulte GET /v1/connect/connectors/{connectorId}/runs/{runId} até o status sair de running
+                         * @description A execução: consulte GET /v1/connect/connectors/{connectorId}/runs/{runId} até o status sair de waiting e running
                          */
                         runId: string;
                         /**
@@ -88562,10 +96370,10 @@ export interface operations {
                          */
                         rehearsalScope: "sample" | "full" | null;
                         /**
-                         * @description A execução começa a rodar e termina sozinha
+                         * @description running: começou e termina sozinha; waiting: outra execução real da empresa está andando e esta começa quando ela termina
                          * @enum {string}
                          */
-                        status: "running";
+                        status: "running" | "waiting";
                         /**
                          * Format: uri
                          * @description A execução na tela do conector
@@ -88694,6 +96502,30 @@ export interface operations {
                     };
                 };
             };
+            /** @description connect.invalid_operation_input: a operação não está na versão em edição, o conector roda só pelas operações e nenhuma foi dita, ou os args quebram o que o manifesto declara (meta.reason). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
             /** @description Limite de chamadas da empresa ou do token atingido */
             429: {
                 headers: {
@@ -88765,7 +96597,7 @@ export interface operations {
                             /** @description Uma amostra que parou com mais para ler: limpa, mas publicar pede um ensaio completo */
                             cut: boolean;
                             /** @enum {string} */
-                            status: "running" | "succeeded" | "partial" | "failed" | "timed_out";
+                            status: "waiting" | "running" | "succeeded" | "partial" | "failed" | "timed_out";
                             failureReason: string | null;
                             /** Format: date-time */
                             startedAt: string;
@@ -88978,7 +96810,7 @@ export interface operations {
                         connectorId: string;
                         /**
                          * Format: uuid
-                         * @description A execução: consulte GET /v1/connect/connectors/{connectorId}/runs/{runId} até o status sair de running
+                         * @description A execução: consulte GET /v1/connect/connectors/{connectorId}/runs/{runId} até o status sair de waiting e running
                          */
                         runId: string;
                         /**
@@ -88992,10 +96824,184 @@ export interface operations {
                          */
                         rehearsalScope: "sample" | "full" | null;
                         /**
-                         * @description A execução começa a rodar e termina sozinha
+                         * @description running: começou e termina sozinha; waiting: outra execução real da empresa está andando e esta começa quando ela termina
                          * @enum {string}
                          */
-                        status: "running";
+                        status: "running" | "waiting";
+                        /**
+                         * Format: uri
+                         * @description A execução na tela do conector
+                         */
+                        link: string;
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found ou connect.run_not_found: não há esse conector ou execução na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.not_enabled, connect.run_in_progress, connect.paused_by_emergency. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorRunsPublicController_initialLoad: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A carga inicial, rodando */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Format: uuid
+                         * @description O conector
+                         */
+                        connectorId: string;
+                        /**
+                         * Format: uuid
+                         * @description A execução: consulte GET /v1/connect/connectors/{connectorId}/runs/{runId} até o status sair de waiting e running
+                         */
+                        runId: string;
+                        /**
+                         * @description dry_run: um ensaio, nada é gravado; live: grava no Nexo
+                         * @enum {string}
+                         */
+                        mode: "live" | "dry_run";
+                        /**
+                         * @description Quanto da fonte um ensaio lê; null numa execução ao vivo
+                         * @enum {string|null}
+                         */
+                        rehearsalScope: "sample" | "full" | null;
+                        /**
+                         * @description running: começou e termina sozinha; waiting: outra execução real da empresa está andando e esta começa quando ela termina
+                         * @enum {string}
+                         */
+                        status: "running" | "waiting";
                         /**
                          * Format: uri
                          * @description A execução na tela do conector
@@ -89168,7 +97174,7 @@ export interface operations {
                         /** @description Uma amostra que parou com mais para ler: limpa, mas publicar pede um ensaio completo */
                         cut: boolean;
                         /** @enum {string} */
-                        status: "running" | "succeeded" | "partial" | "failed" | "timed_out";
+                        status: "waiting" | "running" | "succeeded" | "partial" | "failed" | "timed_out";
                         failureReason: string | null;
                         /** Format: date-time */
                         startedAt: string;
@@ -89284,6 +97290,34 @@ export interface operations {
                             /** @description Resumo do corpo, dados pessoais mascarados */
                             body: string | null;
                         }[];
+                        /** @description O que a execução devolveu, conferido com o schema de saída (de uma operação ou de uma chamada): o que uma consulta leu, o que uma ação planejou gravar, dados pessoais mascarados. Passados 30 dias só fica o total de cada lista; null numa execução que não devolveu nada (que não foi de uma operação nem de uma chamada) */
+                        output: {
+                            [key: string]: unknown;
+                        } | null;
+                        /** @description Num ensaio, cada registro que o Nexo recusaria (os 50 primeiros e o total); numa execução ao vivo fica vazio, os recusados estão na quarentena */
+                        plannedQuarantine: {
+                            /** @description Todo registro que o ensaio mandaria para a quarentena, além dos 50 primeiros listados */
+                            total: number;
+                            items: {
+                                /** @description O objeto do Nexo */
+                                object: string;
+                                /** @description O outro sistema de onde o registro veio, quando traz uma ref */
+                                system: string | null;
+                                /** @description Por que o Nexo o recusaria, como diz o item de quarentena de uma execução real */
+                                code: string;
+                                /** @description O motivo, em português, dados pessoais mascarados */
+                                reason: string;
+                                /** @description Os campos que o código mandou, dados pessoais mascarados */
+                                values: {
+                                    [key: string]: unknown;
+                                };
+                                properties: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description O índice em `steps` da chamada ao Nexo onde aconteceu */
+                                step: number;
+                            }[];
+                        };
                         /** @description A primeira escrita da execução no outro sistema espera a confirmação de uma pessoa: nada dela saiu */
                         awaitingConfirmation: boolean;
                     };
@@ -89412,7 +97446,7 @@ export interface operations {
                          * @description A mudança da prévia
                          * @enum {string}
                          */
-                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar";
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
                         /**
                          * Format: uuid
                          * @description O conector
@@ -89800,7 +97834,7 @@ export interface operations {
                             at: string;
                             /** Format: uuid */
                             byUserId: string | null;
-                            /** @description Hosts que receberam uma escrita confirmada; a primeira escrita em qualquer outro host é guardada e pede de novo */
+                            /** @description Hosts confirmados para escrita, por uma primeira escrita confirmada ou por uma pessoa que confirmou o host; a primeira escrita em qualquer outro host é guardada e pede de novo */
                             hosts: string[];
                         } | null;
                         /** @description Uma escrita espera a pessoa: nenhum host confirmado ainda, ou a primeira escrita num host novo está guardada */
@@ -89971,7 +98005,7 @@ export interface operations {
                          * @description A mudança da prévia
                          * @enum {string}
                          */
-                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar";
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
                         /**
                          * Format: uuid
                          * @description O conector
@@ -90151,7 +98185,7 @@ export interface operations {
                             at: string;
                             /** Format: uuid */
                             byUserId: string | null;
-                            /** @description Hosts que receberam uma escrita confirmada; a primeira escrita em qualquer outro host é guardada e pede de novo */
+                            /** @description Hosts confirmados para escrita, por uma primeira escrita confirmada ou por uma pessoa que confirmou o host; a primeira escrita em qualquer outro host é guardada e pede de novo */
                             hosts: string[];
                         } | null;
                         /** @description Uma escrita espera a pessoa: nenhum host confirmado ainda, ou a primeira escrita num host novo está guardada */
@@ -90296,6 +98330,934 @@ export interface operations {
                 };
             };
             /** @description connect.held_write_decided, connect.held_write_outdated (a versão publicada não chama mais esse host). connect.confirmation_stale: o conector mudou depois da prévia; peça uma nova prévia. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.confirmation_malformed, connect.confirmation_expired (passou de 10 minutos) ou connect.confirmation_mismatch (um token de outra mudança, conector ou pessoa): peça uma nova prévia e confirme com o token dela. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorRunsPublicController_writeHostConfirmPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Um host que o conector declara (em hosts da versão publicada ou da versão em edição), como o manifesto o escreve */
+                    host: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O que confirmar muda */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description A mudança da prévia
+                         * @enum {string}
+                         */
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
+                        /**
+                         * Format: uuid
+                         * @description O conector
+                         */
+                        connectorId: string;
+                        /** @description O que muda, em uma linha, em português */
+                        title: string;
+                        /** @description Cada efeito da mudança, em português: mostre à pessoa antes de confirmar */
+                        changes: string[];
+                        /** @description O que o apply pede */
+                        confirmation: {
+                            /** @description Mande como confirmationToken para o apply desta mesma mudança */
+                            token: string;
+                            /**
+                             * Format: date-time
+                             * @description O token vale por 10 minutos
+                             */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found ou connect.run_not_found: não há esse conector ou execução na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.write_host_already_confirmed: a escrita nesse host já está confirmada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.write_host_not_declared: um host que nem a versão publicada nem a versão em edição declara. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorRunsPublicController_writeHostConfirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Um host que o conector declara (em hosts da versão publicada ou da versão em edição), como o manifesto o escreve */
+                    host: string;
+                    /** @description O confirmation.token da prévia desta mesma mudança: um uso, 10 minutos */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description As escritas no outro sistema, com o host confirmado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description A versão publicada grava no outro sistema */
+                        externalWrites: boolean;
+                        confirmed: {
+                            /** Format: date-time */
+                            at: string;
+                            /** Format: uuid */
+                            byUserId: string | null;
+                            /** @description Hosts confirmados para escrita, por uma primeira escrita confirmada ou por uma pessoa que confirmou o host; a primeira escrita em qualquer outro host é guardada e pede de novo */
+                            hosts: string[];
+                        } | null;
+                        /** @description Uma escrita espera a pessoa: nenhum host confirmado ainda, ou a primeira escrita num host novo está guardada */
+                        needsConfirmation: boolean;
+                        /** @description A escrita esperando a pessoa, ou a mais recente já decidida */
+                        held: {
+                            /** Format: uuid */
+                            id: string;
+                            /**
+                             * Format: uuid
+                             * @description A execução que a pediu
+                             */
+                            runId: string;
+                            versionSeq: number;
+                            /** @enum {string} */
+                            status: "held" | "confirmed" | "sending" | "sent" | "failed" | "discarded";
+                            method: string;
+                            /** @description Como o código escreveu, segredos como marcadores: o gateway troca pelos valores só quando manda */
+                            url: string;
+                            query: {
+                                [key: string]: string;
+                            };
+                            headers: {
+                                [key: string]: string;
+                            };
+                            /** @description O corpo que vai, dados pessoais mascarados aqui */
+                            body: string | null;
+                            /** Format: date-time */
+                            heldAt: string;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: uuid */
+                            confirmedByUserId: string | null;
+                            /** Format: date-time */
+                            sentAt: string | null;
+                            /** @description A resposta do outro sistema a ela */
+                            responseStatus: number | null;
+                            /** @description Por que o envio não terminou; pode ou não ter chegado ao outro sistema */
+                            failureCode: string | null;
+                            /** @description Para um envio que falhou, em português: não foi repetido e pode ter chegado ao outro sistema, confira lá */
+                            failureNotice: string | null;
+                        } | null;
+                        /** @description O que a tela diz: o que vai para o outro sistema não tem desfazer */
+                        notice: string;
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found ou connect.run_not_found: não há esse conector ou execução na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.write_host_not_declared, connect.write_host_already_confirmed. connect.confirmation_stale: o conector mudou depois da prévia; peça uma nova prévia. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.confirmation_malformed, connect.confirmation_expired (passou de 10 minutos) ou connect.confirmation_mismatch (um token de outra mudança, conector ou pessoa): peça uma nova prévia e confirme com o token dela. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorRunsPublicController_writeHostRevokePreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Um host que o conector declara (em hosts da versão publicada ou da versão em edição), como o manifesto o escreve */
+                    host: string;
+                };
+            };
+        };
+        responses: {
+            /** @description O que revogar muda */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description A mudança da prévia
+                         * @enum {string}
+                         */
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
+                        /**
+                         * Format: uuid
+                         * @description O conector
+                         */
+                        connectorId: string;
+                        /** @description O que muda, em uma linha, em português */
+                        title: string;
+                        /** @description Cada efeito da mudança, em português: mostre à pessoa antes de confirmar */
+                        changes: string[];
+                        /** @description O que o apply pede */
+                        confirmation: {
+                            /** @description Mande como confirmationToken para o apply desta mesma mudança */
+                            token: string;
+                            /**
+                             * Format: date-time
+                             * @description O token vale por 10 minutos
+                             */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found ou connect.run_not_found: não há esse conector ou execução na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.write_host_not_confirmed: a escrita nesse host não está confirmada. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorRunsPublicController_writeHostRevoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Um host que o conector declara (em hosts da versão publicada ou da versão em edição), como o manifesto o escreve */
+                    host: string;
+                    /** @description O confirmation.token da prévia desta mesma mudança: um uso, 10 minutos */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description As escritas no outro sistema, sem o host */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description A versão publicada grava no outro sistema */
+                        externalWrites: boolean;
+                        confirmed: {
+                            /** Format: date-time */
+                            at: string;
+                            /** Format: uuid */
+                            byUserId: string | null;
+                            /** @description Hosts confirmados para escrita, por uma primeira escrita confirmada ou por uma pessoa que confirmou o host; a primeira escrita em qualquer outro host é guardada e pede de novo */
+                            hosts: string[];
+                        } | null;
+                        /** @description Uma escrita espera a pessoa: nenhum host confirmado ainda, ou a primeira escrita num host novo está guardada */
+                        needsConfirmation: boolean;
+                        /** @description A escrita esperando a pessoa, ou a mais recente já decidida */
+                        held: {
+                            /** Format: uuid */
+                            id: string;
+                            /**
+                             * Format: uuid
+                             * @description A execução que a pediu
+                             */
+                            runId: string;
+                            versionSeq: number;
+                            /** @enum {string} */
+                            status: "held" | "confirmed" | "sending" | "sent" | "failed" | "discarded";
+                            method: string;
+                            /** @description Como o código escreveu, segredos como marcadores: o gateway troca pelos valores só quando manda */
+                            url: string;
+                            query: {
+                                [key: string]: string;
+                            };
+                            headers: {
+                                [key: string]: string;
+                            };
+                            /** @description O corpo que vai, dados pessoais mascarados aqui */
+                            body: string | null;
+                            /** Format: date-time */
+                            heldAt: string;
+                            /** Format: date-time */
+                            confirmedAt: string | null;
+                            /** Format: uuid */
+                            confirmedByUserId: string | null;
+                            /** Format: date-time */
+                            sentAt: string | null;
+                            /** @description A resposta do outro sistema a ela */
+                            responseStatus: number | null;
+                            /** @description Por que o envio não terminou; pode ou não ter chegado ao outro sistema */
+                            failureCode: string | null;
+                            /** @description Para um envio que falhou, em português: não foi repetido e pode ter chegado ao outro sistema, confira lá */
+                            failureNotice: string | null;
+                        } | null;
+                        /** @description O que a tela diz: o que vai para o outro sistema não tem desfazer */
+                        notice: string;
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found ou connect.run_not_found: não há esse conector ou execução na empresa. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.write_host_not_confirmed. connect.confirmation_stale: o conector mudou depois da prévia; peça uma nova prévia. */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -90588,6 +99550,10 @@ export interface operations {
                      */
                     properties?: {
                         [key: string]: string | number | boolean | string[] | unknown;
+                    };
+                    /** @description A origem de um lead novo, no lugar da que o conector mandou (um registro recusado pela origem se corrige aqui) */
+                    origin?: {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -90965,7 +99931,7 @@ export interface operations {
                          * @description A mudança da prévia
                          * @enum {string}
                          */
-                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar";
+                        change: "publicar" | "ligar" | "pausar" | "desfazer" | "confirmar_escrita_no_host" | "revogar_escrita_no_host" | "aprovar_hosts" | "confirmar_escrita_externa" | "reprocessar" | "carga_inicial" | "restaurar_versao" | "rodar_agora" | "descartar_quarentena" | "corrigir_quarentena" | "remover_cliente_oauth" | "descartar_exemplo" | "apagar" | "anotar_operacao" | "apagar_nota_da_operacao" | "renovar_email" | "renovar_webhook";
                         /**
                          * Format: uuid
                          * @description O conector
@@ -92588,6 +101554,1687 @@ export interface operations {
             };
             /** @description connect.agent_not_found: nenhum agente local com esse id na empresa. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ErpOperationsPublicController_list: {
+        parameters: {
+            query?: {
+                /** @description Words of the key, name or description of the operation, or of its connector; without it, the first ones come */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The operations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description How many operations the person may use that match the search */
+                        total: number;
+                        /** @description How many came in this answer */
+                        mostrando: number;
+                        /** @description The guide of each connector that has one and an operation in this answer: read it before choosing an operation */
+                        guias?: {
+                            /** @description Name of the connector the guide belongs to */
+                            conector: string;
+                            /** @description How to use the operations of that connector: which one serves each question, formats, where to start */
+                            guia: string;
+                        }[];
+                        operacoes: {
+                            /** @description Id of the operation, as the listing returns it: <connectorId>:<key> */
+                            id: string;
+                            /** @description Name of the connector the operation belongs to */
+                            conector: string;
+                            /** @description Key of the operation in the manifest */
+                            key: string;
+                            /**
+                             * @description query only reads the other system; action writes to it, after a preview
+                             * @enum {string}
+                             */
+                            kind: "query" | "action";
+                            label: string;
+                            description: string;
+                            /** @description What the operation asks: key, type and whether it is required */
+                            args: {
+                                [key: string]: unknown;
+                            }[];
+                            /** @description The output the operation declares */
+                            saida: {
+                                [key: string]: unknown;
+                            };
+                            /** @description Only when one operation is asked for by its id: how it was called in its last clean rehearsal; null when it has none */
+                            exemplo?: {
+                                /** @description The args the last clean rehearsal used, personal data masked */
+                                args: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description A cut of what it returned: the first items of each list and short texts, personal data masked */
+                                saida: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Whether the output was cut: it shows the shape of the answer, not the whole of it */
+                                cortado: boolean;
+                                /** @description When the rehearsal that left this example ended, ISO 8601 */
+                                em: string;
+                            } | null;
+                            /** @description The company note on the operation; a note on an arg or output field comes in that field */
+                            notaDaEmpresa?: {
+                                texto: string;
+                                /** @description Who wrote it; null when the person left the company */
+                                autor: string | null;
+                                /** Format: date-time */
+                                em: string;
+                            };
+                        }[];
+                        /** @description What to do when the list came cut or empty */
+                        aviso?: string;
+                    };
+                };
+            };
+            /** @description validation_failed: a field is missing or out of format (meta.errors says which). Fix the request and send it again. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description plans.product_not_contracted: The company has no Nexo Connect in its plan (crm_connect).
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ErpOperationsPublicController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the operation, as the listing returns it: <connectorId>:<key> */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The operation, in a list of one */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description How many operations the person may use that match the search */
+                        total: number;
+                        /** @description How many came in this answer */
+                        mostrando: number;
+                        /** @description The guide of each connector that has one and an operation in this answer: read it before choosing an operation */
+                        guias?: {
+                            /** @description Name of the connector the guide belongs to */
+                            conector: string;
+                            /** @description How to use the operations of that connector: which one serves each question, formats, where to start */
+                            guia: string;
+                        }[];
+                        operacoes: {
+                            /** @description Id of the operation, as the listing returns it: <connectorId>:<key> */
+                            id: string;
+                            /** @description Name of the connector the operation belongs to */
+                            conector: string;
+                            /** @description Key of the operation in the manifest */
+                            key: string;
+                            /**
+                             * @description query only reads the other system; action writes to it, after a preview
+                             * @enum {string}
+                             */
+                            kind: "query" | "action";
+                            label: string;
+                            description: string;
+                            /** @description What the operation asks: key, type and whether it is required */
+                            args: {
+                                [key: string]: unknown;
+                            }[];
+                            /** @description The output the operation declares */
+                            saida: {
+                                [key: string]: unknown;
+                            };
+                            /** @description Only when one operation is asked for by its id: how it was called in its last clean rehearsal; null when it has none */
+                            exemplo?: {
+                                /** @description The args the last clean rehearsal used, personal data masked */
+                                args: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description A cut of what it returned: the first items of each list and short texts, personal data masked */
+                                saida: {
+                                    [key: string]: unknown;
+                                };
+                                /** @description Whether the output was cut: it shows the shape of the answer, not the whole of it */
+                                cortado: boolean;
+                                /** @description When the rehearsal that left this example ended, ISO 8601 */
+                                em: string;
+                            } | null;
+                            /** @description The company note on the operation; a note on an arg or output field comes in that field */
+                            notaDaEmpresa?: {
+                                texto: string;
+                                /** @description Who wrote it; null when the person left the company */
+                                autor: string | null;
+                                /** Format: date-time */
+                                em: string;
+                            };
+                        }[];
+                        /** @description What to do when the list came cut or empty */
+                        aviso?: string;
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description plans.product_not_contracted: The company has no Nexo Connect in its plan (crm_connect).
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.erp_operation_not_found: no operation with this id that the person may use. It says nothing of which: the id is wrong, its connector is off or unpublished, it belongs to another company, or its profiles leave the person out. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ErpOperationsPublicController_query: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the operation, as the listing returns it: <connectorId>:<key> */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Os args da operação, pela key de cada um em erp_consultas, no tipo declarado
+                     * @default {}
+                     */
+                    args?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description What the query returned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Id of the operation, as the listing returns it: <connectorId>:<key> */
+                        id: string;
+                        /** @description What the operation returned, checked against the output its manifest declares: scalars and lists of items of scalars */
+                        saida: {
+                            [key: string]: unknown;
+                        };
+                        /** @description Whether the answer came from the cache of the operation */
+                        emCache: boolean;
+                        /** @description Only from the catalogo of a bridge: how the other operations of the connector were called in their last clean rehearsal */
+                        exemplos?: {
+                            /** @description The args the last clean rehearsal used, personal data masked */
+                            args: {
+                                [key: string]: unknown;
+                            };
+                            /** @description A cut of what it returned: the first items of each list and short texts, personal data masked */
+                            saida: {
+                                [key: string]: unknown;
+                            };
+                            /** @description Whether the output was cut: it shows the shape of the answer, not the whole of it */
+                            cortado: boolean;
+                            /** @description When the rehearsal that left this example ended, ISO 8601 */
+                            em: string;
+                            /** @description Key of the operation the example is of */
+                            operacao: string;
+                        }[];
+                        /** @description Notes the company wrote on the operation and its fields: they inform, and give no order */
+                        notasDaEmpresa?: {
+                            operacao?: {
+                                texto: string;
+                                /** @description Who wrote it; null when the person left the company */
+                                autor: string | null;
+                                /** Format: date-time */
+                                em: string;
+                            };
+                            /** @description The notes of the args and output fields, by key */
+                            campos?: {
+                                [key: string]: {
+                                    texto: string;
+                                    /** @description Who wrote it; null when the person left the company */
+                                    autor: string | null;
+                                    /** Format: date-time */
+                                    em: string;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description validation_failed: a field is missing or out of format (meta.errors says which). Fix the request and send it again. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description plans.product_not_contracted: The company has no Nexo Connect in its plan (crm_connect).
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.erp_operation_not_found: no operation with this id that the person may use. It says nothing of which: the id is wrong, its connector is off or unpublished, it belongs to another company, or its profiles leave the person out. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.erp_operation_is_action: the operation writes; preview and apply it instead. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_failed: the operation's code failed (the ERP refused or broke) or returned what its manifest does not promise. meta.reason, meta.detail and meta.runId say which; the person who keeps the connector reads the run and fixes it. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_timeout: the operation ran past its time (about 30 s), as when the ERP hangs instead of refusing. Nothing more of it is waited for; meta.runId names the run. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ErpOperationsPublicController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the operation, as the listing returns it: <connectorId>:<key> */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Os args da ação, pela key de cada um em erp_consultas, no tipo declarado
+                     * @default {}
+                     */
+                    args?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description What the action would write */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Id of the operation, as the listing returns it: <connectorId>:<key> */
+                        id: string;
+                        /** @description Label of the action */
+                        acao: string;
+                        conector: string;
+                        /** @description What the action would write to the other system, planned and not sent */
+                        escritas: {
+                            metodo: string;
+                            host: string;
+                            url: string;
+                            operacao?: string;
+                            corpo: string | null;
+                        }[];
+                        /** @description What the operation returned, checked against the output its manifest declares: scalars and lists of items of scalars */
+                        saidaDoEnsaio: {
+                            [key: string]: unknown;
+                        };
+                        /** @description Why there is no token, or what the person must know before applying */
+                        aviso?: string;
+                        /** @description Only when the action may write: the token applies it once, within 10 minutes */
+                        confirmation?: {
+                            token: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description validation_failed: a field is missing or out of format (meta.errors says which). Fix the request and send it again. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description plans.product_not_contracted: The company has no Nexo Connect in its plan (crm_connect).
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.erp_operation_not_found: no operation with this id that the person may use. It says nothing of which: the id is wrong, its connector is off or unpublished, it belongs to another company, or its profiles leave the person out. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.erp_operation_is_query: the operation only reads; run it with query. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_failed: the operation's code failed (the ERP refused or broke) or returned what its manifest does not promise. meta.reason, meta.detail and meta.runId say which; the person who keeps the connector reads the run and fixes it. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_timeout: the operation ran past its time (about 30 s), as when the ERP hangs instead of refusing. Nothing more of it is waited for; meta.runId names the run. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ErpOperationsPublicController_apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id of the operation, as the listing returns it: <connectorId>:<key> */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Os args da ação, pela key de cada um em erp_consultas, no tipo declarado
+                     * @default {}
+                     */
+                    args?: {
+                        [key: string]: unknown;
+                    };
+                    /** @description O confirmation.token de erp_acao_previa para esta ação e estes args: vale 10 minutos, grava uma vez */
+                    confirmationToken: string;
+                };
+            };
+        };
+        responses: {
+            /** @description What the action answered */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Id of the operation, as the listing returns it: <connectorId>:<key> */
+                        id: string;
+                        /** @description What the operation returned, checked against the output its manifest declares: scalars and lists of items of scalars */
+                        saida: {
+                            [key: string]: unknown;
+                        } | null;
+                        /** @description true when the same token had already applied the action: this is the first one’s answer */
+                        repetida: boolean;
+                        /** @description How the run ended */
+                        situacao: string;
+                    };
+                };
+            };
+            /** @description validation_failed: a field is missing or out of format (meta.errors says which). Fix the request and send it again. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /**
+             * @description plans.product_not_contracted: The company has no Nexo Connect in its plan (crm_connect). Or the key lacks the deals:write scope. connect.external_writes_not_allowed: the connector may not write to other systems.
+             *
+             *     Papel, escopo do token ou plano não permitem a operação
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.erp_operation_not_found: no operation with this id that the person may use. It says nothing of which: the id is wrong, its connector is off or unpublished, it belongs to another company, or its profiles leave the person out. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.action_host_unconfirmed: the host the action writes to was not confirmed for writing yet; whoever keeps the connector confirms it and asks a new preview. connect.confirmation_stale: the connector changed after the preview; ask for a new preview. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.erp_operation_is_query: the operation only reads; run it with query. connect.confirmation_malformed, connect.confirmation_expired (past 10 minutes) or connect.confirmation_mismatch (a token of another change, connector or person): ask for a new preview and confirm with its token. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_failed: the operation's code failed (the ERP refused or broke) or returned what its manifest does not promise. meta.reason, meta.detail and meta.runId say which; the person who keeps the connector reads the run and fixes it. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_timeout: the operation ran past its time (about 30 s), as when the ERP hangs instead of refusing. Nothing more of it is waited for; meta.runId names the run. */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorOperationNotesPublicController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+                /** @description Key da operação no manifesto, como a listagem das operações a devolve */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description As notas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        connectorId: string;
+                        operation: string;
+                        /** @description A nota da operação primeiro, depois as dos campos, por key; só do que a versão publicada declara */
+                        notes: {
+                            /** Format: uuid */
+                            connectorId: string;
+                            /** @description A key da operação */
+                            operation: string;
+                            /** @description O campo de que a nota é; null na da própria operação */
+                            field: string | null;
+                            text: string;
+                            /** @description Quem escreveu; null quando a pessoa saiu da empresa */
+                            author: string | null;
+                            /** Format: date-time */
+                            writtenAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com esse id na empresa. connect.operation_note_target_not_found: a versão publicada não tem essa operação, ou a operação não tem esse campo. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorOperationNotesPublicController_save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+                /** @description Key da operação no manifesto, como a listagem das operações a devolve */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Um arg ou um campo da saída da operação, pela key do manifesto; sem ele, a nota é da operação */
+                    field?: string;
+                    /** @description A nota, em português, até 500 caracteres; ela troca a que está lá */
+                    text: string;
+                };
+            };
+        };
+        responses: {
+            /** @description A nota como ficou */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        connectorId: string;
+                        /** @description A key da operação */
+                        operation: string;
+                        /** @description O campo de que a nota é; null na da própria operação */
+                        field: string | null;
+                        text: string;
+                        /** @description Quem escreveu; null quando a pessoa saiu da empresa */
+                        author: string | null;
+                        /** Format: date-time */
+                        writtenAt: string;
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com esse id na empresa. connect.operation_note_target_not_found: a versão publicada não tem essa operação, ou a operação não tem esse campo. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_note_unchanged: a nota já tem esse texto, ou não há nota para apagar. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    ConnectorOperationNotesPublicController_remove: {
+        parameters: {
+            query?: {
+                /** @description Um arg ou um campo da saída da operação, pela key do manifesto; sem ele, a nota é da operação */
+                field?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Id do conector */
+                connectorId: string;
+                /** @description Key da operação no manifesto, como a listagem das operações a devolve */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A nota que foi apagada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        connectorId: string;
+                        /** @description A key da operação */
+                        operation: string;
+                        /** @description O campo de que a nota é; null na da própria operação */
+                        field: string | null;
+                        text: string;
+                        /** @description Quem escreveu; null quando a pessoa saiu da empresa */
+                        author: string | null;
+                        /** Format: date-time */
+                        writtenAt: string;
+                    };
+                };
+            };
+            /** @description validation_failed: um campo falta ou está fora do formato (meta.errors diz qual). Corrija a requisição e mande de novo. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.connector_not_found: nenhum conector com esse id na empresa. connect.operation_note_target_not_found: a versão publicada não tem essa operação, ou a operação não tem esse campo. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Código de erro estável e legível por máquina (ex.: identity.email_already_in_use) */
+                        type: string;
+                        /** @description Nome da classe do erro */
+                        title: string;
+                        /** @description Código de status HTTP */
+                        status: number;
+                        /** @description Mensagem legível, segura para mostrar ao usuário final */
+                        detail: string;
+                        /** @description Id de correlação — mande ao suporte para localizar o rastro completo */
+                        requestId: string | null;
+                        /** @description Detalhes estruturados seguros para o frontend (erros de campo, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description connect.operation_note_unchanged: a nota já tem esse texto, ou não há nota para apagar. */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -97271,6 +107918,405 @@ export interface operations {
             };
             /** @description O token não é de uma conexão de plataforma */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    PlatformConnectionPublicController_capabilities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da empresa, de GET /v1/platform/companies */
+                companyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description As funções da empresa */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description A empresa */
+                        company: {
+                            /**
+                             * Format: uuid
+                             * @description Id da empresa: o que PUT /v1/platform/active-company recebe
+                             */
+                            id: string;
+                            /** @description Nome da empresa */
+                            name: string;
+                            /** @description Suspensa por cobrança: dentro dela, a conexão só lê */
+                            suspended: boolean;
+                        };
+                        /** @description Todas as funções do catálogo e se a empresa tem cada uma */
+                        capabilities: {
+                            /** @description Chave da função no código */
+                            capability: string;
+                            /** @description Nome da função como a tela mostra */
+                            displayName: string;
+                            /** @description A empresa usa a função agora */
+                            allowed: boolean;
+                            /**
+                             * @description plan veio com o plano, granted foi liberada à mão, revoked foi tirada à mão, addon está aberta por um add-on pago do contrato, none a empresa não tem
+                             * @enum {string}
+                             */
+                            source: "plan" | "granted" | "revoked" | "addon" | "none";
+                        }[];
+                    };
+                };
+            };
+            /** @description Id fora do formato */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description A empresa não existe, ou o token não é de uma conexão de plataforma */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description É a empresa da plataforma */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Limite de chamadas da empresa ou do token atingido */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    PlatformConnectionPublicController_changeCapability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Id da empresa, de GET /v1/platform/companies */
+                companyId: string;
+                /** @description Chave da função no código, como GET .../capabilities devolve em capability */
+                capability: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description true libera a função para esta empresa, false tira */
+                    allowed: boolean;
+                    /** @description Ao liberar um módulo que exige outros, true libera os exigidos junto; sem ele, a mudança é recusada com o que falta */
+                    withRequired?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description As funções da empresa depois da mudança */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description A empresa */
+                        company: {
+                            /**
+                             * Format: uuid
+                             * @description Id da empresa: o que PUT /v1/platform/active-company recebe
+                             */
+                            id: string;
+                            /** @description Nome da empresa */
+                            name: string;
+                            /** @description Suspensa por cobrança: dentro dela, a conexão só lê */
+                            suspended: boolean;
+                        };
+                        /** @description Todas as funções do catálogo e se a empresa tem cada uma */
+                        capabilities: {
+                            /** @description Chave da função no código */
+                            capability: string;
+                            /** @description Nome da função como a tela mostra */
+                            displayName: string;
+                            /** @description A empresa usa a função agora */
+                            allowed: boolean;
+                            /**
+                             * @description plan veio com o plano, granted foi liberada à mão, revoked foi tirada à mão, addon está aberta por um add-on pago do contrato, none a empresa não tem
+                             * @enum {string}
+                             */
+                            source: "plan" | "granted" | "revoked" | "addon" | "none";
+                        }[];
+                    };
+                };
+            };
+            /** @description Corpo fora do formato, ou a chave não é de uma função */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Token ausente, inválido, expirado ou revogado */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Papel, escopo do token ou plano não permitem a operação */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description A empresa ou a função não existe, ou o token não é de uma conexão de plataforma */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Stable machine-readable error code (e.g. identity.email_already_in_use) */
+                        type: string;
+                        /** @description Error class name */
+                        title: string;
+                        /** @description HTTP status code */
+                        status: number;
+                        /** @description Human-readable message, safe to display to end users */
+                        detail: string;
+                        /** @description Correlation id — send it to support to locate the full trail */
+                        requestId: string | null;
+                        /** @description Structured details safe for the frontend (field errors, ids) */
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Falta um módulo exigido, um módulo ligado ainda exige este, ou é a empresa da plataforma */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

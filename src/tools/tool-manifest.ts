@@ -167,6 +167,9 @@ export const COMMAND_TOOLS: Readonly<Record<string, ToolDeclaration>> = {
         none: 'Escolha de empresa da conexão de plataforma (GET /v1/platform/companies); a ferramenta do MCP não tem comando próprio'
     },
     'nexo use': { none: 'Escolha de empresa da conexão de plataforma (PUT/DELETE /v1/platform/active-company)' },
+    'nexo features list': { none: 'Funções de uma empresa da conexão de plataforma (GET /v1/platform/companies/:id/capabilities)' },
+    'nexo features on': { none: 'Funções de uma empresa da conexão de plataforma (PUT /v1/platform/companies/:id/capabilities/:chave)' },
+    'nexo features off': { none: 'Funções de uma empresa da conexão de plataforma (PUT /v1/platform/companies/:id/capabilities/:chave)' },
     'nexo api': { none: 'Chama qualquer rota /v1; não é uma ferramenta' },
     'nexo docs list': { none: 'Documentação embutida na CLI' },
     'nexo docs search': { none: 'Documentação embutida na CLI' },
