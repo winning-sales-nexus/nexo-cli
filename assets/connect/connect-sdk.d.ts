@@ -101,7 +101,7 @@ export type NexoEventName = 'company.created' | 'company.updated' | 'contact.cre
 /**
  * The input of a run a call to the connector's webhook started. `body` is the JSON object, or the fields of a form-encoded body (a repeated field
  * becomes a list), or null for XML and plain text: then read `rawBody`. `authorization`, `cookie`, `proxy-authorization` and the header the
- * trigger's `auth` reads never reach `headers`. A rehearsal has no call: `ctx.input` is null, so treat null.
+ * trigger's `auth` reads never reach `headers`. A rehearsal gets a sample call when one is given; without it `ctx.input` is null, so treat null.
  */
 export interface NexoWebhookInput {
     readonly body: JsonValue | null;
