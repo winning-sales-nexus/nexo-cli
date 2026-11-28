@@ -289,6 +289,7 @@ export const COMMAND_TOOLS: Readonly<Record<string, ToolDeclaration>> = {
     'nexo context add': { key: 'configuration_change' },
     'nexo context remove': { key: 'configuration_change' },
     'nexo context confirm': { key: 'configuration_change' },
+    'nexo whatsapp numbers': { key: 'integration_health' },
     'nexo templates list': { none: 'Modelos de e-mail e WhatsApp em /v1/message-templates; ainda sem chave de ferramenta no produto' },
     'nexo templates get': { none: 'Modelos de e-mail e WhatsApp em /v1/message-templates; ainda sem chave de ferramenta no produto' },
     'nexo templates preview': { none: 'Modelos de e-mail e WhatsApp em /v1/message-templates; ainda sem chave de ferramenta no produto' },

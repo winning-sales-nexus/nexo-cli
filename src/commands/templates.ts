@@ -56,6 +56,7 @@ interface Template {
     readonly fromKit: boolean;
     readonly content: TemplateContent;
     readonly rules: readonly TemplateRule[];
+    readonly whatsapp?: { readonly metaStatus?: string | null; readonly reason?: string | null } | null;
     readonly updatedAt: string;
 }
 
@@ -215,6 +216,22 @@ function row(template: Template): string {
     return `${template.id}  ${template.channel.padEnd(8)} ${template.state.padEnd(8)} v${String(template.currentSeq)}  ${template.name}${kit}`;
 }
 
+const META_LABELS: Readonly<Record<string, string>> = {
+    in_review: 'em análise na Meta',
+    approved: 'aprovado pela Meta',
+    rejected: 'rejeitado pela Meta',
+    paused: 'pausado pela Meta'
+};
+
+function metaLine(template: Template): string {
+    const status: string | null | undefined = template.whatsapp?.metaStatus;
+    if (status === null || status === undefined) {
+        return '';
+    }
+    const reason: string | null | undefined = template.whatsapp?.reason;
+    return ` [${META_LABELS[status] ?? status}${reason === null || reason === undefined || reason === '' ? '' : `: ${reason}`}]`;
+}
+
 export async function templatesList(context: CliContext, options: TemplateOptions): Promise<void> {
     const query: URLSearchParams = new URLSearchParams();
     for (const [key, value] of [
@@ -237,7 +254,7 @@ export async function templatesList(context: CliContext, options: TemplateOption
         return;
     }
     list.items.forEach((template: Template) => {
-        printLine(context, row(template));
+        printLine(context, `${row(template)}${metaLine(template)}`);
     });
 }
 
@@ -247,7 +264,7 @@ export async function templatesGet(context: CliContext, templateId: string, opti
         printJson(context, template);
         return;
     }
-    printLine(context, row(template));
+    printLine(context, `${row(template)}${metaLine(template)}`);
     if (template.channel === 'email') {
         printLine(context, `Formato: ${formatOf(template.content)}`);
         printLine(context, `Assunto: ${template.content.subject ?? '—'}`);

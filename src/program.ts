@@ -1,5 +1,6 @@
 import { Command, Option } from 'commander';
 import { api } from './commands/api.js';
+import { whatsappNumbers } from './commands/whatsapp.js';
 import { billingInvoices, billingOverview } from './commands/billing.js';
 import type { BillingOptions } from './commands/billing.js';
 import { docsList, docsSearch, docsShow } from './commands/docs.js';
@@ -225,10 +226,22 @@ function addBillingCommands(program: Command, context: CliContext): void {
         });
 }
 
+function addWhatsAppCommands(program: Command, context: CliContext): void {
+    program
+        .command('whatsapp')
+        .description('Os números de WhatsApp da empresa')
+        .command('numbers')
+        .description('Os números conectados: se são oficiais da Meta, o dono, o estado, a causa se inválido e se enviam modelos')
+        .action(async (_options: GlobalOptions, command: Command) => {
+            await whatsappNumbers(context, command.optsWithGlobals());
+        });
+}
+
 function addCompanyBrainCommands(program: Command, context: CliContext): void {
     addBrainCommands(program, context);
     addKnowledgeCommands(program, context);
     addContextCommands(program, context);
+    addWhatsAppCommands(program, context);
 }
 
 export function buildProgram(context: CliContext): Command {
