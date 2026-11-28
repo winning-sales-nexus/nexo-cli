@@ -34,6 +34,9 @@ async function visit(path: string, query: Record<string, string>): Promise<{ rep
 
 function expectSelfContained(html: string): void {
     expect(html).not.toMatch(/https?:\/\//);
+    expect(html).not.toMatch(/\b(?:src|href|action|data)\s*=/i);
+    expect(html).not.toMatch(/url\(/i);
+    expect(html).not.toMatch(/<(?:iframe|object|embed|form)\b/i);
     expect(html).not.toContain('<script');
     expect(html).not.toContain('<link');
     expect(html).not.toContain('<img');

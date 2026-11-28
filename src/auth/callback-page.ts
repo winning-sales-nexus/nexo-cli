@@ -4,7 +4,8 @@ export interface CallbackPageContent {
     readonly state: CallbackPageState;
     readonly title: string;
     readonly text: string;
-    readonly hint?: string;
+    /** Adds the fixed line telling the person to run the login again. */
+    readonly retry?: boolean;
 }
 
 const HTML_ESCAPES: Readonly<Record<string, string>> = {
@@ -53,10 +54,12 @@ const ICONS: Readonly<Record<CallbackPageState, string>> = {
     error: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>'
 };
 
-/** Escapes title and text, so a caller can pass text that came from the callback URL. The hint is trusted markup. */
+const RETRY_HINT: string = 'Volte ao terminal e rode <code>nexo login</code> de novo.';
+
+/** Escapes title and text, so a caller can pass text that came from the callback URL. No other caller text reaches the page. */
 export function renderCallbackPage(content: CallbackPageContent): string {
     const title: string = escapeHtml(content.title);
-    const hint: string = content.hint === undefined ? '' : `<p class="hint">${content.hint}</p>`;
+    const hint: string = content.retry === true ? `<p class="hint">${RETRY_HINT}</p>` : '';
     return (
         `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">` +
         `<meta name="viewport" content="width=device-width,initial-scale=1">` +
@@ -65,5 +68,3 @@ export function renderCallbackPage(content: CallbackPageContent): string {
         `<div class="badge">${ICONS[content.state]}</div><h1>${title}</h1><p>${escapeHtml(content.text)}</p>${hint}</main></body></html>`
     );
 }
-
-export const RETRY_HINT: string = 'Volte ao terminal e rode <code>nexo login</code> de novo.';
