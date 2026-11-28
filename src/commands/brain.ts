@@ -188,7 +188,7 @@ export async function brainMoments(context: CliContext, options: BrainOptions): 
         printJson(context, { moments });
         return;
     }
-    printLine(context, moments.length === 0 ? 'Nenhum momento aceita skill nova por enquanto.' : moments.join('\n'));
+    printLine(context, moments.length === 0 ? 'Nenhuma situação aceita skill nova por enquanto.' : moments.join('\n'));
 }
 
 export async function brainList(context: CliContext, rawLevel: string, options: BrainOptions): Promise<void> {
@@ -225,7 +225,7 @@ export async function brainCreate(context: CliContext, rawLevel: string, options
         printJson(context, skill);
         return;
     }
-    printLine(context, 'Skill criada. Ela nasce em teste e só liga depois do teste "não piora" e da escolha às cegas.');
+    printLine(context, 'Skill criada. Ela nasce em teste e só liga depois de provar que ajuda.');
     printSkill(context, skill);
 }
 
@@ -295,10 +295,7 @@ export async function brainFromTemplate(context: CliContext, templateId: string,
         printJson(context, skill);
         return;
     }
-    printLine(
-        context,
-        'Skill pessoal criada a partir do modelo. Ela nasce em teste e só liga depois do teste "não piora" e da escolha às cegas.'
-    );
+    printLine(context, 'Skill pessoal criada a partir do modelo. Ela nasce em teste e só liga depois de provar que ajuda.');
     printSkill(context, skill);
 }
 
@@ -339,6 +336,6 @@ export async function brainChoose(context: CliContext, choiceId: string, chosen:
             ? 'A skill continua desligada: faltou algo nela. Diga o que faltava e edite a skill por item.'
             : result.activated
               ? 'Ganho confirmado: a skill está ligada.'
-              : 'Ganho confirmado; a skill liga quando o teste "não piora" aprovar esta versão.'
+              : 'Ganho confirmado; a skill liga quando o teste aprovar esta versão.'
     );
 }

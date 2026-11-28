@@ -35,7 +35,7 @@ const VERDICT_LABELS: Readonly<Record<string, string>> = {
     entered: 'entrou',
     repeats: 'repete o que já existe',
     contradicts: 'contradiz uma diretriz',
-    blocked: 'ficou de fora (segredo ou instrução à IA)',
+    blocked: 'ficou de fora',
     refused: 'não passou numa conferência',
     unread: 'não deu para ler',
     already_there: 'já estava'
@@ -65,7 +65,22 @@ interface Scanned {
 interface Target {
     readonly level: ImportLevel;
     readonly scopeId?: string;
+    readonly scopeName?: string;
 }
+
+interface AreaChoice {
+    readonly id: string;
+    readonly name?: string;
+}
+
+interface AreaList {
+    readonly areas: readonly { readonly id: string; readonly name: string }[];
+}
+
+const BLOCKED_REASONS: Readonly<Record<string, string>> = {
+    secret: 'tinha um segredo (senha, token ou chave)',
+    injection: 'tinha uma instrução à IA'
+};
 
 interface SummaryItem {
     readonly fileName: string;
@@ -205,19 +220,28 @@ async function call(context: CliContext, options: BrainOptions, method: HttpMeth
     return response.body;
 }
 
-async function areaChosen(context: CliContext, options: BrainOptions): Promise<string> {
+/** The name is only for the confirmation question: with --yes nobody reads it, and a failed lookup falls back to a generic phrase. */
+async function areaNamed(context: CliContext, options: BrainOptions, id: string): Promise<AreaChoice> {
+    if (options.yes === true) {
+        return { id };
+    }
+    try {
+        const list: AreaList = (await call(context, options, 'GET', '/v1/brain/areas')) as AreaList;
+        const found: { readonly name: string } | undefined = list.areas.find((area) => area.id === id);
+        return found === undefined ? { id } : { id, name: found.name };
+    } catch {
+        return { id };
+    }
+}
+
+async function areaChosen(context: CliContext, options: BrainOptions): Promise<AreaChoice> {
     if (options.area !== undefined && options.area.trim() !== '') {
-        return options.area;
+        return areaNamed(context, options, options.area);
     }
     if (!isInteractive(context)) {
         throw usageError('Falta --area <id> (o nível é a área).', 'Veja as áreas com `nexo brain areas`.');
     }
-    const list: { readonly areas: readonly { readonly id: string; readonly name: string }[] } = (await call(
-        context,
-        options,
-        'GET',
-        '/v1/brain/areas'
-    )) as { readonly areas: readonly { readonly id: string; readonly name: string }[] };
+    const list: AreaList = (await call(context, options, 'GET', '/v1/brain/areas')) as AreaList;
     if (list.areas.length === 0) {
         throw usageError('A empresa não tem áreas: importe no nível da empresa (--scope company).');
     }
@@ -225,11 +249,15 @@ async function areaChosen(context: CliContext, options: BrainOptions): Promise<s
         printNotice(context, `  ${String(index + 1)}. ${area.name}`);
     });
     const answer: string = await ask(context, 'Qual área? (número) ');
-    const chosen: { readonly id: string } | undefined = list.areas[Number(answer) - 1];
+    const chosen: { readonly id: string; readonly name: string } | undefined = list.areas[Number(answer) - 1];
     if (chosen === undefined) {
         throw usageError(`Área "${answer}" não está na lista.`);
     }
-    return chosen.id;
+    return { id: chosen.id, name: chosen.name };
+}
+
+function areaTarget(area: AreaChoice): Target {
+    return { level: 'area', scopeId: area.id, ...(area.name === undefined ? {} : { scopeName: area.name }) };
 }
 
 function scopeOf(options: BrainOptions): ImportLevel | undefined {
@@ -252,7 +280,7 @@ async function askedTarget(context: CliContext, options: BrainOptions): Promise<
         return { level: 'company' };
     }
     if (/^(a|area|área)$/.test(answer)) {
-        return { level: 'area', scopeId: await areaChosen(context, options) };
+        return areaTarget(await areaChosen(context, options));
     }
     throw usageError(`Não entendi "${answer}": responda empresa ou area.`);
 }
@@ -266,16 +294,20 @@ async function targetOf(context: CliContext, options: BrainOptions): Promise<Tar
         return { level: 'company' };
     }
     if (scope === 'area' || options.area !== undefined) {
-        return { level: 'area', scopeId: await areaChosen(context, options) };
+        return areaTarget(await areaChosen(context, options));
     }
     return askedTarget(context, options);
 }
 
-function describeScan(context: CliContext, found: Scanned): void {
+function whereOf(target: Target): string {
+    return target.level === 'company' ? 'a empresa toda' : target.scopeName === undefined ? 'a área' : `a área ${target.scopeName}`;
+}
+
+function describeScan(context: CliContext, found: Scanned, where: string): void {
     const skills: number = found.files.filter((file: LocalImportFile) => file.kind === 'skill').length;
     printNotice(
         context,
-        `${String(found.files.length)} arquivo(s) para mandar (${String(skills)} de skill, ${String(found.files.length - skills)} de contexto).`
+        `${String(found.files.length)} arquivo(s) para mandar para ${where} (${String(skills)} de skill, ${String(found.files.length - skills)} de contexto).`
     );
     for (const file of found.ignored) {
         printNotice(context, `Ignorado: ${file.fileName} (${file.reason}).`);
@@ -388,11 +420,29 @@ function printSummary(context: CliContext, round: Round): void {
             `recusados ${String(summary.refused)}; não lidos ${String(summary.unread)}.`
     );
     for (const item of summary.items) {
-        const label: string = VERDICT_LABELS[item.verdict] ?? item.verdict;
-        const reason: string = item.reason === null ? '' : `, motivo: ${item.reason}`;
-        const cited: string = item.cited === null ? '' : `, ${item.cited.title} (${item.cited.level})`;
-        printLine(context, `  ${label}: ${item.fileName} - ${item.name}${reason}${cited}`);
+        printLine(context, itemLine(item));
     }
+    if (summary.contradicted > 0) {
+        printLine(
+            context,
+            'Rodar o comando de novo relê, sem mexer no arquivo, o que ficou de fora por contradizer; resolva a contradição antes.'
+        );
+    }
+}
+
+function itemLine(item: SummaryItem): string {
+    const cited: string = item.cited === null ? '' : `, ${item.cited.title} (${item.cited.level})`;
+    if (item.verdict === 'blocked') {
+        const why: string = item.reason === null ? 'ficou de fora' : (BLOCKED_REASONS[item.reason] ?? item.reason);
+        return `  ficou de fora: ${item.name} (${why})${cited}`;
+    }
+    if (item.verdict === 'refused') {
+        const which: string = item.reason === null ? 'não passou numa conferência' : `não passou na conferência ${item.reason}`;
+        return `  ${which}: ${item.fileName} - ${item.name}${cited}`;
+    }
+    const label: string = VERDICT_LABELS[item.verdict] ?? item.verdict;
+    const reason: string = item.reason === null ? '' : `, motivo: ${item.reason}`;
+    return `  ${label}: ${item.fileName} - ${item.name}${reason}${cited}`;
 }
 
 const NOT_ROLE_REFUSALS: readonly string[] = ['insufficient_scope', 'product_not_contracted', 'blocked_during_platform_visit'];
@@ -423,8 +473,8 @@ function printResult(context: CliContext, options: BrainOptions, round: Round): 
 export async function brainImport(context: CliContext, folder: string, options: BrainOptions): Promise<void> {
     const found: Scanned = scanned(folder);
     const target: Target = await targetOf(context, options);
-    describeScan(context, found);
-    const where: string = target.level === 'company' ? 'a empresa toda' : 'a área escolhida';
+    const where: string = whereOf(target);
+    describeScan(context, found, where);
     if (!(await confirmed(context, options.yes, `Mandar ${String(found.files.length)} arquivo(s) para ${where}?`))) {
         return;
     }

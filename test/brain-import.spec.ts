@@ -110,6 +110,12 @@ function routesFor(final: Record<string, unknown>): Routes {
     };
 }
 
+async function helpOf(): Promise<string> {
+    const h: Harness = harness({});
+    await run(h.context, ['brain', 'import', '--help']);
+    return h.out() + h.err();
+}
+
 let folder: string;
 
 beforeEach(() => {
@@ -140,7 +146,7 @@ describe('nexo brain import', () => {
         const code: number = await run(h.context, ['brain', 'import', folder, '--scope', 'company']);
 
         expect(code).toBe(0);
-        expect(h.err()).toContain('2 arquivo(s) para mandar (1 de skill, 1 de contexto)');
+        expect(h.err()).toContain('2 arquivo(s) para mandar para a empresa toda (1 de skill, 1 de contexto)');
         expect(h.err()).toContain('Ignorado: foto.png');
         expect(h.err()).toContain('Ignorado: .git (oculto)');
         expect(h.calls).toEqual([]);
@@ -221,6 +227,77 @@ describe('nexo brain import', () => {
         expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
 
         expect(h.out().match(/já estava:/g)).toHaveLength(2);
+    });
+
+    it('shows the whole name of a blocked stretch with the reason in Portuguese, never repeating a secret', async () => {
+        const secret: Record<string, unknown> = {
+            fileName: 'SKILL.md',
+            kind: 'skill',
+            name: 'SKILL.md · p. 2 · trecho 3 ("prompt do sistema")',
+            verdict: 'blocked',
+            reason: 'injection',
+            cited: null
+        };
+        const key: Record<string, unknown> = { ...secret, name: 'notas/contexto.txt · trecho 1', reason: 'secret' };
+        const h: Harness = harness(routesFor(round('completed', [ENTERED, secret, key])));
+
+        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
+
+        expect(h.out()).toContain('ficou de fora: SKILL.md · p. 2 · trecho 3 ("prompt do sistema") (tinha uma instrução à IA)');
+        expect(h.out()).toContain('ficou de fora: notas/contexto.txt · trecho 1 (tinha um segredo (senha, token ou chave))');
+        expect(h.out()).not.toContain('SKILL.md - SKILL.md');
+        expect(h.out()).not.toContain('Rodar o comando de novo');
+    });
+
+    it('says that running again rereads what was left out by contradiction', async () => {
+        const contradicts: Record<string, unknown> = {
+            ...ENTERED,
+            verdict: 'contradicts',
+            reason: null,
+            cited: { title: 'Preço', level: 'company' }
+        };
+        const h: Harness = harness(
+            routesFor(
+                round('completed', [contradicts], {
+                    summary: { ...(round('x', []).summary as object), contradicted: 1, items: [contradicts] }
+                })
+            )
+        );
+
+        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
+
+        expect(h.out()).toContain('contradiz uma diretriz: SKILL.md - follow-up, Preço (company)');
+        expect(h.out()).toContain('Rodar o comando de novo relê');
+    });
+
+    it('names the check a refused piece did not pass', async () => {
+        const refused: Record<string, unknown> = { ...ENTERED, verdict: 'refused', reason: 'plans.product_not_contracted' };
+        const h: Harness = harness(routesFor(round('completed', [refused])));
+
+        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
+
+        expect(h.out()).toContain('não passou na conferência plans.product_not_contracted: SKILL.md - follow-up');
+    });
+
+    it('imports a skill with no description like any other: nothing says it is required, and it is not "não deu para ler"', async () => {
+        writeFileSync(join(folder, 'SKILL.md'), '---\nname: follow-up\n---\ncorpo');
+        const h: Harness = harness(routesFor(round('completed', [ENTERED])));
+
+        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'company', '--yes'])).toBe(0);
+        const help: string = await helpOf();
+
+        expect(h.out()).toContain('entrou: SKILL.md - follow-up');
+        expect(h.out()).not.toContain('não deu para ler: SKILL.md');
+        expect(help).not.toMatch(/descri..o.*obrigat|obrigat.*descri..o/i);
+    });
+
+    it('names the area (not its id) before asking for the yes', async () => {
+        const h: Harness = harness({ 'GET /v1/brain/areas': { body: { areas: [{ id: AREA, name: 'Financeiro' }] } } });
+
+        expect(await run(h.context, ['brain', 'import', folder, '--scope', 'area', '--area', AREA])).toBe(0);
+
+        expect(h.err() + h.out()).toContain('2 arquivo(s) para mandar para a área Financeiro (1 de skill');
+        expect(h.err() + h.out()).not.toContain(AREA);
     });
 
     it('keeps the API message on a 403 that is not the role refusal', async () => {

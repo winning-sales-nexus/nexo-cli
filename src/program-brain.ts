@@ -31,7 +31,7 @@ function addReadCommands(brain: Command, context: CliContext): void {
         });
     brain
         .command('moments')
-        .description('Os momentos que aceitam skill nova (só os que têm o teste "não piora" funcionando)')
+        .description('Em que situações dá para criar skill nova (o valor vai em --moment)')
         .action(async (_options: BrainOptions, command: Command) => {
             await brainMoments(context, command.optsWithGlobals());
         });
@@ -53,7 +53,7 @@ function addWriteCommands(brain: Command, context: CliContext): void {
         .option('--area <id>', 'a área da skill (nível area)')
         .option('--team <id>', 'o time da skill (nível team)')
         .option('--objective <texto>', 'o objetivo, em uma linha')
-        .option('--moment <momento>', 'o momento da lista (nexo brain moments)')
+        .option('--moment <momento>', 'a situação em que a skill atua, da lista de nexo brain moments')
         .option('--always <texto>', 'o que fazer sempre (repita para mais de um)', collect, [])
         .option('--never <texto>', 'o que nunca fazer (repita para mais de um)', collect, [])
         .option('--example <texto>', 'um exemplo de como deve sair, em uma linha')
