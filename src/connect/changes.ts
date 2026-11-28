@@ -66,6 +66,18 @@ async function apply(context: CliContext, session: Session, request: ChangeReque
     }
 }
 
+/** Com `--json` o stdout é um JSON só em todo caminho: a prévia vai para o stderr. */
+function showPreviewFor(context: CliContext, preview: Pick<Preview, 'title' | 'changes'>, json: boolean): void {
+    if (!json) {
+        showPreview(context, preview);
+        return;
+    }
+    printNotice(context, preview.title);
+    for (const change of preview.changes) {
+        printNotice(context, `  - ${change}`);
+    }
+}
+
 export function showPreview(context: CliContext, preview: Pick<Preview, 'title' | 'changes'>): void {
     printLine(context, preview.title);
     for (const change of preview.changes) {
@@ -128,7 +140,7 @@ export async function requestChange(context: CliContext, session: Session, reque
         printJson(context, response.body);
         return;
     }
-    showPreview(context, response.body);
+    showPreviewFor(context, response.body, request.json);
     await decide(context, session, request, response.body);
 }
 

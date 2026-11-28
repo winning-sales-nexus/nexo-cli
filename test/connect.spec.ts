@@ -754,6 +754,35 @@ describe('result of a run: logs, output and quarantine', () => {
         expect(text).toContain('… mais 2');
     });
 
+    it('lists under "Passos com erro" only steps with an error code or a 4xx/5xx status, never a log', async () => {
+        const h: Harness = harness({
+            [`GET ${BASE}/runs/run-1`]: () =>
+                runOf('failed', {
+                    steps: [
+                        { kind: 'log', message: 'só um log' },
+                        { kind: 'http', target: 'GET /a', status: 200, errorCode: null, message: 'ok' },
+                        { kind: 'http', target: 'GET /b', status: 200, errorCode: 'connect.blocked_address', message: 'bloqueado' },
+                        { kind: 'http', target: 'GET /c', status: 404, message: 'não achou' }
+                    ]
+                })
+        });
+
+        await run(h.context, ['connect', '--connector', CONNECTOR, 'run', 'run-1']);
+
+        const text: string = h.out();
+        expect(text).toContain('Passos com erro:');
+        expect(text).toContain('connect.blocked_address: bloqueado');
+        expect(text).toContain('GET /c → 404: não achou');
+        expect(text).not.toContain('GET /a');
+        expect(text.slice(text.indexOf('Passos com erro:'), text.indexOf('Logs do script:'))).not.toContain('só um log');
+
+        const onlyLogs: Harness = harness({
+            [`GET ${BASE}/runs/run-1`]: () => runOf('succeeded', { steps: [{ kind: 'log', message: 'x' }] })
+        });
+        await run(onlyLogs.context, ['connect', '--connector', CONNECTOR, 'run', 'run-1']);
+        expect(onlyLogs.out()).not.toContain('Passos com erro');
+    });
+
     it('cuts a long output and long logs on the screen, but --json brings everything', async () => {
         const big: Harness = harness({
             [`GET ${BASE}/runs/run-1`]: () =>
@@ -1470,27 +1499,203 @@ describe('nexo connect: access (hosts, secrets, webhook, OAuth, SFTP and e-mail)
         expect(h.out()).toMatch(/ERP_USER\s+faltando/);
     });
 
-    it('webhook shows the URL and whether there is a secret; webhook secret set --generate shows the value once', async () => {
-        const setup: Record<string, unknown> = {
-            url: 'https://mcp-nexo.winningsales.com.br/hooks/abc',
-            secretSet: false,
-            signatureHeader: 'X-Nexo-Signature',
-            timestampHeader: 'X-Nexo-Timestamp'
+    const URL_OF_HOOK: string = 'https://mcp-nexo.winningsales.com.br/hooks/abc';
+    const NEW_URL: string = 'https://mcp-nexo.winningsales.com.br/hooks/novo';
+    const HMAC: Record<string, unknown> = { type: 'hmac', header: 'X-Sig', secret: 'HOOK_KEY', prefix: 'sha256=' };
+
+    it('webhook shows the address as a credential, the declared auth and the secrets still missing', async () => {
+        const h: Harness = harness({
+            [`GET ${BASE}/webhook`]: () => ({
+                url: URL_OF_HOOK,
+                auth: HMAC,
+                authInEdit: { type: 'header', header: 'X-Key', secret: 'OTHER' }
+            }),
+            [`GET ${BASE}/secrets`]: () => [{ name: 'HOOK_KEY', filled: false, setAt: null }]
+        });
+
+        expect(await run(h.context, ['connect', 'webhook', ...OPTION])).toBe(0);
+
+        expect(h.out()).toContain(URL_OF_HOOK);
+        expect(h.out()).toContain('é a credencial');
+        expect(h.out()).toContain('HMAC-SHA256');
+        expect(h.out()).toContain('HMAC-SHA256 (hex) do corpo com o segredo HOOK_KEY');
+        expect(h.out()).toContain('Na versão em edição');
+        expect(h.out()).toContain('Falta preencher: HOOK_KEY, OTHER');
+        expect(h.calls.filter((call: Call) => call.method !== 'GET')).toEqual([]);
+
+        const asJson: Harness = harness({
+            [`GET ${BASE}/webhook`]: () => ({ url: URL_OF_HOOK, auth: HMAC, authInEdit: HMAC }),
+            [`GET ${BASE}/secrets`]: () => [{ name: 'HOOK_KEY', filled: false, setAt: null }]
+        });
+        expect(await run(asJson.context, ['connect', 'webhook', '--json', ...OPTION])).toBe(0);
+        expect(JSON.parse(asJson.out())).toMatchObject({ missingSecrets: ['HOOK_KEY'], urlIsCredential: true });
+
+        const raw: Harness = harness({ [`GET ${BASE}/webhook`]: () => ({ url: URL_OF_HOOK, auth: null, authInEdit: null }) });
+        expect(await run(raw.context, ['connect', 'webhook', '--json', ...OPTION])).toBe(0);
+        expect(JSON.parse(raw.out())).toEqual({
+            url: URL_OF_HOOK,
+            auth: null,
+            authInEdit: null,
+            missingSecrets: [],
+            urlIsCredential: true
+        });
+        expect(raw.calls).toHaveLength(1);
+
+        const bare: Harness = harness({ [`GET ${BASE}/webhook`]: () => ({ url: URL_OF_HOOK, auth: null, authInEdit: null }) });
+        expect(await run(bare.context, ['connect', 'webhook', ...OPTION])).toBe(0);
+        expect(bare.out()).toContain('a autenticação é o token do endereço');
+        expect(bare.out()).toContain('o Nexo não exige assinatura');
+        expect(bare.out()).toContain('a chamada é descartada e nada roda');
+    });
+
+    it('webhook deliveries lists the outcomes with the reason and pages with --before', async () => {
+        const page: unknown = {
+            deliveries: [
+                {
+                    receivedAt: '2026-11-27T10:00:00.000Z',
+                    contentType: 'application/json',
+                    sizeBytes: 12,
+                    outcome: 'ran',
+                    reason: null,
+                    runId: 'r1',
+                    runStatus: 'succeeded'
+                },
+                {
+                    receivedAt: '2026-11-27T09:00:00.000Z',
+                    contentType: null,
+                    sizeBytes: 3,
+                    outcome: 'refused',
+                    reason: 'mismatch',
+                    runId: null,
+                    runStatus: null
+                }
+            ],
+            next: '11111111-1111-4111-8111-111111111111'
         };
-        const shown: Harness = harness({ [`GET ${BASE}/webhook`]: () => setup });
-        expect(await run(shown.context, ['connect', 'webhook', ...OPTION])).toBe(0);
-        expect(shown.out()).toContain('hooks/abc');
-        expect(shown.out()).toContain('ainda não definido');
+        const h: Harness = harness({ [`GET ${BASE}/webhook/deliveries?before=abc&limit=2`]: () => page });
 
-        const h: Harness = harness({ [`PUT ${BASE}/webhook/secret`]: () => ({ ...setup, secretSet: true }) });
-        expect(await run(h.context, ['connect', 'webhook', 'secret', 'set', '--generate', ...OPTION])).toBe(0);
-        const secret: string = (h.calls[0]?.body as { secret: string }).secret;
-        expect(secret).toMatch(/^[0-9a-f]{64}$/);
-        expect(h.out()).toContain(`Segredo: ${secret}`);
+        expect(await run(h.context, ['connect', 'webhook', 'deliveries', '--before', 'abc', '--limit', '2', ...OPTION])).toBe(0);
 
-        const refused: Harness = harness({});
-        expect(await run(refused.context, ['connect', 'webhook', 'secret', 'set', '--generate', '--json', ...OPTION])).toBe(2);
-        expect(refused.calls).toEqual([]);
+        expect(h.out()).toContain('rodou');
+        expect(h.out()).toContain('execução r1 (succeeded)');
+        expect(h.out()).toContain('recusada');
+        expect(h.out()).toContain('motivo: a autenticação não confere');
+        expect(h.out()).toContain('--before 11111111-1111-4111-8111-111111111111');
+
+        const raw: Harness = harness({ [`GET ${BASE}/webhook/deliveries`]: () => page });
+        expect(await run(raw.context, ['connect', 'webhook', 'deliveries', '--json', ...OPTION])).toBe(0);
+        expect(JSON.parse(raw.out())).toEqual(page);
+
+        const odd: Harness = harness({
+            [`GET ${BASE}/webhook/deliveries`]: () => ({
+                deliveries: [
+                    {
+                        receivedAt: '2026-11-27T10:00:00.000Z',
+                        contentType: null,
+                        sizeBytes: 1,
+                        outcome: 'novo_desfecho',
+                        reason: null,
+                        runId: null,
+                        runStatus: null
+                    }
+                ],
+                next: null
+            })
+        });
+        expect(await run(odd.context, ['connect', 'webhook', 'deliveries', ...OPTION])).toBe(0);
+        expect(odd.out()).toContain('novo_desfecho');
+
+        const bad: Harness = harness({});
+        expect(await run(bad.context, ['connect', 'webhook', 'deliveries', '--limit', '500', ...OPTION])).toBe(2);
+        expect(bad.calls).toEqual([]);
+    });
+
+    describe('webhook rotate', () => {
+        const preview: unknown = {
+            title: 'Trocar o token do webhook',
+            changes: ['O endereço antigo para de valer na hora'],
+            confirmation: { token: 'v1.tok', expiresAt: '2026-11-27T10:10:00.000Z' }
+        };
+        const renewed: unknown = { url: NEW_URL, auth: null, authInEdit: null };
+        function routes(): Record<string, Route> {
+            return { [`POST ${BASE}/webhook/token/preview`]: () => preview, [`POST ${BASE}/webhook/token`]: () => renewed };
+        }
+        function writes(h: Harness): Call[] {
+            return h.calls.filter((call: Call) => call.path === `${BASE}/webhook/token`);
+        }
+
+        it('without a terminal and without --yes shows the preview, changes nothing and prints the command with the token', async () => {
+            const h: Harness = harness(routes());
+
+            expect(await run(h.context, ['connect', 'webhook', 'rotate', ...OPTION])).toBe(0);
+
+            expect(h.out()).toContain('O endereço antigo para de valer');
+            expect(h.err()).toContain('--confirm v1.tok');
+            expect(writes(h)).toEqual([]);
+        });
+
+        it('answering no in a terminal changes nothing', async () => {
+            const h: Harness = harness(routes());
+
+            expect(await run({ ...h.context, stdin: typing('n\n') }, ['connect', 'webhook', 'rotate', ...OPTION])).toBe(0);
+
+            expect(h.err()).toContain('Nada mudou.');
+            expect(writes(h)).toEqual([]);
+        });
+
+        it('answering yes in a terminal renews and shows the new address as a credential', async () => {
+            const h: Harness = harness(routes());
+
+            expect(await run({ ...h.context, stdin: typing('s\n') }, ['connect', 'webhook', 'rotate', ...OPTION])).toBe(0);
+
+            expect(writes(h)).toHaveLength(1);
+            expect(writes(h)[0]?.body).toEqual({ confirmationToken: 'v1.tok' });
+            expect(h.out()).toContain(`Novo endereço: ${NEW_URL}`);
+            expect(h.out()).toContain('é a credencial');
+        });
+
+        it('--yes renews right after the preview; --confirm applies with the token alone', async () => {
+            const yes: Harness = harness(routes());
+            expect(await run(yes.context, ['connect', 'webhook', 'rotate', '--yes', ...OPTION])).toBe(0);
+            expect(writes(yes)).toHaveLength(1);
+
+            const token: Harness = harness(routes());
+            expect(await run(token.context, ['connect', 'webhook', 'rotate', '--confirm', 'v1.other', ...OPTION])).toBe(0);
+            expect(writes(token)[0]?.body).toEqual({ confirmationToken: 'v1.other' });
+        });
+
+        it('--json without --yes prints the preview as the only JSON and writes nothing', async () => {
+            const h: Harness = harness(routes());
+
+            expect(await run(h.context, ['connect', 'webhook', 'rotate', '--json', ...OPTION])).toBe(0);
+
+            expect(JSON.parse(h.out())).toEqual(preview);
+            expect(writes(h)).toEqual([]);
+        });
+
+        it('--json with --yes keeps stdout a single JSON: the renewed webhook; the preview goes to stderr', async () => {
+            const h: Harness = harness(routes());
+
+            expect(await run(h.context, ['connect', 'webhook', 'rotate', '--json', '--yes', ...OPTION])).toBe(0);
+
+            expect(JSON.parse(h.out())).toEqual(renewed);
+            expect(h.err()).toContain('O endereço antigo para de valer');
+            expect(writes(h)).toHaveLength(1);
+        });
+
+        it('--confirm with an empty value is refused locally, with no call', async () => {
+            const h: Harness = harness(routes());
+
+            expect(await run(h.context, ['connect', 'webhook', 'rotate', '--confirm', '', ...OPTION])).toBe(2);
+            expect(h.calls).toEqual([]);
+        });
+
+        it('the old webhook secret set command is gone', async () => {
+            const h: Harness = harness({});
+
+            expect(await run(h.context, ['connect', 'webhook', 'secret', 'set', '--generate', ...OPTION])).not.toBe(0);
+            expect(h.calls).toEqual([]);
+        });
     });
 
     it('oauth client set asks for the yes, takes the secret from stdin and never prints it, not even with --json', async () => {
