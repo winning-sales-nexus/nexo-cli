@@ -10,6 +10,9 @@ export interface BrainOptions extends GlobalOptions {
     readonly scope?: string;
     readonly area?: string;
     readonly team?: string;
+    readonly name?: string;
+    readonly description?: string;
+    readonly body?: string;
     readonly objective?: string;
     readonly moment?: string;
     readonly always?: readonly string[];
@@ -151,15 +154,14 @@ function required(value: string | undefined, flag: string): string {
 function ideaOf(options: BrainOptions): Record<string, unknown> {
     const always: readonly string[] = listOf(options.always);
     const never: readonly string[] = listOf(options.never);
-    if (always.length + never.length === 0) {
-        throw usageError('Diga ao menos uma coisa para fazer sempre (--always) ou para nunca fazer (--never).');
-    }
     return {
-        objective: required(options.objective, '--objective'),
-        moment: required(options.moment, '--moment'),
-        always,
-        never,
-        example: required(options.example, '--example')
+        ...(options.name === undefined ? {} : { name: options.name }),
+        ...(options.description === undefined ? {} : { description: options.description }),
+        ...(options.body === undefined ? {} : { body: options.body }),
+        ...(options.objective === undefined ? {} : { objective: options.objective }),
+        ...(options.moment === undefined ? {} : { moment: options.moment }),
+        ...(always.length + never.length === 0 ? {} : { always, never }),
+        ...(options.example === undefined ? {} : { example: options.example })
     };
 }
 
