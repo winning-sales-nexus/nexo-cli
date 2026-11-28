@@ -44,6 +44,9 @@ nexo whoami                      # quem está conectado, empresa, escopos e vali
 nexo companies [busca]           # (login de plataforma) lista as empresas em que se pode agir
 nexo use <empresa>               # escolhe a empresa, por id ou por um nome que case com uma só
 nexo use --none                  # sai da empresa escolhida
+nexo features list <empresa>     # (login de plataforma) funções da empresa e de onde veio cada uma
+nexo features on <empresa> <função> [--with-required]  # libera uma função só para a empresa
+nexo features off <empresa> <função>                    # tira uma função da empresa
 nexo api deals                   # GET /v1/deals
 nexo api deals -X GET -f limit=5 # campos viram query string no GET
 nexo api crm/dashboards/catalog -X GET -f text=receita -F limit=5           # -F manda o número como número
@@ -53,7 +56,7 @@ nexo logout                      # remove o perfil desta máquina
 
 `-f` manda o valor como texto; `-F` entende número, `true`, `false`, `null` e JSON. Com campos e sem `-X`, o método é POST, como no `gh api`.
 
-**Usuário da plataforma.** O admin da empresa do Nexo que roda `nexo login` entra com uma conexão de plataforma: ela não age em empresa nenhuma até a escolha. `nexo companies` lista as empresas, `nexo use <empresa>` escolhe uma (por id, ou por um nome que case com uma só; se casar com várias, lista as opções e não escolhe nenhuma) e `nexo whoami` mostra a empresa ativa. A escolha fica no servidor e vale até a troca ou `nexo use --none`; dentro da empresa, `nexo connect ...` e `nexo api ...` agem como o usuário de suporte do Nexo. Um comando que ainda esbarre em "escolha uma empresa" aponta esses dois comandos. Para qualquer outro login, `companies` e `use` respondem que não existem.
+**Usuário da plataforma.** O admin da empresa do Nexo que roda `nexo login` entra com uma conexão de plataforma: ela não age em empresa nenhuma até a escolha. `nexo companies` lista as empresas, `nexo use <empresa>` escolhe uma (por id, ou por um nome que case com uma só; se casar com várias, lista as opções e não escolhe nenhuma) e `nexo whoami` mostra a empresa ativa. A escolha fica no servidor e vale até a troca ou `nexo use --none`; dentro da empresa, `nexo connect ...` e `nexo api ...` agem como o usuário de suporte do Nexo. Um comando que ainda esbarre em "escolha uma empresa" aponta esses dois comandos. Para qualquer outro login, `companies` e `use` respondem que não existem. `nexo features list|on|off` liberam ou tiram uma função de uma empresa (por id ou nome, sem precisar do `use`), como a tela da plataforma: o contrato e a cobrança ficam como estão, a mudança sobrevive a troca de plano e vai para a auditoria. Um módulo que exige outro é recusado com o que falta; `--with-required` libera os dois juntos. Mudar pede o escopo `settings:write`, que o login padrão já traz.
 
 `--json` deixa toda saída em JSON, e o erro sai no stderr como o `problem+json` da API.
 

@@ -9,7 +9,7 @@ export interface UseOptions extends GlobalOptions {
 }
 
 type Companies = paths['/v1/platform/companies']['get']['responses'][200]['content']['application/json'];
-type Company = Companies['companies'][number];
+export type Company = Companies['companies'][number];
 
 const UUID: RegExp = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -54,7 +54,7 @@ export async function companies(context: CliContext, search: string | undefined,
     printNotice(context, 'Escolha uma com `nexo use <id ou nome>`.');
 }
 
-async function resolveCompany(context: CliContext, target: string, options: GlobalOptions): Promise<Company> {
+export async function resolveCompany(context: CliContext, target: string, options: GlobalOptions): Promise<Company> {
     const trimmed: string = target.trim();
     const list: readonly Company[] = await fetchCompanies(context, options, UUID.test(trimmed) ? undefined : trimmed);
     const byId: Company | undefined = list.find((company: Company) => company.id.toLowerCase() === trimmed.toLowerCase());
